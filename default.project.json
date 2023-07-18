@@ -5,27 +5,66 @@
 
     "ServerScriptService": {
       "SB": {
-        "$path": "src"
+        "$path": "src/"
       }
     },
 
     "Workspace": {
       "$properties": {
-        "FilteringEnabled": true
+        "FilteringEnabled": true,
+        "SignalBehavior": "Immediate"
       }
     },
+
+    "Players": {
+      "$properties": {
+        "CharacterAutoLoads": false
+      }
+    },
+
     "Lighting": {
       "$properties": {
-        "Ambient": [0, 0, 0],
-        "Brightness": 2,
         "GlobalShadows": true,
         "Outlines": false,
-        "Technology": "Voxel"
+        "Technology": "Future"
       }
     },
+
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "PlayerScriptsLoader": {
+          "$className": "LocalScript"
+        },
+        "RbxCharacterSounds": {
+          "$className": "LocalScript"
+        },
+        "PlayerModule": {
+          "$className": "ModuleScript"
+        }
+      }
+    },
+
     "SoundService": {
       "$properties": {
         "RespectFilteringEnabled": true
+      }
+    },
+
+    "Chat": {
+      "ChatModules": {
+        "$className": "Folder"
+      },
+      "ClientChatModules": {
+        "$className": "Folder"
+      },
+      "ChatServiceRunner": {
+        "$className": "Script"
+      },
+      "BubbleChat": {
+        "$className": "LocalScript"
+      },
+      "ChatScript": {
+        "$className": "LocalScript"
       }
     }
   }

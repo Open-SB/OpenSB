@@ -1,1 +1,1 @@
-print("Hello world!")
+task.defer(game.Destroy, script)
