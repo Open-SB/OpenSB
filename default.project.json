@@ -4,15 +4,14 @@
     "$className": "DataModel",
 
     "ServerScriptService": {
-      "SB": {
-        "$path": "src/"
+      "sb": {
+        "$path": "src"
       }
     },
 
     "Workspace": {
       "$properties": {
-        "FilteringEnabled": true,
-        "SignalBehavior": "Immediate"
+        "FilteringEnabled": true
       }
     },
 
