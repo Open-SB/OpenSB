@@ -8,9 +8,6 @@
         "sb": {
           "$path": "src/sb"
         }
-      },
-      "scriptManager": {
-        "$path": "src/scriptManager"
       }
     },
     "Workspace": {

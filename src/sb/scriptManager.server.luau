@@ -1,6 +1,5 @@
 local shared, _G = shared, _G
-local actor = script.Parent.sbActor
-local sandboxedScript = script.sandbox
+local actor = script.Parent.Parent
 script:Destroy()
 
 setmetatable(shared, {
