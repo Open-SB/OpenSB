@@ -10,6 +10,7 @@ local setfenv = setfenv
 local math = math
 local os = os
 local next = next
+local table = table
 
 -- These are replaced later
 local _print = print
@@ -33,6 +34,7 @@ local function warn(...: any)
 end
 
 -- Fetch assets and destroy script
+debug("Fetching assets")
 
 do
 	local thread = coroutine.running()
@@ -52,9 +54,11 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Network = {}
 
+debug("Loading modules")
+
 -- Network
 do
-	Network.attributeName, Network.attributeValue = next(script:GetAttributes())
+	Network.attributeName, Network.attributeValue = next(script:GetAttributes(), Network.attributeName)
 
 	local registeredEvents: { [string]: (...unknown) -> nil } = {}
 	function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
@@ -65,5 +69,10 @@ do
 		registeredEvents[name] = callback
 	end
 end
+
+debug("Loading systems")
+
+-- Finalize
+debug("Finalizing...")
 
 debug(`Loaded in {math.round((os.clock() - __start) * 1000)}ms`)
