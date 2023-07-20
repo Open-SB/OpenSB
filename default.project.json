@@ -3,12 +3,7 @@
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
-      "sbActor": {
-        "$className": "Actor",
-        "sb": {
-          "$path": "src/sb"
-        }
-      }
+      "$path": "src"
     },
     "Workspace": {
       "$properties": {

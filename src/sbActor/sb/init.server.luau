@@ -1,0 +1,116 @@
+--!strict
+local __start = os.clock()
+
+-- Localize variables and remove environment for security
+local game = game
+local task = task
+local script = script
+local setfenv = setfenv
+local os = os
+local math = math
+local Instance = Instance
+local coroutine = coroutine
+local ipairs = ipairs
+local require = require
+
+-- These are replaced later
+local _print = print
+local _warn = warn
+
+setfenv(1, {})
+
+local Log = require(script:WaitForChild("modules"):WaitForChild("log"))[1]
+
+-- Fetch assets and destroy script
+Log.debug("Fetching assets")
+
+local modules = script:WaitForChild("modules"):Clone()
+local sbClient = script:WaitForChild("client"):Clone()
+
+do
+	local thread = coroutine.running()
+	task.defer(
+		function() -- Defer has a small yield (under a frame) allowing us to delete the script (instances can't change their parent instantly after there were parented / created)
+			script:Destroy()
+			script = nil
+
+			coroutine.resume(thread)
+		end
+	)
+
+	coroutine.yield() -- Yield thread until script has been destroyed, so events dont get connected in the process (then disconnected by :Destroy())
+end
+
+-- Services and modules
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+Log.debug("Loading modules")
+
+local Modules = require(modules)
+local Network = Modules.require("network")
+local Functions = Modules.require("functions")
+
+Log.debug("Loading systems")
+
+-- Player system
+do
+	local function disconnectPlayer(player: Player) end
+
+	local function connectPlayer(player: Player)
+		Log.debug(`Checking if {player} can join...`)
+
+		if not RunService:IsStudio() and player.AccountAge < 7 then
+			Log.debug(`{player}'s account age is too young (<7).`)
+			player:Kick(`Your account age has to be atleast one week old to play this game.`)
+
+			-- TODO: Alert to others why they couldnt join
+
+			return
+		end
+
+		Log.debug(`Checking ban on {player}...`)
+		-- TODO: Ban check
+
+		do
+			Log.debug(`Loading SB client on {player}...`)
+
+			local backpack = Instance.new("Backpack")
+			backpack.Name = Functions.randomInstanceName()
+			backpack.Archivable = false
+
+			local newClient = sbClient:Clone()
+			newClient.Name = Functions.randomInstanceName()
+			newClient.Archivable = false
+			newClient.Parent = backpack
+
+			-- Tranfer the remote attributes to find the remotes
+			newClient:SetAttribute(Network.attributeName, Network.attributeValue)
+
+			backpack.Parent = player
+			task.defer(function() -- This will need to change as it doesnt let children load
+				backpack:Destroy()
+				newClient:Destroy()
+			end)
+		end
+	end
+
+	Players.PlayerAdded:Connect(connectPlayer)
+	Players.PlayerRemoving:Connect(disconnectPlayer)
+
+	for _, player: Player in ipairs(Players:GetPlayers()) do
+		task.spawn(connectPlayer, player)
+	end
+end
+
+-- Finalize
+Log.debug("Finalizing...")
+
+Modules.waitForModulesToLoad()
+Modules:Lock()
+modules:Destroy()
+
+Players.CharacterAutoLoads = true
+
+Log.debug(`Loaded in {math.round((os.clock() - __start) * 1000)}ms.`)
