@@ -195,6 +195,8 @@ debug("Loading systems")
 
 -- Player system
 do
+	local function disconnectPlayer(player: Player) end
+
 	local function connectPlayer(player: Player)
 		debug(`Checking if {player} can join...`)
 
@@ -202,7 +204,7 @@ do
 			debug(`{player}'s account age is too young (<7).`)
 			player:Kick(`Your account age has to be atleast one week old to play this game.`)
 
-			-- TODO: Alert why they couldnt join
+			-- TODO: Alert to others why they couldnt join
 
 			return
 		end
@@ -236,6 +238,8 @@ do
 	end
 
 	Players.PlayerAdded:Connect(connectPlayer)
+	Players.PlayerRemoving:Connect(disconnectPlayer)
+
 	for _, player: Player in ipairs(Players:GetPlayers()) do
 		task.spawn(connectPlayer, player)
 	end

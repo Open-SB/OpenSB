@@ -58,7 +58,7 @@ debug("Loading modules")
 
 -- Network
 do
-	Network.attributeName, Network.attributeValue = next(script:GetAttributes(), Network.attributeName)
+	Network.attributeName, Network.attributeValue = next(script:GetAttributes())
 
 	local registeredEvents: { [string]: (...unknown) -> nil } = {}
 	function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
