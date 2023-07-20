@@ -5,6 +5,7 @@ local __start = os.clock()
 local game = game
 local task = task
 local script = script
+local scriptActor = script:GetActor()
 local setfenv = setfenv
 local os = os
 local math = math
@@ -46,6 +47,15 @@ end
 debug("Fetching assets")
 
 local sbClient = script:WaitForChild("client"):Clone()
+local managerLoaded = false
+
+scriptActor:BindToMessage("scriptManager::load", function()
+	managerLoaded = true
+end)
+
+repeat
+	task.wait()
+until managerLoaded
 
 do
 	local thread = coroutine.running()

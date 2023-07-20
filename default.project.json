@@ -4,9 +4,13 @@
     "$className": "DataModel",
     "ServerScriptService": {
       "sbActor": {
+        "$className": "Actor",
         "sb": {
-          "$path": "src"
+          "$path": "src/sb"
         }
+      },
+      "scriptManager": {
+        "$path": "src/scriptManager"
       }
     },
     "Workspace": {
