@@ -16,6 +16,8 @@ local ipairs = ipairs
 
 setfenv(1, {})
 
+local services = table.clone(require(script:WaitForChild("services")))
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -27,7 +29,6 @@ local Log = Modules.require("log")
 local Functions = Modules.require("functions")
 
 local Network = {}
-
 Network.attributeName, Network.attributeValue = string.sub(tostring(math.random()), 3), math.random()
 
 local registeredEvents: { [string]: (...unknown) -> nil } = {}
@@ -53,18 +54,12 @@ end
 local connectedPlayers: { [Player]: boolean } = {} -- We keep track of players that have successfully connected to the remote, so we don't accidentally send stuff to them without them actually listening to the remote
 local function OnServerInvoke(player: Player) end
 
-local lastNetworkFolderFix = os.clock() -- We keep track of this so we can recreate the remotes every 5 seconds, incase the remotes get deleted on someones client
-local networkFolder, remoteEvent, remoteFunction
+local lastRemoteFix = os.clock() -- We keep track of this so we can recreate the remote every 5 seconds, incase the remote get deleted on someones client
+local remote, remoteParent
 
 function Network:FireClient(player: Player, ...: any)
 	task.spawn(function(...)
-		while
-			not connectedPlayers[player]
-			or not networkFolder
-			or not remoteEvent
-			or networkFolder.Parent ~= ReplicatedStorage
-			or remoteEvent.Parent ~= networkFolder
-		do
+		while not connectedPlayers[player] or not remote or remote.Parent ~= remoteParent do
 			task.wait()
 		end
 
@@ -78,70 +73,39 @@ function Network:FireAllClients(...: any)
 	end
 end
 
-local function fixNetworkFolder()
-	lastNetworkFolderFix = os.clock()
+local function fixRemote()
+	lastRemoteFix = os.clock()
 
-	if networkFolder then
-		task.delay(0, game.Destroy, networkFolder)
+	if remote then
+		task.delay(0, game.Destroy, remote)
 	end
 
-	if remoteEvent then
-		task.delay(0, game.Destroy, remoteEvent)
-	end
+	remote = Instance.new("RemoteFunction")
+	remote.Name = Functions.randomInstanceName()
+	remote.Archivable = false
+	remote:SetAttribute(Network.attributeName, Network.attributeValue)
 
-	if remoteFunction then
-		task.delay(0, game.Destroy, remoteFunction)
-	end
-
-	networkFolder = Instance.new("Folder")
-	networkFolder.Name = Functions.randomInstanceName()
-	networkFolder.Archivable = false
-	networkFolder:SetAttribute(Network.attributeName, Network.attributeValue)
-
-	remoteEvent = Instance.new("RemoteEvent")
-	remoteEvent.Name = Functions.randomInstanceName()
-	remoteEvent.Archivable = false
-	remoteEvent.Parent = networkFolder
-
-	remoteFunction = Instance.new("RemoteFunction")
-	remoteFunction.Name = Functions.randomInstanceName()
-	remoteFunction.Archivable = false
-	remoteFunction.Parent = networkFolder
-
-	networkFolder.Parent = ReplicatedStorage
+	remoteParent = services[math.random(1, #services)]
+	remote.Parent = remoteParent
 end
 
-fixNetworkFolder()
-remoteFunction.OnServerInvoke = OnServerInvoke
+fixRemote()
+remote.OnServerInvoke = OnServerInvoke
 
 -- Already leaked magic 🤯 (I know better methods but I don't want to leak them ;) - EwDev)
 local args = table.create(80, task.defer)
 table.insert(args, function()
 	if
-		not networkFolder
-		or networkFolder.Parent ~= ReplicatedStorage
-		or remoteEvent.Parent ~= networkFolder
-		or remoteFunction.Parent ~= networkFolder
-		or networkFolder:GetAttribute(Network.attributeName) ~= Network.attributeValue
-		or #networkFolder:GetDescendants() > 2
-		or os.clock() - lastNetworkFolderFix >= 5
+		not remote
+		or remote.Parent ~= remoteParent
+		or remote:GetAttribute(Network.attributeName) ~= Network.attributeValue
+		or #remote:GetChildren() > 2
+		or os.clock() - lastRemoteFix >= 5
 	then
-		fixNetworkFolder()
+		fixRemote()
 	end
 
-	remoteFunction.OnServerInvoke = OnServerInvoke
-
-	-- Prevent fakes
-	for _, child in ipairs(ReplicatedStorage:GetChildren()) do
-		if child.ClassName ~= "Folder" or child == networkFolder then
-			continue
-		end
-
-		if child:GetAttribute(Network.attributeName) == Network.attributeValue then
-			child:SetAttribute(Network.attributeName, nil)
-			pcall(game.Destroy, child)
-		end
-	end
+	remote.OnServerInvoke = OnServerInvoke
 end)
 
 RunService.PostSimulation:Connect(function()

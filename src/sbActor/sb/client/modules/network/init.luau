@@ -4,24 +4,29 @@ local script = script
 local require = require
 local game = game
 local error = error
+local unpack = unpack
+local task = task
+local table = table
 
 setfenv(1, {})
+
+local services = table.clone(require(script:WaitForChild("services")))
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Modules = require(script.Parent)
 script = nil
 
 local Log = Modules.require("log")
+local Functions = Modules.require("functions")
+
+local attributeName, attributeValue
+local remotes = {}
 
 local Network = {}
-local attributeName, attributeValue
 
 function Network.setAttribute(attribute: {})
-	if attributeName and attributeValue then
-		error("Attribute is already set.", 2)
-
-		return
-	end
-	Log.print(attribute)
+	Network.setAttribute = Functions.empty -- Prevent future changes
 	attributeName, attributeValue = unpack(attribute)
 end
 
@@ -33,5 +38,13 @@ function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
 
 	registeredEvents[name] = callback
 end
+
+local function connectRemote(remote) end
+
+task.defer(function()
+	while not attributeName or not attributeValue do
+		task.wait()
+	end
+end)
 
 return { Network }
