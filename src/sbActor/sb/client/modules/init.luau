@@ -40,7 +40,7 @@ for _, module in ipairs(modules) do
 		end
 
 		metatable.__newindex = function()
-			error("modules are readonly", 2)
+			error("Modules are readonly.", 2)
 		end
 
 		moduleLookup[module.Name] = proxy
