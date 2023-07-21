@@ -3,20 +3,23 @@ local game = game
 local print = print
 local warn = warn
 local table = table
+local type = type
 
 setfenv(1, {})
 
 local TestService = game:GetService("TestService")
 
 local Log = {}
-local debugEnabled = game:GetService("RunService"):IsStudio()
+Log.debugEnabled = game:GetService("RunService"):IsStudio()
 
 function Log.setDebugEnabled(enabled: boolean)
-	debugEnabled = enabled
+	if type(enabled) == "boolean" then
+		Log.debugEnabled = enabled
+	end
 end
 
 function Log.debug(...: any)
-	if debugEnabled then
+	if Log.debugEnabled then
 		TestService:Message("[SB] " .. table.concat({ ... }, " "))
 	end
 end
