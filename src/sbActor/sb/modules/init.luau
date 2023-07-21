@@ -7,6 +7,7 @@ local newproxy = newproxy
 local error = error
 local require = require
 local task = task
+local getmetatable = getmetatable
 
 setfenv(1, {})
 
@@ -23,12 +24,26 @@ for _, module in ipairs(modules) do
 	moduleLookup[module.Name] = loadingState -- We set a module to a loading state so if another module tries to load this module we know we can yield
 
 	task.defer(function()
-		local wrappedModule = require(module)
-		moduleLookup[module.Name] = table.freeze(wrappedModule[1])
+		local wrappedModule: { [number]: any } = require(module)
+		local Module = wrappedModule[1]
 
 		table.clear(wrappedModule)
 		module:Destroy()
 
+		-- We set the module to a metatable to prevent iterating the module, writing to it (while still allowing the module to write to it)
+		local proxy = newproxy(true)
+		local metatable = getmetatable(proxy)
+		metatable.__metatable = "The metatable is locked"
+
+		metatable.__index = function(_, index: string): any
+			return Module[index]
+		end
+
+		metatable.__newindex = function()
+			error("modules are readonly", 2)
+		end
+
+		moduleLookup[module.Name] = proxy
 		loadedModules += 1
 	end)
 end
