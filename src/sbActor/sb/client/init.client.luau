@@ -11,12 +11,26 @@ local math = math
 local os = os
 local next = next
 local table = table
+local require = require
+local type = type
 
 -- These are replaced later
 local _print = print
 local _warn = warn
 
 setfenv(1, {})
+
+-- Wait for all descendants
+do
+	local descendants = script:GetAttribute("_descendants")
+	script:SetAttribute("_descendants", nil)
+
+	if type(descendants) == "number" then -- May have been tampered with, and if thats the case I think it's the best to skip this, we may want to add a timeout aswell
+		while descendants > #script:GetDescendants() do
+			script.DescendantAdded:Wait()
+		end
+	end
+end
 
 local networkAttribute = { next(script:GetAttributes()) }
 local Log = require(script:WaitForChild("modules"):WaitForChild("log"))[1]

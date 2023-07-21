@@ -24,13 +24,24 @@ local Log = require(script:WaitForChild("modules"):WaitForChild("log"))[1]
 -- Fetch assets and destroy script
 Log.debug("Fetching assets")
 
+local sbActor = script.Parent
+
 local modules = script:WaitForChild("modules"):Clone()
 local sbClient = script:WaitForChild("client"):Clone()
+sbClient:SetAttribute("_descendants", #sbClient:GetDescendants()) -- We set this to tell the client how many descendants it should expect before destroying itself
+
+do
+	local attributeChanged = sbActor:GetAttributeChangedSignal("canDestroy")
+	while not sbActor:GetActor("canDestroy") do
+		attributeChanged:Wait()
+	end
+end
 
 do
 	local thread = coroutine.running()
 	task.defer(
 		function() -- Defer has a small yield (under a frame) allowing us to delete the script (instances can't change their parent instantly after there were parented / created)
+			sbActor:Destroy()
 			script:Destroy()
 			script = nil
 
@@ -44,7 +55,6 @@ end
 -- Services and modules
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 Log.debug("Loading modules")
 
@@ -52,11 +62,11 @@ local Modules = require(modules)
 local Network = Modules.require("network")
 local Functions = Modules.require("functions")
 
-Log.debug("Loading systems")
+Log.debug("Loading systems") -- Maybe we should move these into their own modules?
 
 -- Player system
 do
-	local function disconnectPlayer(player: Player) end
+	local function disconnectPlayer() end
 
 	local function connectPlayer(player: Player)
 		Log.debug(`Checking if {player} can join...`)
@@ -76,23 +86,33 @@ do
 		do
 			Log.debug(`Loading SB client on {player}...`)
 
-			local backpack = Instance.new("Backpack")
-			backpack.Name = Functions.randomInstanceName()
-			backpack.Archivable = false
+			local playerGui = player:FindFirstChildOfClass("PlayerGui")
+			if not playerGui then
+				Log.debug(`{player} had no player gui.`)
+				player:Kick("PlayerGui was not found while loading.")
+
+				return
+			end
+
+			local screenGui = Instance.new("ScreenGui")
+			screenGui.Name = Functions.randomInstanceName()
+			screenGui.Archivable = false
+			screenGui.ResetOnSpawn = false
+			screenGui.Enabled = false
 
 			local newClient = sbClient:Clone()
 			newClient.Name = Functions.randomInstanceName()
 			newClient.Archivable = false
-			newClient.Parent = backpack
+			newClient.Parent = screenGui
 
 			-- Tranfer the remote attributes to find the remotes
 			newClient:SetAttribute(Network.attributeName, Network.attributeValue)
 
-			backpack.Parent = player
-			task.defer(function() -- This will need to change as it doesnt let children load
-				backpack:Destroy()
+			screenGui.Parent = playerGui
+			--[[task.delay(1, function()
+				screenGui:Destroy()
 				newClient:Destroy()
-			end)
+			end)]]
 		end
 	end
 
