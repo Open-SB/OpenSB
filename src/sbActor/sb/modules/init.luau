@@ -24,7 +24,7 @@ for _, module in ipairs(modules) do
 	moduleLookup[module.Name] = loadingState -- We set a module to a loading state so if another module tries to load this module we know we can yield
 
 	task.defer(function()
-		local wrappedModule: { [number]: any } = require(module)
+		local wrappedModule: { any } = require(module)
 		local Module = wrappedModule[1]
 
 		table.clear(wrappedModule)
