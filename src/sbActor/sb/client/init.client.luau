@@ -60,7 +60,7 @@ Log.debug("Loading modules")
 local Modules = require(modules)
 local Network = Modules.require("network")
 
-Network.setAttribute(networkAttribute)
+Network.init(networkAttribute)
 
 -- Finalize
 Log.debug("Finalizing...")
