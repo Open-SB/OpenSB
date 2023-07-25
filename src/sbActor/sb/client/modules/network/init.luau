@@ -98,9 +98,19 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 	if not key then
 		-- TODO: Check signature of key
 
-		key = remote:InvokeServer(
+		-- We check if the timing is above your ping * 2, as it would take at minimum your ping * 3 to do a man in the middle attack
+		-- Even if this check fails, it would get rechecked the next time the remote refits
+
+		local requestStart, ping = os.clock(), localPlayer:GetNetworkPing()
+		local newKey, requestTime = remote:InvokeServer(
 			0 -- Key exchange
-		)
+		), os.clock() - requestStart
+
+		if ping > 0 and requestTime > ping * 2 then
+			return
+		end
+
+		key = newKey
 	end
 
 	local requestStart, ping = os.clock(), localPlayer:GetNetworkPing()
@@ -111,8 +121,6 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 		), os.clock() - requestStart
 
 	-- We still check if the key is valid before performing a timing check, so if the key was valid it would get invalidated
-	-- We check if the timing is above your ping * 2, as it would take at minimum your ping * 3 to do a man in the middle attack
-	-- Even if this check fails, it would get rechecked the next time the remote refits
 
 	if not isValidRequestKey(requestKey) or (ping > 0 and requestTime > ping * 2) then
 		return
