@@ -35,7 +35,7 @@ for _, module in ipairs(modules) do
 		local metatable = getmetatable(proxy)
 		metatable.__metatable = "The metatable is locked"
 
-		metatable.__index = function(_, index: string): any
+		metatable.__index = function(_, index): any
 			return Module[index]
 		end
 
@@ -51,7 +51,11 @@ end
 local locked = false
 function Modules:Lock() -- We call this after the game has loaded so modules can't be obtained anymore
 	locked = true
-	table.clear(moduleLookup) -- Just incase
+
+	-- Just incase
+	Modules.Lock = function() end
+	Modules.require = function() end
+	table.clear(moduleLookup)
 end
 
 function Modules.require(name: string): any
@@ -77,4 +81,16 @@ function Modules.waitForModulesToLoad()
 	end
 end
 
-return table.freeze(Modules)
+local proxy = newproxy(true)
+local metatable = getmetatable(proxy)
+metatable.__metatable = "The metatable is locked"
+
+metatable.__index = function(_, index): any
+	return Modules[index]
+end
+
+metatable.__newindex = function()
+	error("attempt to modify a readonly table", 2)
+end
+
+return proxy
