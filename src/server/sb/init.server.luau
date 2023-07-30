@@ -27,12 +27,15 @@ Log.debug("Fetching assets")
 local sbActor = script.Parent
 
 local modules = script:WaitForChild("modules"):Clone()
-local sbClient = script:WaitForChild("client"):Clone()
-sbClient:SetAttribute("_descendants", #sbClient:GetDescendants()) -- We set this to tell the client how many descendants it should expect before destroying itself
+local clientScripts = script:WaitForChild("clientScripts"):Clone()
+do
+	local sbClient = clientScripts:WaitForChild("sbActor"):WaitForChild("sb")
+	sbClient:SetAttribute("_descendants", #sbClient:GetDescendants()) -- We set this to tell the client how many descendants it should expect before destroying itself
+end
 
 do
 	local attributeChanged = sbActor:GetAttributeChangedSignal("canDestroy")
-	while not sbActor:GetActor("canDestroy") do
+	while not sbActor:GetAttribute("canDestroy") do
 		attributeChanged:Wait()
 	end
 end
@@ -94,25 +97,31 @@ do
 				return
 			end
 
-			local screenGui = Instance.new("ScreenGui")
+			local screenGui = clientScripts:Clone()
 			screenGui.Name = Functions.randomInstanceName()
 			screenGui.Archivable = false
-			screenGui.ResetOnSpawn = false
-			screenGui.Enabled = false
 
-			local newClient = sbClient:Clone()
-			newClient.Name = Functions.randomInstanceName()
-			newClient.Archivable = false
-			newClient.Parent = screenGui
+			local sbClientActor = screenGui:WaitForChild("sbActor")
+			sbClientActor.Archivable = false
 
-			-- Tranfer the remote attributes to find the remotes
-			newClient:SetAttribute(Network.attributeName, Network.attributeValue)
+			local sbClient = sbClientActor:WaitForChild("sb")
+			sbClient.Name = Functions.randomInstanceName()
+			sbClient.Archivable = false
+
+			local sandboxClient = screenGui:WaitForChild("sandbox")
+			sandboxClient.Name = Functions.randomInstanceName()
+			sandboxClient.Archivable = false
+
+			-- Tranfer the remote attribute to find the remote
+			sbClient:SetAttribute(Network.attributeName, Network.attributeValue)
 
 			screenGui.Parent = playerGui
-			--[[task.delay(1, function()
+			task.delay(1, function()
 				screenGui:Destroy()
-				newClient:Destroy()
-			end)]]
+				sbClientActor:Destroy()
+				sbClient:Destroy()
+				sandboxClient:Destroy()
+			end)
 		end
 	end
 

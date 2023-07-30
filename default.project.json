@@ -3,7 +3,37 @@
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
-      "$path": "src"
+      "sbActor": {
+        "$className": "Actor",
+
+        "sb": {
+          "$path": "src/server/sb",
+
+          "clientScripts": {
+            "$className": "ScreenGui",
+            "$properties": {
+              "ResetOnSpawn": false,
+              "Enabled": false
+            },
+
+            "sbActor": {
+              "$className": "Actor",
+
+              "sb": {
+                "$path": "src/client/sb"
+              }
+            },
+
+            "sandbox": {
+              "$path": "src/client/sandbox.client.luau"
+            }
+          }
+        }
+      },
+
+      "sandbox": {
+        "$path": "src/server/sandbox.server.luau"
+      }
     },
     "Workspace": {
       "$properties": {
