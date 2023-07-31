@@ -137,10 +137,6 @@ local function onRequest(player: Player, requestType, requestKey, ...)
 	elseif requestType == 2 then -- Event
 		-- Minimize the yielding time for the client if the server is calculating stuff
 		task.spawn(function(eventName, ...)
-			if type(eventName) ~= "string" then
-				return
-			end
-
 			local callback = registeredEvents[eventName]
 			if not callback then
 				return
@@ -154,11 +150,7 @@ local function onRequest(player: Player, requestType, requestKey, ...)
 		end, ...)
 	elseif requestType == 3 then -- Invoke
 		-- Minimize the yielding time for the client if the server is calculating stuff
-		task.spawn(function(functionName, id, ...)
-			if type(functionName) ~= "string" then
-				return
-			end
-
+		task.spawn(function(id, functionName, ...)
 			local callback = registeredFunctions[functionName]
 			if not callback then
 				return
@@ -187,7 +179,7 @@ local function onRequest(player: Player, requestType, requestKey, ...)
 	return
 end
 
-function Network:FireClient(player: Player, ...: any)
+function Network:FireClient(player: Player, eventName: string, ...: any)
 	task.spawn(function(...)
 		while not connectedPlayers[player] or not remote or remote.Parent ~= remoteParent do
 			task.wait()
@@ -197,14 +189,15 @@ function Network:FireClient(player: Player, ...: any)
 			player,
 			0, -- Event
 			generateRequestKey(),
+			eventName,
 			...
 		)
 	end, ...)
 end
 
-function Network:FireAllClients(...: any)
+function Network:FireAllClients(eventName: string, ...: any)
 	for _, player: Player in ipairs(Players:GetPlayers()) do
-		Network:FireClient(player, ...)
+		Network:FireClient(player, eventName, ...)
 	end
 end
 
