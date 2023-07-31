@@ -169,7 +169,7 @@ function Network:InvokeServer(functionName: string, ...)
 end
 
 local function connectRemote(service: Instance, remote: RemoteFunction)
-	if remote.ClassName ~= "RemoteFunction" or remote:GetAttribute(attributeName) ~= attributeValue then
+	if remote:GetAttribute(attributeName) ~= attributeValue then
 		return
 	end
 
@@ -217,11 +217,15 @@ function Network.init(attribute: {})
 
 	for _, service in ipairs(services) do
 		service.ChildAdded:Connect(function(child)
-			connectRemote(service, child)
+			if child.ClassName == "RemoteFunction" then
+				connectRemote(service, child :: RemoteFunction)
+			end
 		end)
 
 		for _, child in ipairs(service:GetChildren()) do
-			task.spawn(connectRemote, service, child)
+			if child.ClassName == "RemoteFunction" then
+				task.spawn(connectRemote, service, child :: RemoteFunction)
+			end
 		end
 	end
 end
