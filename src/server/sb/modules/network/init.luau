@@ -188,7 +188,7 @@ function Network:FireClient(player: Player, eventName: string, ...: any)
 		remote:InvokeClient(
 			player,
 			0, -- Event
-			generateRequestKey(),
+			generateRequestKey(player),
 			eventName,
 			...
 		)
