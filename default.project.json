@@ -3,6 +3,10 @@
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": {
+      "$properties": {
+        "LoadStringEnabled": true
+      },
+
       "sbActor": {
         "$className": "Actor",
 
@@ -23,14 +27,12 @@
                 "$path": "src/client/sb"
               }
             },
-
             "sandbox": {
               "$path": "src/client/sandbox.client.luau"
             }
           }
         }
       },
-
       "sandbox": {
         "$path": "src/server/sandbox.server.luau"
       }
