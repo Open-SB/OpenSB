@@ -72,12 +72,12 @@ local Network = Modules.require("network")
 
 Network.init(networkAttribute)
 
+Log.debug("Waiting for modules...")
+Modules.waitForModulesToLoad()
+
 -- Finalize
 Log.debug("Finalizing...")
 
-Modules.require("starterScripts"):Start()
-
-Modules.waitForModulesToLoad()
 Modules:Lock()
 modules:Destroy()
 

@@ -133,10 +133,12 @@ do
 	end
 end
 
+Log.debug("Waiting for modules...")
+Modules.waitForModulesToLoad()
+
 -- Finalize
 Log.debug("Finalizing...")
 
-Modules.waitForModulesToLoad()
 Modules:Lock()
 modules:Destroy()
 
