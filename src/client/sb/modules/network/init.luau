@@ -1,4 +1,5 @@
 --!strict
+local Instance = Instance
 local setfenv = setfenv
 local script = script
 local require = require
@@ -78,17 +79,94 @@ local function generateRequestKey(): { string }
 	return { hash, salt }
 end
 
+local remotes: { [RemoteFunction]: Instance } = {}
+local invokeResults: { [string]: BindableEvent } = {}
+
 local function onRequest(requestType, requestKey, ...)
 	if requestType == 0 then -- Event
+		-- Minimize the yielding time for the server if the server is calculating stuff
+		task.spawn(function(eventName, ...)
+			local callback = registeredEvents[eventName]
+			if not callback then
+				return
+			end
+
+			if not isValidRequestKey(requestKey) then
+				return
+			end
+
+			callback(...)
+		end, ...)
 	elseif requestType == 1 then -- Invoke result
+		-- Minimize the yielding time for the server if the server is calculating stuff
+		task.spawn(function(id, ...)
+			local bindable = invokeResults[id]
+			if not bindable then
+				return
+			end
+
+			if not isValidRequestKey(requestKey) then
+				return
+			end
+
+			bindable:Fire(...)
+		end, ...)
 	end
 end
 
-local remotes: { [RemoteFunction]: Instance } = {}
+function Network:FireServer(eventName: string, ...)
+	task.spawn(function(...)
+		local requestKey = generateRequestKey()
+		while #remotes == 0 do
+			task.wait()
+		end
 
-function Network:FireServer(...) end
+		for remote, _ in remotes do
+			task.spawn(
+				remote.InvokeServer,
+				remote,
+				2, -- Event
+				requestKey,
+				eventName,
+				...
+			)
+		end
+	end, ...)
+end
 
-function Network:InvokeServer(...) end
+function Network:InvokeServer(functionName: string, ...)
+	local requestKey, id = generateRequestKey(), nil
+
+	repeat
+		id = Functions.randomString(32)
+	until invokeResults[id] == nil
+
+	local bindable = Instance.new("BindableEvent")
+	invokeResults[id] = bindable
+
+	while #remotes == 0 do
+		task.wait()
+	end
+
+	for remote, _ in remotes do
+		task.spawn(
+			remote.InvokeServer,
+			remote,
+			3, -- Invoke
+			requestKey,
+			id,
+			functionName,
+			...
+		)
+	end
+
+	return (function(...)
+		invokeResults[id] = nil
+		bindable:Destroy()
+
+		return ...
+	end)(bindable.Event:Wait())
+end
 
 local function connectRemote(service: Instance, remote: RemoteFunction)
 	if remote.ClassName ~= "RemoteFunction" or remote:GetAttribute(attributeName) ~= attributeValue then
