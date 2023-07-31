@@ -75,6 +75,8 @@ Network.init(networkAttribute)
 -- Finalize
 Log.debug("Finalizing...")
 
+Modules.require("starterScripts"):Start()
+
 Modules.waitForModulesToLoad()
 Modules:Lock()
 modules:Destroy()
