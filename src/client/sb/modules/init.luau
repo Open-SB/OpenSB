@@ -18,10 +18,12 @@ script = nil
 
 local loadingState = newproxy()
 local totalModules, loadedModules = #modules, 0
-local moduleLookup: { [string]: any } = {}
+local moduleLookup: { [string | Instance]: any } = {}
 
 for _, module in ipairs(modules) do
-	moduleLookup[module.Name] = loadingState -- We set a module to a loading state so if another module tries to load this module we know we can yield
+	-- We set a module to a loading state so if another module tries to load this module we know we can yield
+	moduleLookup[module.Name] = loadingState
+	moduleLookup[module] = loadingState
 
 	task.defer(function()
 		local wrappedModule: { any } = require(module)
@@ -44,6 +46,8 @@ for _, module in ipairs(modules) do
 		end
 
 		moduleLookup[module.Name] = proxy
+		moduleLookup[module] = proxy
+
 		loadedModules += 1
 	end)
 end
@@ -58,21 +62,21 @@ function Modules:Lock() -- We call this after the game has loaded so modules can
 	table.clear(moduleLookup)
 end
 
-function Modules.require(name: string): any
+function Modules.require(nameOrInstance: string | Instance): any
 	if locked then
 		return error("Modules are locked.", 2)
 	end
 
-	if not moduleLookup[name] then
-		return error(`"{name}" is an invalid module name.`, 2)
+	if not moduleLookup[nameOrInstance] then
+		return error(`"{nameOrInstance}" is an invalid module.`, 2)
 	end
 
 	-- Wait for module to finish loading
-	while moduleLookup[name] == loadingState do
+	while moduleLookup[nameOrInstance] == loadingState do
 		task.wait()
 	end
 
-	return moduleLookup[name]
+	return moduleLookup[nameOrInstance]
 end
 
 function Modules.waitForModulesToLoad()
