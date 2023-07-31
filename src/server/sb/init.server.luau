@@ -142,4 +142,4 @@ modules:Destroy()
 
 Players.CharacterAutoLoads = true
 
-Log.debug(`Loaded in {math.round((os.clock() - __start) * 1000)}ms.`)
+Log.print(`Loaded in {math.round((os.clock() - __start) * 1000)}ms.`)
