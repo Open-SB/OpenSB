@@ -11,21 +11,21 @@ local Modules = require(script.Parent)
 
 local Log = Modules.require("log")
 
-local scripts = script:GetChildren()
+local starterScripts = script:GetChildren()
 script = nil
 
-local totalScripts, loadedScripts = #scripts, 0
+local total, loaded = #starterScripts, 0
 local scriptList: { [string]: any } = {}
 
 Log.debug("Starting starter scripts...")
-for _, script in ipairs(scripts) do
+for _, starterScript in ipairs(starterScripts) do
 	task.defer(function()
-		scriptList[script.Name] = require(script:Clone())
-		loadedScripts += 1
+		scriptList[starterScript.Name] = require(starterScript:Clone())
+		loaded += 1
 	end)
 end
 
-while totalScripts > loadedScripts do
+while total > loaded do
 	task.wait()
 end
 
