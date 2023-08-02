@@ -144,7 +144,7 @@ modules:Destroy()
 
 Players.CharacterAutoLoads = true
 for _, player: Player in ipairs(Players:GetPlayers()) do
-	player:LoadCharacter()
+	task.defer(player.LoadCharacter, player)
 end
 
 Log.print(`Loaded in {math.round((os.clock() - __start) * 1000)}ms.`)
