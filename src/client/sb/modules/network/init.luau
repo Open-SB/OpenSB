@@ -184,8 +184,16 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 			0 -- Key exchange
 		), os.clock() - requestStart
 
+		if not newKey then
+			return Log.warn(
+				`Key exchange failed on remote "{remote:GetFullName()}" (no key exchanged)\nIf the issue does not resolve then try rejoining`
+			)
+		end
+
 		if ping > 0 and requestTime > ping * 2 then
-			return Log.warn(`Key exchange failed on remote "{remote:GetFullName()}" (timing check)`)
+			return Log.warn(
+				`Key exchange failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping}])`
+			)
 		end
 
 		key = newKey
@@ -198,13 +206,21 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 			generateRequestKey()
 		), os.clock() - requestStart
 
+	-- If the handshake fails on the server then the client has an incorrect key, so we redo the key exchange
+	if not requestKey then
+		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (server key check)\nRetrieving new key...`)
+
+		key = nil
+		return connectRemote(service, remote)
+	end
+
 	-- We still check if the key is valid before performing a timing check, so if the key was valid it would get invalidated
 	if not isValidRequestKey(requestKey) then
 		return Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (key check)`)
 	end
 
 	if ping > 0 and requestTime > ping * 2 then
-		return Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (timing check)`)
+		return Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping}])`)
 	end
 
 	remotes[remote] = service
