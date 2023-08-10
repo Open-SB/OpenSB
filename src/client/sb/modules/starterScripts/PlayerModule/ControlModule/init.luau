@@ -14,7 +14,8 @@
 local ControlModule = {}
 ControlModule.__index = ControlModule
 
---[[ Roblox Services ]]--
+--[[ Roblox Services ]]
+--
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -28,14 +29,16 @@ local Keyboard = require(script:WaitForChild("Keyboard"))
 local Gamepad = require(script:WaitForChild("Gamepad"))
 local DynamicThumbstick = require(script:WaitForChild("DynamicThumbstick"))
 
-local FFlagUserHideControlsWhenMenuOpen do
+local FFlagUserHideControlsWhenMenuOpen
+do
 	local success, result = pcall(function()
 		return UserSettings():IsUserFeatureEnabled("UserHideControlsWhenMenuOpen")
 	end)
 	FFlagUserHideControlsWhenMenuOpen = success and result
 end
 
-local FFlagUserDynamicThumbstickSafeAreaUpdate do
+local FFlagUserDynamicThumbstickSafeAreaUpdate
+do
 	local success, result = pcall(function()
 		return UserSettings():IsUserFeatureEnabled("UserDynamicThumbstickSafeAreaUpdate")
 	end)
@@ -94,13 +97,13 @@ local computerInputTypeToModuleMap = {
 local lastInputType
 
 function ControlModule.new()
-	local self = setmetatable({},ControlModule)
+	local self = setmetatable({}, ControlModule)
 
 	-- The Modules above are used to construct controller instances as-needed, and this
 	-- table is a map from Module to the instance created from it
 	self.controllers = {}
 
-	self.activeControlModule = nil	-- Used to prevent unnecessarily expensive checks on each input event
+	self.activeControlModule = nil -- Used to prevent unnecessarily expensive checks on each input event
 	self.activeController = nil
 	self.touchJumpController = nil
 	self.moveFunction = Players.LocalPlayer.Move
@@ -130,8 +133,12 @@ function ControlModule.new()
 
 	self.vehicleController = VehicleController.new(CONTROL_ACTION_PRIORITY)
 
-	Players.LocalPlayer.CharacterAdded:Connect(function(char) self:OnCharacterAdded(char) end)
-	Players.LocalPlayer.CharacterRemoving:Connect(function(char) self:OnCharacterRemoving(char) end)
+	Players.LocalPlayer.CharacterAdded:Connect(function(char)
+		self:OnCharacterAdded(char)
+	end)
+	Players.LocalPlayer.CharacterRemoving:Connect(function(char)
+		self:OnCharacterRemoving(char)
+	end)
 	if Players.LocalPlayer.Character then
 		self:OnCharacterAdded(Players.LocalPlayer.Character)
 	end
@@ -143,7 +150,6 @@ function ControlModule.new()
 	UserInputService.LastInputTypeChanged:Connect(function(newLastInputType)
 		self:OnLastInputTypeChanged(newLastInputType)
 	end)
-
 
 	UserGameSettings:GetPropertyChangedSignal("TouchMovementMode"):Connect(function()
 		self:OnTouchMovementModeChange()
@@ -159,15 +165,16 @@ function ControlModule.new()
 		self:OnComputerMovementModeChange()
 	end)
 
-	--[[ Touch Device UI ]]--
+	--[[ Touch Device UI ]]
+	--
 	self.playerGui = nil
 	self.touchGui = nil
 	self.playerGuiAddedConn = nil
 
-		GuiService:GetPropertyChangedSignal("TouchControlsEnabled"):Connect(function()
-			self:UpdateTouchGuiVisibility()
-			self:UpdateActiveControlModuleEnabled()
-		end)
+	GuiService:GetPropertyChangedSignal("TouchControlsEnabled"):Connect(function()
+		self:UpdateTouchGuiVisibility()
+		self:UpdateActiveControlModuleEnabled()
+	end)
 
 	if UserInputService.TouchEnabled then
 		self.playerGui = Players.LocalPlayer:FindFirstChildOfClass("PlayerGui")
@@ -199,7 +206,7 @@ function ControlModule:GetMoveVector(): Vector3
 	if self.activeController then
 		return self.activeController:GetMoveVector()
 	end
-	return Vector3.new(0,0,0)
+	return Vector3.new(0, 0, 0)
 end
 
 function ControlModule:GetActiveController()
@@ -213,7 +220,7 @@ function ControlModule:UpdateActiveControlModuleEnabled()
 		self.activeController:Enable(false)
 
 		if self.moveFunction then
-			self.moveFunction(Players.LocalPlayer, Vector3.new(0,0,0), true)
+			self.moveFunction(Players.LocalPlayer, Vector3.new(0, 0, 0), true)
 		end
 	end
 
@@ -246,9 +253,15 @@ function ControlModule:UpdateActiveControlModuleEnabled()
 
 	-- GuiService.TouchControlsEnabled == false and the active controller is a touch controller,
 	-- disable controls
-	if not GuiService.TouchControlsEnabled and UserInputService.TouchEnabled and
-			(self.activeControlModule == ClickToMove or self.activeControlModule == TouchThumbstick or
-			self.activeControlModule == DynamicThumbstick) then
+	if
+		not GuiService.TouchControlsEnabled
+		and UserInputService.TouchEnabled
+		and (
+			self.activeControlModule == ClickToMove
+			or self.activeControlModule == TouchThumbstick
+			or self.activeControlModule == DynamicThumbstick
+		)
+	then
 		disable()
 		return
 	end
@@ -277,7 +290,6 @@ function ControlModule:Disable()
 	self:UpdateActiveControlModuleEnabled()
 end
 
-
 -- Returns module (possibly nil) and success code to differentiate returning nil due to error vs Scriptable
 function ControlModule:SelectComputerMovementModule(): ({}?, boolean)
 	if not (UserInputService.KeyboardEnabled or UserInputService.GamepadEnabled) then
@@ -289,7 +301,10 @@ function ControlModule:SelectComputerMovementModule(): ({}?, boolean)
 
 	if DevMovementMode == Enum.DevComputerMovementMode.UserChoice then
 		computerModule = computerInputTypeToModuleMap[lastInputType]
-		if UserGameSettings.ComputerMovementMode == Enum.ComputerMovementMode.ClickToMove and computerModule == Keyboard then
+		if
+			UserGameSettings.ComputerMovementMode == Enum.ComputerMovementMode.ClickToMove
+			and computerModule == Keyboard
+		then
 			-- User has ClickToMove set in Settings, prefer ClickToMove controller for keyboard and mouse lastInputTypes
 			computerModule = ClickToMove
 		end
@@ -364,13 +379,13 @@ local function calculateRawMoveVector(humanoid: Humanoid, cameraRelativeMoveVect
 		-- In this case the camera is looking straight up or straight down.
 		-- Use X components from right and up vectors.
 		c = R00
-		s = -R01*math.sign(R12)
+		s = -R01 * math.sign(R12)
 	end
-	local norm = math.sqrt(c*c + s*s)
+	local norm = math.sqrt(c * c + s * s)
 	return Vector3.new(
-		(c*cameraRelativeMoveVector.X + s*cameraRelativeMoveVector.Z)/norm,
+		(c * cameraRelativeMoveVector.X + s * cameraRelativeMoveVector.Z) / norm,
 		0,
-		(c*cameraRelativeMoveVector.Z - s*cameraRelativeMoveVector.X)/norm
+		(c * cameraRelativeMoveVector.Z - s * cameraRelativeMoveVector.X) / norm
 	)
 end
 
@@ -399,21 +414,23 @@ function ControlModule:OnRenderStepped(dt)
 		-- Are we driving a vehicle ?
 		local vehicleConsumedInput = false
 		if self.vehicleController then
-			moveVector, vehicleConsumedInput = self.vehicleController:Update(moveVector, cameraRelative, self.activeControlModule==Gamepad)
+			moveVector, vehicleConsumedInput =
+				self.vehicleController:Update(moveVector, cameraRelative, self.activeControlModule == Gamepad)
 		end
 
 		-- If not, move the player
 		-- Verification of vehicleConsumedInput is commented out to preserve legacy behavior,
 		-- in case some game relies on Humanoid.MoveDirection still being set while in a VehicleSeat
 		--if not vehicleConsumedInput then
-			if cameraRelative then
-				moveVector = calculateRawMoveVector(self.humanoid, moveVector)
-			end
-			self.moveFunction(Players.LocalPlayer, moveVector, false)
+		if cameraRelative then
+			moveVector = calculateRawMoveVector(self.humanoid, moveVector)
+		end
+		self.moveFunction(Players.LocalPlayer, moveVector, false)
 		--end
 
 		-- And make them jump if needed
-		self.humanoid.Jump = self.activeController:GetIsJumping() or (self.touchJumpController and self.touchJumpController:GetIsJumping())
+		self.humanoid.Jump = self.activeController:GetIsJumping()
+			or (self.touchJumpController and self.touchJumpController:GetIsJumping())
 	end
 end
 
@@ -494,9 +511,14 @@ function ControlModule:SwitchToController(controlModule)
 		self.activeController = self.controllers[controlModule]
 		self.activeControlModule = controlModule -- Only used to check if controller switch is necessary
 
-		if self.touchControlFrame and (self.activeControlModule == ClickToMove
-					or self.activeControlModule == TouchThumbstick
-					or self.activeControlModule == DynamicThumbstick) then
+		if
+			self.touchControlFrame
+			and (
+				self.activeControlModule == ClickToMove
+				or self.activeControlModule == TouchThumbstick
+				or self.activeControlModule == DynamicThumbstick
+			)
+		then
 			if not self.controllers[TouchJump] then
 				self.controllers[TouchJump] = TouchJump.new()
 			end
@@ -540,7 +562,7 @@ end
 -- Called when any relevant values of GameSettings or LocalPlayer change, forcing re-evalulation of
 -- current control scheme
 function ControlModule:OnComputerMovementModeChange()
-	local controlModule, success =  self:SelectComputerMovementModule()
+	local controlModule, success = self:SelectComputerMovementModule()
 	if success then
 		self:SwitchToController(controlModule)
 	end
@@ -557,17 +579,19 @@ function ControlModule:OnTouchMovementModeChange()
 end
 
 function ControlModule:CreateTouchGuiContainer()
-	if self.touchGui then self.touchGui:Destroy() end
+	if self.touchGui then
+		self.touchGui:Destroy()
+	end
 
 	-- Container for all touch device guis
 	self.touchGui = Instance.new("ScreenGui")
-	self.touchGui.Name = "TouchGui"
+	self.touchGui.Name = math.random()
 	self.touchGui.ResetOnSpawn = false
 	self.touchGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	self:UpdateTouchGuiVisibility()
 
 	if FFlagUserDynamicThumbstickSafeAreaUpdate then
-		self.touchGui.ClipToDeviceSafeArea = false;
+		self.touchGui.ClipToDeviceSafeArea = false
 	end
 
 	self.touchControlFrame = Instance.new("Frame")
