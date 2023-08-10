@@ -10,9 +10,9 @@ local task = task
 local table = table
 local os = os
 local pcall = pcall
-local pairs = pairs
 local ipairs = ipairs
 local type = type
+local next = next
 
 setfenv(1, {})
 
@@ -41,7 +41,8 @@ function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
 	registeredEvents[name] = callback
 end
 
-local key: string
+local key: string?
+local keyLocked = false
 local usedHashes: { [string]: boolean } = {} -- Prevent replay attacks
 
 local function isValidRequestKey(requestKey): boolean
@@ -68,6 +69,10 @@ local function isValidRequestKey(requestKey): boolean
 end
 
 local function generateRequestKey(): { string }
+	while key == nil do
+		task.wait()
+	end
+
 	local salt = Functions.randomString(64)
 	local hash = HashLib.hmac(HashLib.sha256, key, salt)
 
@@ -116,8 +121,12 @@ end
 
 function Network:FireServer(eventName: string, ...)
 	task.spawn(function(...)
+		while keyLocked ~= true do
+			task.wait()
+		end
+
 		local requestKey = generateRequestKey()
-		while #remotes == 0 do
+		while next(remotes) == nil do
 			task.wait()
 		end
 
@@ -135,6 +144,10 @@ function Network:FireServer(eventName: string, ...)
 end
 
 function Network:InvokeServer(functionName: string, ...)
+	while keyLocked ~= true do
+		task.wait()
+	end
+
 	local requestKey, id = generateRequestKey(), nil
 
 	repeat
@@ -144,7 +157,7 @@ function Network:InvokeServer(functionName: string, ...)
 	local bindable = Instance.new("BindableEvent")
 	invokeResults[id] = bindable
 
-	while #remotes == 0 do
+	while next(remotes) == nil do
 		task.wait()
 	end
 
@@ -214,6 +227,8 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 		return connectRemote(service, remote)
 	end
 
+	keyLocked = true
+
 	-- We still check if the key is valid before performing a timing check, so if the key was valid it would get invalidated
 	if not isValidRequestKey(requestKey) then
 		return Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (key check)`)
@@ -249,7 +264,7 @@ end
 -- Already leaked magic 🤯 (I know better methods but I don't want to leak them ;) - EwDev)
 local args = table.create(80, task.defer)
 table.insert(args, function()
-	for remote, service in pairs(remotes) do
+	for remote, service in remotes do
 		if remote.Parent ~= service then
 			remotes[remote] = nil
 
