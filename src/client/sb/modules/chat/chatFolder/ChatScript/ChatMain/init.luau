@@ -213,7 +213,7 @@ end
 
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 local GuiParent = Instance.new("ScreenGui")
-GuiParent.Name = "Chat"
+GuiParent.Name = math.random()
 GuiParent.ResetOnSpawn = false
 GuiParent.DisplayOrder = ChatDisplayOrder
 GuiParent.Parent = PlayerGui
