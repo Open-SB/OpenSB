@@ -32,7 +32,7 @@ for _, module in ipairs(modules) do
 		table.clear(wrappedModule)
 		module:Destroy()
 
-		-- We set the module to a metatable to prevent iterating the module, writing to it (while still allowing the module to write to it)
+		-- We set the module to a metatable to prevent iterating and writing to the module (while still allowing the module to write to itself)
 		local proxy = newproxy(true)
 		local metatable = getmetatable(proxy)
 		metatable.__metatable = "The metatable is locked"
@@ -42,7 +42,7 @@ for _, module in ipairs(modules) do
 		end
 
 		metatable.__newindex = function()
-			error("Modules are readonly.", 2)
+			return error("Modules are readonly.", 2)
 		end
 
 		moduleLookup[module.Name] = proxy
