@@ -4,7 +4,7 @@ An opensource scriptbuilder for Roblox.
 
 ## Getting Started
 
-You will need to [install aftman](https://github.com/LPGhatguy/aftman#aftman) first to get the required tools, or you can manually install them yourself (found in aftman.toml file).
+You will need to [install aftman](https://github.com/LPGhatguy/aftman#aftman) first to get the required tools, or you can manually install them yourself (found in the [aftman.toml file](https://github.com/Open-SB/OpenSB/blob/main/aftman.toml)).
 
 After you have installed aftman, run:
 
