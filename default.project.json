@@ -11,7 +11,7 @@
         "$className": "Actor",
 
         "sb": {
-          "$path": "src/server/sb",
+          "$path": "out/server/sb",
 
           "clientScripts": {
             "$className": "ScreenGui",
@@ -24,17 +24,17 @@
               "$className": "Actor",
 
               "sb": {
-                "$path": "src/client/sb"
+                "$path": "out/client/sb"
               }
             },
             "sandbox": {
-              "$path": "src/client/sandbox.client.luau"
+              "$path": "out/client/sandbox.client.luau"
             }
           }
         }
       },
       "sandbox": {
-        "$path": "src/server/sandbox.server.luau"
+        "$path": "out/server/sandbox.server.luau"
       }
     },
     "Workspace": {

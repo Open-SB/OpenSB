@@ -1,4 +1,3 @@
---!strict
 local setfenv = setfenv
 local script = script
 local coroutine = coroutine

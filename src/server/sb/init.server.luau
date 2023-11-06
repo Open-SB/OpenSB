@@ -1,4 +1,3 @@
---!strict
 local __start = os.clock()
 
 -- Localize variables and remove environment for security
@@ -8,30 +7,17 @@ local script = script
 local setfenv = setfenv
 local os = os
 local math = math
-local Instance = Instance
 local coroutine = coroutine
 local ipairs = ipairs
-local require = require
-
--- These are replaced later
-local _print = print
-local _warn = warn
 
 setfenv(1, {})
 
-local Log = require(script:WaitForChild("modules"):WaitForChild("log"))[1]
-
 -- Fetch assets and destroy script
+local Log = require("shared/log")
 Log.debug("Fetching assets")
 
 local sbActor = script.Parent
-
-local modules = script:WaitForChild("modules"):Clone()
 local clientScripts = script:WaitForChild("clientScripts"):Clone()
-do
-	local sbClient = clientScripts:WaitForChild("sbActor"):WaitForChild("sb")
-	sbClient:SetAttribute("_descendants", #sbClient:GetDescendants()) -- We set this to tell the client how many descendants it should expect before destroying itself
-end
 
 do
 	local attributeChanged = sbActor:GetAttributeChangedSignal("canDestroy")
@@ -57,13 +43,15 @@ end
 
 -- Services and modules
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 
 Log.debug("Loading modules")
 
-local Modules = require(modules)
-local Network = Modules.require("network")
-local Functions = Modules.require("functions")
+local Network = require("server/network")
+local Chat = require("server/chat")
+local Functions = require("shared/functions")
+
+Network:Init()
+Chat:Init()
 
 Log.debug("Loading systems") -- Maybe we should move these into their own modules?
 
@@ -72,26 +60,26 @@ do
 	local function disconnectPlayer() end
 
 	local function connectPlayer(player: Player)
-		Log.debug(`Checking if {player} can join...`)
+		Log.debug("Checking if " .. player.Name .. " can join...") -- TODO: String interpolation
 
-		if not RunService:IsStudio() and player.AccountAge < 7 then
-			Log.debug(`{player}'s account age is too young (<7).`)
-			player:Kick(`Your account age has to be atleast one week old to play this game.`)
+		if not _G.DEV and player.AccountAge < 7 then
+			Log.debug(player.Name .. "'s account age is too young (<7).") -- TODO: String interpolation
+			player:Kick("Your account age has to be atleast one week old to play this game.")
 
 			-- TODO: Alert to others why they couldnt join
 
 			return
 		end
 
-		Log.debug(`Checking ban on {player}...`)
+		Log.debug("Checking ban on " .. player.Name .. "...") -- TODO: String interpolation
 		-- TODO: Ban check
 
 		do
-			Log.debug(`Loading SB client on {player}...`)
+			Log.debug("Loading SB client on " .. player.Name .. "...") -- TODO: String interpolation
 
 			local playerGui = player:FindFirstChildOfClass("PlayerGui")
 			if not playerGui then
-				Log.debug(`{player} had no player gui.`)
+				Log.debug(player .. " had no player gui.") -- TODO: String interpolation
 				player:Kick("PlayerGui was not found while loading.")
 
 				return
@@ -133,18 +121,12 @@ do
 	end
 end
 
-Log.debug("Waiting for modules...")
-Modules.waitForModulesToLoad()
-
 -- Finalize
 Log.debug("Finalizing...")
-
-Modules:Lock()
-modules:Destroy()
 
 Players.CharacterAutoLoads = true
 for _, player: Player in ipairs(Players:GetPlayers()) do
 	task.defer(player.LoadCharacter, player)
 end
 
-Log.print(`Loaded in {math.round((os.clock() - __start) * 1000)}ms.`)
+Log.print("Loaded in " .. math.round((os.clock() - __start) * 1000) .. "ms.") -- TODO: String interpolation

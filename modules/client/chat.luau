@@ -1,11 +1,6 @@
---!strict
 local Instance = Instance
-local setfenv = setfenv
-local script = script
-local require = require
+local _require = require
 local task = task
-
-setfenv(1, {})
 
 -- This module loads a forked version of Roblox's legacy chat that is more secure and better suited for a script builder.
 local chatFolder = script:WaitForChild("chatFolder"):Clone()
@@ -33,28 +28,27 @@ do
 	objectValue.Parent = chatFolder
 end
 
-local Modules = require(script.Parent)
-script = nil
-
-local Network = Modules.require("network")
-local Log = Modules.require("log")
+local Network = require("client/network")
+local Log = require("shared/log")
 
 local Chat = {}
 
-networkProxy.Event:Connect(function(requestType, remoteName, ...)
-	if requestType == 0 then -- Connect event
-		local callback = ...
-		Network:RegisterEvent("chat://" .. remoteName, callback)
-	elseif requestType == 1 then -- Fire server
-		Network:FireServer("chat://" .. remoteName, ...)
-	end
-end)
+function Chat:Init()
+	networkProxy.Event:Connect(function(requestType, remoteName, ...)
+		if requestType == 0 then -- Connect event
+			local callback = ...
+			Network:RegisterEvent("chat://" .. remoteName, callback)
+		elseif requestType == 1 then -- Fire server
+			Network:FireServer("chat://" .. remoteName, ...)
+		end
+	end)
 
-networkInvokeProxy.OnInvoke = function(remoteName, ...)
-	return Network:InvokeServer("chat://" .. remoteName, ...)
+	networkInvokeProxy.OnInvoke = function(remoteName, ...)
+		return Network:InvokeServer("chat://" .. remoteName, ...)
+	end
+
+	Log.debug("Loading chat...")
+	task.defer(_require, chatFolder:WaitForChild("ChatScript"))
 end
 
-Log.debug("Loading chat...")
-require(chatFolder:WaitForChild("ChatScript"))
-
-return { Chat }
+return Chat

@@ -1,1 +1,6 @@
 std = "roblox"
+exclude = ["out/*"]
+
+[lints]
+global_usage = "allow"                   # _G is used when darklua performs global injection (the processed code does not end up using it)
+incorrect_standard_library_use = "allow" # require(string) is automatically converted when bundling with darklua

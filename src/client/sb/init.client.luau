@@ -1,4 +1,3 @@
---!strict
 local __start = os.clock()
 
 -- Localize variables and remove environment for security
@@ -10,37 +9,16 @@ local setfenv = setfenv
 local math = math
 local os = os
 local next = next
-local table = table
-local require = require
-local type = type
-
--- These are replaced later
-local _print = print
-local _warn = warn
 
 setfenv(1, {})
 
--- Wait for all descendants
-do
-	local descendants = script:GetAttribute("_descendants")
-	script:SetAttribute("_descendants", nil)
-
-	if type(descendants) == "number" then -- May have been tampered with, and if thats the case I think it's the best to skip this, we may want to add a timeout aswell
-		while descendants > #script:GetDescendants() do
-			script.DescendantAdded:Wait()
-		end
-	end
-end
-
 local networkAttribute = { next(script:GetAttributes()) }
-local Log = require(script:WaitForChild("modules"):WaitForChild("log"))[1]
 
 -- Fetch assets and destroy script
+local Log = require("shared/log")
 Log.debug("Fetching assets")
 
 local sbActor = script.Parent
-
-local modules = script:WaitForChild("modules"):Clone()
 
 do
 	local attributeChanged = sbActor:GetAttributeChangedSignal("canDestroy")
@@ -67,18 +45,14 @@ end
 -- Services and modules
 Log.debug("Loading modules")
 
-local Modules = require(modules)
-local Network = Modules.require("network")
+local Network = require("client/network")
+local Chat = require("client/chat")
+local StarterScripts = require("client/starterScripts")
 
-Network.init(networkAttribute)
-
-Log.debug("Waiting for modules...")
-Modules.waitForModulesToLoad()
+Network:Init(networkAttribute)
+Chat:Init()
+StarterScripts:Init()
 
 -- Finalize
 Log.debug("Finalizing...")
-
-Modules:Lock()
-modules:Destroy()
-
-Log.print(`Loaded in {math.round((os.clock() - __start) * 1000)}ms`)
+Log.print("Loaded in " .. math.round((os.clock() - __start) * 1000) .. "ms") -- TODO: String interpolation

@@ -1,0 +1,11 @@
+{
+  "name": "opensb",
+  "version": "0.0.1",
+  "description": "An opensource scriptbuilder for Roblox.",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "dev": "darklua process -c .darklua.dev.json src out",
+    "build": "darklua process -c .darklua.json src out && rojo build -o OpenSB.rbxlx"
+  }
+}

@@ -65,6 +65,15 @@ API:
 --]=]
 ---------------------------------------------------------------------------
 
+-- Remove env for security
+local error = error
+local math = math
+local string = string
+local table = table
+local tonumber = tonumber
+local tostring = tostring
+local type = type
+
 --------------------------------------------------------------------------------
 -- LOCALIZATION FOR VM OPTIMIZATIONS
 --------------------------------------------------------------------------------
@@ -85,18 +94,6 @@ local bit32_lshift = bit32.lshift -- second argument is integer 0..31
 local bit32_rshift = bit32.rshift -- second argument is integer 0..31
 local bit32_lrotate = bit32.lrotate -- second argument is integer 0..31
 local bit32_rrotate = bit32.rrotate -- second argument is integer 0..31
-
--- Remove env for security
-local error = error
-local math = math
-local setfenv = setfenv
-local string = string
-local table = table
-local tonumber = tonumber
-local tostring = tostring
-local type = type
-
-setfenv(1, {})
 
 --------------------------------------------------------------------------------
 -- CREATING OPTIMIZED INNER LOOP
@@ -1536,4 +1533,4 @@ block_size_for_HMAC = {
 	[sha.sha3_512] = (1600 - 2 * 512) / 8,
 }
 
-return { sha }
+return sha

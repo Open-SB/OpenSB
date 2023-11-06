@@ -1,9 +1,6 @@
---!strict
-local setfenv = setfenv
-local string = string
+local tostring = tostring
 local math = math
-
-setfenv(1, {})
+local string = string
 
 local Functions = {}
 
@@ -19,4 +16,8 @@ function Functions.randomString(length)
 	return str
 end
 
-return { Functions }
+function Functions.randomInstanceName()
+	return tostring(math.random())
+end
+
+return Functions

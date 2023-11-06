@@ -1,6 +1,15 @@
+# VSCode Workspace Settings
+.vscode
+
+# ENV file
+.env
+
 # Project place file
 /OpenSB.rbxlx
 
 # Roblox Studio lock files
 /*.rbxlx.lock
 /*.rbxl.lock
+
+# Darklua out directory
+/out

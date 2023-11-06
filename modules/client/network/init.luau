@@ -1,10 +1,6 @@
---!strict
 local Instance = Instance
-local setfenv = setfenv
-local script = script
 local require = require
 local game = game
-local error = error
 local unpack = unpack
 local task = task
 local table = table
@@ -14,18 +10,14 @@ local ipairs = ipairs
 local type = type
 local next = next
 
-setfenv(1, {})
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local Modules = require(script.Parent)
-local services = table.clone(require(script:WaitForChild("services")))
-script = nil
+local services = require("./services")
 
-local Log = Modules.require("log")
-local Functions = Modules.require("functions")
-local HashLib = Modules.require("hashLib")
+local Log = require("shared/log")
+local Functions = require("shared/functions")
+local HashLib = require("shared/hashLib")
 
 local localPlayer = Players.LocalPlayer
 local attributeName, attributeValue
@@ -35,7 +27,7 @@ local Network = {}
 local registeredEvents: { [string]: (...unknown) -> nil } = {}
 function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
 	if registeredEvents[name] then
-		Log.warn(`Network event "{name}" was overwritten.`)
+		Log.warn('Network event "' .. name .. '" was overwritten.') -- TODO: String interpolation
 	end
 
 	registeredEvents[name] = callback
@@ -199,14 +191,22 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 
 		if not newKey then
 			return Log.warn(
-				`Key exchange failed on remote "{remote:GetFullName()}" (no key exchanged)\nIf the issue does not resolve then try rejoining`
-			)
+				'Key exchange failed on remote "'
+					.. remote:GetFullName()
+					.. '" (no key exchanged)\nIf the issue does not resolve then try rejoining'
+			) -- TODO: String interpolation
 		end
 
 		if ping > 0 and requestTime > ping * 2 then
 			return Log.warn(
-				`Key exchange failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping}])`
-			)
+				'Key exchange failed on remote "'
+					.. remote:GetFullName()
+					.. '" (timing check: ['
+					.. requestTime
+					.. ", "
+					.. ping
+					.. "])"
+			) -- TODO: String interpolation
 		end
 
 		key = newKey
@@ -221,7 +221,9 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 
 	-- If the handshake fails on the server then the client has an incorrect key, so we redo the key exchange
 	if not requestKey then
-		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (server key check)\nRetrieving new key...`)
+		Log.warn(
+			'Handshake failed on remote "' .. remote:GetFullName() .. '" (server key check)\nRetrieving new key...'
+		) -- TODO: String interpolation
 
 		key = nil
 		return connectRemote(service, remote)
@@ -231,19 +233,26 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 
 	-- We still check if the key is valid before performing a timing check, so if the key was valid it would get invalidated
 	if not isValidRequestKey(requestKey) then
-		return Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (key check)`)
+		return Log.warn('Handshake failed on remote "' .. remote:GetFullName() .. '" (key check)') -- TODO: String interpolation
 	end
 
 	if ping > 0 and requestTime > ping * 2 then
-		return Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping}])`)
+		return Log.warn(
+			'Handshake failed on remote "'
+				.. remote:GetFullName()
+				.. '" (timing check: ['
+				.. requestTime
+				.. ", "
+				.. ping
+				.. "])"
+		) -- TODO: String interpolation
 	end
 
 	remotes[remote] = service
 	remote.OnClientInvoke = onRequest
 end
 
-function Network.init(attribute: {})
-	Network.init = Functions.empty -- Prevent future changes
+function Network:Init(attribute: {})
 	attributeName, attributeValue = unpack(attribute)
 
 	for _, service in ipairs(services) do
@@ -259,24 +268,24 @@ function Network.init(attribute: {})
 			end
 		end
 	end
+
+	-- Already leaked magic 🤯 (I know better methods but I don't want to leak them ;) - EwDev)
+	local args = table.create(80, task.defer)
+	table.insert(args, function()
+		for remote, service in remotes do
+			if remote.Parent ~= service then
+				remotes[remote] = nil
+
+				continue
+			end
+
+			remote.OnClientInvoke = onRequest
+		end
+	end)
+
+	RunService.PostSimulation:Connect(function()
+		pcall(unpack(args))
+	end)
 end
 
--- Already leaked magic 🤯 (I know better methods but I don't want to leak them ;) - EwDev)
-local args = table.create(80, task.defer)
-table.insert(args, function()
-	for remote, service in remotes do
-		if remote.Parent ~= service then
-			remotes[remote] = nil
-
-			continue
-		end
-
-		remote.OnClientInvoke = onRequest
-	end
-end)
-
-RunService.PostSimulation:Connect(function()
-	pcall(unpack(args))
-end)
-
-return { Network }
+return Network

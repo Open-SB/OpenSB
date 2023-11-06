@@ -1,0 +1,22 @@
+{
+  "generator": "readable",
+  "bundle": {
+    "require_mode": {
+      "name": "path",
+      "sources": {
+        "client": "./modules/client",
+        "server": "./modules/server",
+        "shared": "./modules/shared"
+      }
+    }
+  },
+  "rules": [
+    {
+      "rule": "inject_global_value",
+      "identifier": "DEV",
+      "value": true
+    },
+
+    "convert_local_function_to_assign"
+  ]
+}

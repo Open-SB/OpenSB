@@ -1,6 +1,3 @@
---!strict
-local setfenv = setfenv
-local script = script
 local require = require
 local game = game
 local tostring = tostring
@@ -15,19 +12,14 @@ local unpack = unpack
 local ipairs = ipairs
 local type = type
 
-setfenv(1, {})
-
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local Modules = require(script.Parent)
-local services = table.clone(require(script:WaitForChild("services")))
-script = nil
+local services = require("./services")
 
-local Log = Modules.require("log")
-local Functions = Modules.require("functions")
-local HashLib = Modules.require("hashLib")
+local Log = require("shared/log")
+local Functions = require("shared/functions")
+local HashLib = require("shared/hashLib")
 
 local Network = {}
 Network.attributeName, Network.attributeValue = string.sub(tostring(math.random()), 3), math.random()
@@ -35,7 +27,7 @@ Network.attributeName, Network.attributeValue = string.sub(tostring(math.random(
 local registeredEvents: { [string]: (...unknown) -> nil } = {}
 function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
 	if registeredEvents[name] then
-		Log.warn(`Network event "{name}" was overwritten.`)
+		Log.warn('Network event "' .. name .. '" was overwritten.') -- TODO: String interpolation
 	end
 
 	registeredEvents[name] = callback
@@ -44,7 +36,7 @@ end
 local registeredFunctions: { [string]: (...unknown) -> ...unknown } = {}
 function Network:RegisterFunction(name: string, callback: (...unknown) -> ...unknown)
 	if registeredFunctions[name] then
-		Log.warn(`Network function "{name}" was overwritten.`)
+		Log.warn('Network function "' .. name .. '" was overwritten.') -- TODO: String interpolation
 	end
 
 	registeredFunctions[name] = callback
@@ -201,46 +193,48 @@ function Network:FireAllClients(eventName: string, ...: any)
 	end
 end
 
-local lastRemoteFix = os.clock() -- We keep track of this so we can recreate the remote every 5 seconds, incase the remote get deleted on someones client
-local function fixRemote()
-	lastRemoteFix = os.clock()
+function Network:Init()
+	local lastRemoteFix = os.clock() -- We keep track of this so we can recreate the remote every 5 seconds, incase the remote get deleted on someones client
+	local function fixRemote()
+		lastRemoteFix = os.clock()
 
-	if remote then
-		task.delay(0, game.Destroy, remote)
+		if remote then
+			task.delay(0, game.Destroy, remote)
+		end
+
+		table.clear(connectedPlayers)
+
+		remote = Instance.new("RemoteFunction")
+		remote.Name = Functions.randomInstanceName()
+		remote.Archivable = false
+		remote:SetAttribute(Network.attributeName, Network.attributeValue)
+
+		remoteParent = services[math.random(1, #services)]
+		remote.Parent = remoteParent
 	end
 
-	table.clear(connectedPlayers)
+	fixRemote()
+	remote.OnServerInvoke = onRequest
 
-	remote = Instance.new("RemoteFunction")
-	remote.Name = Functions.randomInstanceName()
-	remote.Archivable = false
-	remote:SetAttribute(Network.attributeName, Network.attributeValue)
+	-- Already leaked magic 🤯 (I know better methods but I don't want to leak them ;) - EwDev)
+	local args = table.create(80, task.defer)
+	table.insert(args, function()
+		if
+			not remote
+			or remote.Parent ~= remoteParent
+			or remote:GetAttribute(Network.attributeName) ~= Network.attributeValue
+			or #remote:GetChildren() > 2
+			or os.clock() - lastRemoteFix >= 5
+		then
+			fixRemote()
+		end
 
-	remoteParent = services[math.random(1, #services)]
-	remote.Parent = remoteParent
+		remote.OnServerInvoke = onRequest
+	end)
+
+	RunService.PostSimulation:Connect(function()
+		pcall(unpack(args))
+	end)
 end
 
-fixRemote()
-remote.OnServerInvoke = onRequest
-
--- Already leaked magic 🤯 (I know better methods but I don't want to leak them ;) - EwDev)
-local args = table.create(80, task.defer)
-table.insert(args, function()
-	if
-		not remote
-		or remote.Parent ~= remoteParent
-		or remote:GetAttribute(Network.attributeName) ~= Network.attributeValue
-		or #remote:GetChildren() > 2
-		or os.clock() - lastRemoteFix >= 5
-	then
-		fixRemote()
-	end
-
-	remote.OnServerInvoke = onRequest
-end)
-
-RunService.PostSimulation:Connect(function()
-	pcall(unpack(args))
-end)
-
-return { Network }
+return Network
