@@ -13,6 +13,13 @@
         "sb": {
           "$path": "out/server/sb",
 
+          "start": {
+            "$path": "out/start.server.luau",
+            "$properties": {
+              "RunContext": "Server"
+            }
+          },
+
           "clientScripts": {
             "$className": "ScreenGui",
             "$properties": {
@@ -24,7 +31,14 @@
               "$className": "Actor",
 
               "sb": {
-                "$path": "out/client/sb"
+                "$path": "out/client/sb",
+
+                "start": {
+                  "$path": "out/start.server.luau",
+                  "$properties": {
+                    "RunContext": "Client"
+                  }
+                }
               }
             },
             "sandbox": {

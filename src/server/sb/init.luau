@@ -10,6 +10,7 @@ local math = math
 local coroutine = coroutine
 local ipairs = ipairs
 
+-- We bundle all modules into one script, which all get inlined above this one. So we only need to remove the environment here.
 setfenv(1, {})
 
 -- Fetch assets and destroy script
@@ -130,3 +131,5 @@ for _, player: Player in ipairs(Players:GetPlayers()) do
 end
 
 Log.print("Loaded in " .. math.round((os.clock() - __start) * 1000) .. "ms.") -- TODO: String interpolation
+
+return nil

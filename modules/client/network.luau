@@ -13,7 +13,7 @@ local next = next
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local services = require("./services")
+local services = require("shared/network/services")
 
 local Log = require("shared/log")
 local Functions = require("shared/functions")

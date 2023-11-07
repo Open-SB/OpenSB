@@ -10,6 +10,7 @@ local math = math
 local os = os
 local next = next
 
+-- We bundle all modules into one script, which all get inlined above this one. So we only need to remove the environment here.
 setfenv(1, {})
 
 local networkAttribute = { next(script:GetAttributes()) }
@@ -56,3 +57,5 @@ StarterScripts:Init()
 -- Finalize
 Log.debug("Finalizing...")
 Log.print("Loaded in " .. math.round((os.clock() - __start) * 1000) .. "ms") -- TODO: String interpolation
+
+return nil
