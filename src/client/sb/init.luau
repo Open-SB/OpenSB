@@ -10,13 +10,35 @@ local math = math
 local os = os
 local next = next
 
--- We bundle all modules into one script, which all get inlined above this one. So we only need to remove the environment here.
+local Log = require("shared/log")
+
+--[[
+	We bundle all modules into one script, which all get inlined above this one.
+
+	But due https://github.com/seaofvoices/darklua/pull/147, all bundled modules are no longer ran on startup.
+	Here we load all bundled modules before modying the env and destroying the script (so the modules can get whatever they need before we remove them).
+	
+	This is a kinda hacky solution, and might break in a future darklua release.
+	But it keeps the old behavior darklua used to had. Which was useful for clearing the env and destroying the script.
+]]
+
+do
+	Log.debug("Loading modules")
+
+	-- selene: allow(undefined_variable)
+	local modules = __DARKLUA_BUNDLE_MODULES -- Check .darklua.json
+	for name, _ in modules do
+		if name ~= "cache" and name ~= "load" then -- darklua places all modules, the load function, and cache table in the same table (we don't want to call cache and load).
+			modules.load(name)
+		end
+	end
+end
+
 setfenv(1, {})
 
 local networkAttribute = { next(script:GetAttributes()) }
 
 -- Fetch assets and destroy script
-local Log = require("shared/log")
 Log.debug("Fetching assets")
 
 local sbActor = script.Parent
@@ -44,7 +66,7 @@ do
 end
 
 -- Services and modules
-Log.debug("Loading modules")
+Log.debug("Initializing modules")
 
 local Network = require("client/network")
 local Chat = require("client/chat")

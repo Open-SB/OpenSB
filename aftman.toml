@@ -4,4 +4,4 @@
 # To add a new tool, add an entry to this table.
 [tools]
 rojo = "rojo-rbx/rojo@7.3.0"
-darklua = "seaofvoices/darklua@0.11.1"
+darklua = "seaofvoices/darklua@0.12.1"

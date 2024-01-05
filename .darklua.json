@@ -1,6 +1,7 @@
 {
   "generator": "readable",
   "bundle": {
+    "modules_identifier": "__DARKLUA_BUNDLE_MODULES",
     "require_mode": {
       "name": "path",
       "sources": {
