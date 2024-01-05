@@ -16,8 +16,6 @@ function Functions.randomString(length)
 	return str
 end
 
-function Functions.randomInstanceName()
-	return tostring(math.random())
-end
+Functions.randomInstanceName = math.random
 
 return Functions
