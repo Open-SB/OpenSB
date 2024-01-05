@@ -78,6 +78,6 @@ StarterScripts:Init()
 
 -- Finalize
 Log.debug("Finalizing...")
-Log.print("Loaded in " .. math.round((os.clock() - __start) * 1000) .. "ms") -- TODO: String interpolation
+Log.print(`Loaded in {math.round((os.clock() - __start) * 1000)}ms`)
 
 return nil

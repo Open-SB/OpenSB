@@ -27,7 +27,7 @@ Network.attributeName, Network.attributeValue = string.sub(tostring(math.random(
 local registeredEvents: { [string]: (...unknown) -> nil } = {}
 function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
 	if registeredEvents[name] then
-		Log.warn('Network event "' .. name .. '" was overwritten.') -- TODO: String interpolation
+		Log.warn(`Network event "{name}" was overwritten.`)
 	end
 
 	registeredEvents[name] = callback
@@ -36,7 +36,7 @@ end
 local registeredFunctions: { [string]: (...unknown) -> ...unknown } = {}
 function Network:RegisterFunction(name: string, callback: (...unknown) -> ...unknown)
 	if registeredFunctions[name] then
-		Log.warn('Network function "' .. name .. '" was overwritten.') -- TODO: String interpolation
+		Log.warn(`Network function "{name}" was overwritten.`)
 	end
 
 	registeredFunctions[name] = callback

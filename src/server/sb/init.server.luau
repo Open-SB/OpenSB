@@ -83,10 +83,10 @@ do
 	local function disconnectPlayer() end
 
 	local function connectPlayer(player: Player)
-		Log.debug("Checking if " .. player.Name .. " can join...") -- TODO: String interpolation
+		Log.debug(`Checking if {player.Name} can join...`)
 
 		if not _G.DEV and player.AccountAge < 7 then
-			Log.debug(player.Name .. "'s account age is too young (<7).") -- TODO: String interpolation
+			Log.debug(`{player.Name}'s account age is too young (<7).`)
 			player:Kick("Your account age has to be atleast one week old to play this game.")
 
 			-- TODO: Alert to others why they couldnt join
@@ -94,15 +94,15 @@ do
 			return
 		end
 
-		Log.debug("Checking ban on " .. player.Name .. "...") -- TODO: String interpolation
+		Log.debug(`Checking ban on {player.Name}...`)
 		-- TODO: Ban check
 
 		do
-			Log.debug("Loading SB client on " .. player.Name .. "...") -- TODO: String interpolation
+			Log.debug(`Loading SB client on {player.Name}...`)
 
 			local playerGui = player:FindFirstChildOfClass("PlayerGui")
 			if not playerGui then
-				Log.debug(player .. " had no player gui.") -- TODO: String interpolation
+				Log.debug(`{player.Name} had no player gui.`)
 				player:Kick("PlayerGui was not found while loading.")
 
 				return
@@ -152,6 +152,6 @@ for _, player: Player in ipairs(Players:GetPlayers()) do
 	task.defer(player.LoadCharacter, player)
 end
 
-Log.print("Loaded in " .. math.round((os.clock() - __start) * 1000) .. "ms.") -- TODO: String interpolation
+Log.print(`Loaded in {math.round((os.clock() - __start) * 1000)}ms.`)
 
 return nil

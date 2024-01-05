@@ -27,7 +27,7 @@ local Network = {}
 local registeredEvents: { [string]: (...unknown) -> nil } = {}
 function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
 	if registeredEvents[name] then
-		Log.warn('Network event "' .. name .. '" was overwritten.') -- TODO: String interpolation
+		Log.warn(`Network event "{name}" was overwritten.`)
 	end
 
 	registeredEvents[name] = callback
@@ -191,22 +191,14 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 
 		if not newKey then
 			return Log.warn(
-				'Key exchange failed on remote "'
-					.. remote:GetFullName()
-					.. '" (no key exchanged)\nIf the issue does not resolve then try rejoining'
-			) -- TODO: String interpolation
+				`Key exchange failed on remote "{remote:GetFullName()}" (no key exchanged)\nIf the issue does not resolve then try rejoining`
+			)
 		end
 
 		if ping > 0 and requestTime > ping * 2 then
 			return Log.warn(
-				'Key exchange failed on remote "'
-					.. remote:GetFullName()
-					.. '" (timing check: ['
-					.. requestTime
-					.. ", "
-					.. ping
-					.. "])"
-			) -- TODO: String interpolation
+				`Key exchange failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping}])`
+			)
 		end
 
 		key = newKey
@@ -221,9 +213,7 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 
 	-- If the handshake fails on the server then the client has an incorrect key, so we redo the key exchange
 	if not requestKey then
-		Log.warn(
-			'Handshake failed on remote "' .. remote:GetFullName() .. '" (server key check)\nRetrieving new key...'
-		) -- TODO: String interpolation
+		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (server key check)\nRetrieving new key...`)
 
 		key = nil
 		return connectRemote(service, remote)
@@ -233,19 +223,11 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 
 	-- We still check if the key is valid before performing a timing check, so if the key was valid it would get invalidated
 	if not isValidRequestKey(requestKey) then
-		return Log.warn('Handshake failed on remote "' .. remote:GetFullName() .. '" (key check)') -- TODO: String interpolation
+		return Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (key check)`)
 	end
 
 	if ping > 0 and requestTime > ping * 2 then
-		return Log.warn(
-			'Handshake failed on remote "'
-				.. remote:GetFullName()
-				.. '" (timing check: ['
-				.. requestTime
-				.. ", "
-				.. ping
-				.. "])"
-		) -- TODO: String interpolation
+		return Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping}])`)
 	end
 
 	remotes[remote] = service
