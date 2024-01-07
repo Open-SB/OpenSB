@@ -5,3 +5,5 @@
 [tools]
 rojo = "rojo-rbx/rojo@7.3.0"
 darklua = "seaofvoices/darklua@0.12.1"
+selene = "Kampfkarren/selene@0.26.1"
+StyLua = "JohnnyMorganz/StyLua@0.19.1"
