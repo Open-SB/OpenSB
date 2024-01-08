@@ -23,7 +23,7 @@ local Log = require("shared/log")
 ]]
 
 do
-	Log.debug("Loading modules")
+	Log.debug("Loading modules...")
 
 	-- selene: allow(undefined_variable)
 	local modules = __DARKLUA_BUNDLE_MODULES -- Check .darklua.json
@@ -39,7 +39,7 @@ setfenv(1, {})
 local networkAttribute = { next(script:GetAttributes()) }
 
 -- Fetch assets and destroy script
-Log.debug("Fetching assets")
+Log.debug("Fetching assets...")
 
 local sbActor = script.Parent
 
@@ -66,7 +66,7 @@ do
 end
 
 -- Services and modules
-Log.debug("Initializing modules")
+Log.debug("Initializing modules...")
 
 local Network = require("client/network")
 local Chat = require("client/chat")

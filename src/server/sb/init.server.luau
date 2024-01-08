@@ -23,7 +23,7 @@ local Log = require("shared/log")
 ]]
 
 do
-	Log.debug("Loading modules")
+	Log.debug("Loading modules...")
 
 	-- selene: allow(undefined_variable)
 	local modules = __DARKLUA_BUNDLE_MODULES -- Check .darklua.json
@@ -37,7 +37,7 @@ end
 setfenv(1, {})
 
 -- Fetch assets and destroy script
-Log.debug("Fetching assets")
+Log.debug("Fetching assets...")
 
 local sbActor = script.Parent
 local clientScripts = script:WaitForChild("clientScripts"):Clone()
@@ -67,7 +67,7 @@ end
 -- Services and modules
 local Players = game:GetService("Players")
 
-Log.debug("Initializing modules")
+Log.debug("Initializing modules...")
 
 local Network = require("server/network")
 local Chat = require("server/chat")
@@ -76,7 +76,7 @@ local Functions = require("shared/functions")
 Network:Init()
 Chat:Init()
 
-Log.debug("Loading systems") -- Maybe we should move these into their own modules?
+Log.debug("Loading systems...") -- Maybe we should move these into their own modules?
 
 -- Player system
 do
