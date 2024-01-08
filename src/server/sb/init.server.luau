@@ -70,12 +70,10 @@ local Players = game:GetService("Players")
 Log.debug("Initializing modules")
 
 local Network = require("server/network")
+local Chat = require("server/chat")
 local Functions = require("shared/functions")
 
 Network:Init()
-
-local Chat = require("./chat")
-
 Chat:Init()
 
 Log.debug("Loading systems") -- Maybe we should move these into their own modules?
