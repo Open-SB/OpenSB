@@ -181,8 +181,9 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 	if not key then
 		-- TODO: Check signature of key
 
-		-- We check if the timing is above your ping * 2, as it would take at minimum your ping * 3 to do a man in the middle attack
-		-- Even if this check fails, it would get rechecked the next time the remote refits
+		-- We check if the timing is above your ping * 5, as it would take at minimum your ping * 6 to do a man in the middle attack.
+		-- Even if this check fails, it would get rechecked the next time the remote refits.
+		-- (Not the most reliable way of detecting a mitm attack.)
 
 		local requestStart, ping = os.clock(), localPlayer:GetNetworkPing()
 		local newKey, requestTime = remote:InvokeServer(
@@ -195,9 +196,9 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 			)
 		end
 
-		if ping > 0 and requestTime > ping * 2 then
+		if ping > 0 and requestTime > ping * 5 then
 			return Log.warn(
-				`Key exchange failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping}])`
+				`Key exchange failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping * 2}])`
 			)
 		end
 
@@ -226,8 +227,10 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 		return Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (key check)`)
 	end
 
-	if ping > 0 and requestTime > ping * 2 then
-		return Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping}])`)
+	if ping > 0 and requestTime > ping * 5 then
+		return Log.warn(
+			`Handshake failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping * 2}])`
+		)
 	end
 
 	remotes[remote] = service
