@@ -30,8 +30,21 @@ end
 
 local Network = require("client/network")
 local Log = require("shared/log")
+local Signal = require("shared/signal")
 
-local Chat = {}
+local Chat = {
+	hooks = {},
+}
+
+function Chat:ConnectHook(remoteName, callback)
+	local hook = self.hooks[remoteName]
+	if not hook then
+		hook = Signal.new()
+		self.hooks[remoteName] = hook
+	end
+
+	return hook:Connect(callback)
+end
 
 function Chat:Init()
 	networkProxy.Event:Connect(function(requestType, remoteName, ...)
@@ -40,6 +53,11 @@ function Chat:Init()
 			Network:RegisterEvent("chat://" .. remoteName, callback)
 		elseif requestType == 1 then -- Fire server
 			Network:FireServer("chat://" .. remoteName, ...)
+
+			local hook = self.hooks[remoteName]
+			if hook then
+				hook:Fire(...)
+			end
 		end
 	end)
 

@@ -1,0 +1,29 @@
+_prefixes = ["get", "g"]
+
+[base]
+description = "Adds a base."
+aliases = ["base", "b"]
+
+[noBase]
+description = "Removes the base."
+aliases = ["noBase", "nb"]
+
+[respawn]
+description = "Respawns your character."
+aliases = ["respawn", "r"]
+
+[refresh]
+description = "Respawns your character at your current location."
+aliases = ["refresh", "re", "spotRespawn", "spotReset", "sr"]
+
+[nil]
+description = "Removes your character."
+aliases = ["nil"]
+
+[clear]
+description = "Clears workspace."
+aliases = ["clear", "c"]
+
+[fixCamera]
+description = "Fixes your camera."
+aliases = ["fixCamera", "fixCam", "fc"]

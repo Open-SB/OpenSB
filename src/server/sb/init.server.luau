@@ -70,11 +70,14 @@ local Players = game:GetService("Players")
 Log.debug("Initializing modules...")
 
 local Network = require("server/network")
+local Commands = require("server/commands")
 local Chat = require("server/chat")
+local World = require("server/world")
 local Functions = require("shared/functions")
 
 Network:Init()
 Chat:Init()
+Commands:Init()
 
 Log.debug("Loading systems...") -- Maybe we should move these into their own modules?
 
@@ -147,6 +150,7 @@ end
 -- Finalize
 Log.debug("Finalizing...")
 
+World:Init()
 Players.CharacterAutoLoads = true
 for _, player: Player in ipairs(Players:GetPlayers()) do
 	task.defer(player.LoadCharacter, player)

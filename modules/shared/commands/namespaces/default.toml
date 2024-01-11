@@ -1,0 +1,4 @@
+[execute]
+description = "Executes server sided code."
+aliases = ["execute", "c"]
+useCases = [["code"]]

@@ -69,11 +69,13 @@ end
 Log.debug("Initializing modules...")
 
 local Network = require("client/network")
+local Commands = require("client/commands")
 local Chat = require("client/chat")
 local StarterScripts = require("client/starterScripts")
 
 Network:Init(networkAttribute)
 Chat:Init()
+Commands:Init()
 StarterScripts:Init()
 
 -- Finalize

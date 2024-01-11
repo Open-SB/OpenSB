@@ -1,0 +1,7 @@
+# Array of prefixes for this namespace (prefix/command/...).
+_prefixes = ["example", "ex"]
+
+[commandId] # The id for this command, used when defining the commands with define().
+description = "Description." # Description of the command.
+alises = ["command", "cmd"] # An array of all ways to run the command (command/, cmd/).
+usage = [["string"], ["number"], ["string", "number"]] # An array of all different ways the arguments for the command can be used.
