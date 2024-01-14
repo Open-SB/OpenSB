@@ -1,9 +1,3 @@
-local Enum = Enum
-local game = game
-local warn = warn
-local task = task
-local workspace = workspace
-
 return function(Commands)
 	-- Load shared definitions
 	require("shared/commands/get")(Commands)

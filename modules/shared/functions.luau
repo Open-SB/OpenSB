@@ -1,7 +1,3 @@
-local tostring = tostring
-local math = math
-local string = string
-
 local Functions = {}
 
 function Functions.empty() end

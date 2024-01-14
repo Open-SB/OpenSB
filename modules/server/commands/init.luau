@@ -1,8 +1,3 @@
-local string = string
-local table = table
-local ipairs = ipairs
-local type = type
-
 local Network = require("server/network")
 local Log = require("shared/log")
 

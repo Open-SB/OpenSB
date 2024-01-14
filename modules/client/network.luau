@@ -1,15 +1,3 @@
-local Instance = Instance
-local require = require
-local game = game
-local unpack = unpack
-local task = task
-local table = table
-local os = os
-local pcall = pcall
-local ipairs = ipairs
-local type = type
-local next = next
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 

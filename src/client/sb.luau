@@ -1,15 +1,5 @@
 local __start = os.clock()
 
--- Localize variables and remove environment for security
-local game = game
-local coroutine = coroutine
-local task = task
-local script = script
-local setfenv = setfenv
-local math = math
-local os = os
-local next = next
-
 local Log = require("shared/log")
 
 --[[
@@ -22,26 +12,25 @@ local Log = require("shared/log")
 	But it keeps the old behavior darklua used to had. Which was useful for clearing the env and destroying the script.
 ]]
 
-do
-	Log.debug("Loading modules...")
+-- do
+-- 	Log.debug("Loading modules...")
 
-	-- selene: allow(undefined_variable)
-	local modules = __DARKLUA_BUNDLE_MODULES -- Check .darklua.json
-	for name, _ in modules do
-		if name ~= "cache" and name ~= "load" then -- darklua places all modules, the load function, and cache table in the same table (we don't want to call cache and load).
-			modules.load(name)
-		end
-	end
-end
+-- 	-- selene: allow(undefined_variable)
+-- 	local modules = __DARKLUA_BUNDLE_MODULES -- Check .darklua.json
+-- 	for name, _ in modules do
+-- 		if name ~= "cache" and name ~= "load" then -- darklua places all modules, the load function, and cache table in the same table (we don't want to call cache and load).
+-- 			modules.load(name)
+-- 		end
+-- 	end
+-- end
 
-setfenv(1, {})
+-- setfenv(1, {})
 
 local networkAttribute = { next(script:GetAttributes()) }
 
 -- Fetch assets and destroy script
-Log.debug("Fetching assets...")
-
 local sbActor = script.Parent
+local assetsFolder = sbActor.Parent:WaitForChild("assets")
 
 do
 	local attributeChanged = sbActor:GetAttributeChangedSignal("canDestroy")
@@ -65,8 +54,11 @@ do
 	coroutine.yield() -- Yield thread until script has been destroyed, so events dont get connected in the process (then disconnected by :Destroy())
 end
 
+local Assets = require("shared/assets")
+Assets:Init(assetsFolder)
+
 -- Services and modules
-Log.debug("Initializing modules...")
+Log.debug("Loading modules...")
 
 local Network = require("client/network")
 local Commands = require("client/commands")

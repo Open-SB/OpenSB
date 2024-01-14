@@ -11,34 +11,35 @@
         "$className": "Actor",
 
         "sb": {
-          "$path": "out/server/sb",
+          "$path": "out/server/sb.server.luau",
           "$properties": {
             "RunContext": "Server"
+          }
+        }
+      },
+
+      "sandbox": {
+        "$path": "out/server/sandbox.server.luau",
+        "$properties": {
+          "RunContext": "Server"
+        }
+      },
+
+      "assets": {
+        "$path": "assets/server",
+
+        "clientScripts": {
+          "$className": "ScreenGui",
+          "$properties": {
+            "ResetOnSpawn": false,
+            "Enabled": false
           },
 
-          "clientScripts": {
-            "$className": "ScreenGui",
-            "$properties": {
-              "ResetOnSpawn": false,
-              "Enabled": false
-            },
+          "sbActor": {
+            "$className": "Actor",
 
-            "sbActor": {
-              "$className": "Actor",
-
-              "sb": {
-                "$path": "out/client/sb",
-
-                "start": {
-                  "$path": "out/start.server.luau",
-                  "$properties": {
-                    "RunContext": "Client"
-                  }
-                }
-              }
-            },
-            "sandbox": {
-              "$path": "out/client/sandbox.luau",
+            "sb": {
+              "$path": "out/client/sb.luau",
 
               "start": {
                 "$path": "out/start.server.luau",
@@ -47,13 +48,22 @@
                 }
               }
             }
+          },
+
+          "sandbox": {
+            "$path": "out/client/sandbox.luau",
+
+            "start": {
+              "$path": "out/start.server.luau",
+              "$properties": {
+                "RunContext": "Client"
+              }
+            }
+          },
+
+          "assets": {
+            "$path": "assets/client"
           }
-        }
-      },
-      "sandbox": {
-        "$path": "out/server/sandbox.server.luau",
-        "$properties": {
-          "RunContext": "Server"
         }
       }
     },

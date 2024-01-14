@@ -1,9 +1,3 @@
-local Instance = Instance
-local Enum = Enum
-local Vector3 = Vector3
-local Color3 = Color3
-local workspace = workspace
-
 local Players = game:GetService("Players")
 
 local World = {}

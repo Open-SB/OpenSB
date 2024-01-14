@@ -1,8 +1,3 @@
-local Instance = Instance
-local setmetatable = setmetatable
-local table = table
-local math = math
-
 local Signal = {}
 Signal.__index = Signal
 

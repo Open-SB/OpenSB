@@ -1,8 +1,3 @@
-local game = game
-local print = print
-local warn = warn
-local table = table
-
 local TestService = game:GetService("TestService")
 local prefix = game:GetService("RunService"):IsClient() and "[SB Client]" or "[SB]"
 

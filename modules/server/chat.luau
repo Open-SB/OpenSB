@@ -1,10 +1,12 @@
-local Instance = Instance
-local _require = require
-local select = select
-local task = task
-
 -- This module loads a forked version of Roblox's legacy chat that is more secure and better suited for a script builder.
-local chatFolder = script:WaitForChild("chatFolder"):Clone()
+
+local Network = require("server/network")
+local Log = require("shared/log")
+local Assets = require("shared/assets")
+
+local Chat = {}
+
+local chatFolder = Assets:get("chat")
 
 -- Only giving the chatscript a proxy is safer than giving it the entire network module
 local networkProxy = Instance.new("BindableEvent")
@@ -17,11 +19,6 @@ do
 	objectValue.Value = networkProxy
 	objectValue.Parent = chatFolder
 end
-
-local Network = require("server/network")
-local Log = require("shared/log")
-
-local Chat = {}
 
 function Chat:Init()
 	networkProxy.Event:Connect(function(requestType, remoteName, ...)

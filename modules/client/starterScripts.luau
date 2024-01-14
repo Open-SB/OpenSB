@@ -1,10 +1,7 @@
-local task = task
-local require = require
-local ipairs = ipairs
-
 local Log = require("shared/log")
+local Assets = require("shared/assets")
 
-local scripts = script:WaitForChild("starterScripts"):Clone():GetChildren()
+local scripts = Assets:get("starterScripts"):GetChildren()
 local starterScripts = {}
 
 function starterScripts:Init()

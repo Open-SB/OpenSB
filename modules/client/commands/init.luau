@@ -1,8 +1,3 @@
-local string = string
-local table = table
-local ipairs = ipairs
-local game = game
-
 local Players = game:GetService("Players")
 
 local Chat = require("client/chat")

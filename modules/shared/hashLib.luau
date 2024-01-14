@@ -65,15 +65,6 @@ API:
 --]=]
 ---------------------------------------------------------------------------
 
--- Remove env for security
-local error = error
-local math = math
-local string = string
-local table = table
-local tonumber = tonumber
-local tostring = tostring
-local type = type
-
 --------------------------------------------------------------------------------
 -- LOCALIZATION FOR VM OPTIMIZATIONS
 --------------------------------------------------------------------------------

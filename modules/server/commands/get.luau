@@ -1,7 +1,3 @@
-local type = type
-local warn = warn
-local task = task
-
 local World = require("server/world")
 
 return function(Commands)
