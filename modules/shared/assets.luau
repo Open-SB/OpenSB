@@ -8,8 +8,12 @@ function Assets:get(asset)
 	return Assets.assets[asset]
 end
 
-function Assets:Init(folder)
+function Assets:Init(folderParent, folderName)
 	Log.debug("Fetching assets...")
+
+	-- Set a timeout warning the user if fetching assets took longer than expected (may be caused by other scripts tampering).
+	local timeoutThread = task.delay(5, Log.warn, "Fetching assets took longer than expected (try rejoining?).")
+	local folder = folderParent:WaitForChild(folderName)
 
 	-- On the client all assets may not have loaded yet (assets will be removed on client at some point).
 	local expectedDescendants = folder:GetAttribute("_descendants")
@@ -25,6 +29,9 @@ function Assets:Init(folder)
 			folder.DescendantAdded:Wait()
 		end
 	end
+
+	-- Cancel the warn timeout.
+	task.cancel(timeoutThread)
 
 	for _, child in ipairs(folder:GetChildren()) do
 		Assets.assets[child.Name] = child:Clone()

@@ -1,41 +1,11 @@
 local __start = os.clock()
 
 local Log = require("shared/log")
-
---[[
-	We bundle all modules into one script, which all get inlined above this one.
-
-	But due https://github.com/seaofvoices/darklua/pull/147, all bundled modules are no longer ran on startup.
-	Here we load all bundled modules before modying the env and destroying the script (so the modules can get whatever they need before we remove them).
-	
-	This is a kinda hacky solution, and might break in a future darklua release.
-	But it keeps the old behavior darklua used to had. Which was useful for clearing the env and destroying the script.
-]]
-
--- do
--- 	Log.debug("Loading modules...")
-
--- 	-- selene: allow(undefined_variable)
--- 	local modules = __DARKLUA_BUNDLE_MODULES -- Check .darklua.json
--- 	for name, _ in modules do
--- 		if name ~= "cache" and name ~= "load" then -- darklua places all modules, the load function, and cache table in the same table (we don't want to call cache and load).
--- 			modules.load(name)
--- 		end
--- 	end
--- end
-
--- setfenv(1, {})
+Log.print("Loading...")
 
 -- Fetch assets and destroy script
 local sbActor = script.Parent
-local assetsFolder = sbActor.Parent:WaitForChild("assets")
-
-do
-	local attributeChanged = sbActor:GetAttributeChangedSignal("canDestroy")
-	while not sbActor:GetAttribute("canDestroy") do
-		attributeChanged:Wait()
-	end
-end
+local root = sbActor.Parent
 
 do
 	local thread = coroutine.running()
@@ -53,7 +23,7 @@ do
 end
 
 local Assets = require("shared/assets")
-Assets:Init(assetsFolder)
+Assets:Init(root, "assets")
 
 local clientScripts = Assets:get("clientScripts")
 local clientAssets = clientScripts:WaitForChild("assets")

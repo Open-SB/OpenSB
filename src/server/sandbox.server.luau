@@ -5,9 +5,6 @@ local task = task
 
 setfenv(1, {})
 
-local sbActor = script.Parent:WaitForChild("sbActor")
-sbActor:SetAttribute("canDestroy", true)
-
 do
 	local thread = coroutine.running()
 	task.defer(
