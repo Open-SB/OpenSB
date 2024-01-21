@@ -17,13 +17,20 @@ local chatFolder = script.Parent
 
 local StarterGui = game:GetService("StarterGui")
 local GuiService = game:GetService("GuiService")
-local ChatService = game:GetService("Chat")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+-- local ChatService = game:GetService("Chat")
+-- local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local MAX_COREGUI_CONNECTION_ATTEMPTS = 10
+-- local MAX_COREGUI_CONNECTION_ATTEMPTS = 10
 
 local ClientChatModules = chatFolder:WaitForChild("ClientChatModules")
 local ChatSettings = require(ClientChatModules:WaitForChild("ChatSettings"))
+
+-- Connect loop up here instead of at the end of the script, because calling DoEverything() and loading chat yields the script for some time.
+-- (We want to be one of the first things to connect to PostSimulation, so our function gets called last.)
+local args = { function() end }
+game:GetService("RunService").PostSimulation:Connect(function()
+	pcall(unpack(args))
+end)
 
 local containerTable = {}
 local function DoEverything()
@@ -38,10 +45,22 @@ local function DoEverything()
 	containerTable.ChatWindow.ChatTypes.ClassicChatEnabled = ChatSettings.ClassicChatEnabled
 
 	--// Connection functions
-	local function ConnectEvent(name)
+	local function ConnectEvent(name, checkLastState)
 		local event = Instance.new("BindableEvent")
 		event.Name = name
 		containerTable.ChatWindow[name] = event
+
+		if checkLastState then
+			local lastState
+			event.Event:connect(function(state)
+				if state ~= lastState then
+					lastState = state
+					Chat[name](Chat, state)
+				end
+			end)
+
+			return
+		end
 
 		event.Event:connect(function(...)
 			Chat[name](Chat, ...)
@@ -68,10 +87,22 @@ local function DoEverything()
 		end)
 	end
 
-	local function ConnectSignal(name)
+	local function ConnectSignal(name, checkLastState)
 		local event = Instance.new("BindableEvent")
 		event.Name = name
 		containerTable.ChatWindow[name] = event
+
+		if checkLastState then
+			local lastState
+			event.Event:connect(function(state)
+				if state ~= lastState then
+					lastState = state
+					Chat[name]:fire(state)
+				end
+			end)
+
+			return
+		end
 
 		event.Event:connect(function(...)
 			Chat[name]:fire(...)
@@ -100,12 +131,12 @@ local function DoEverything()
 
 	--// Do connections
 	ConnectEvent("ToggleVisibility")
-	ConnectEvent("SetVisible")
+	ConnectEvent("SetVisible", true)
 	ConnectEvent("FocusChatBar")
 	ConnectEvent("EnterWhisperState")
 	ConnectFunction("GetVisibility")
 	ConnectFunction("GetMessageCount")
-	ConnectEvent("TopbarEnabledChanged")
+	ConnectEvent("TopbarEnabledChanged", true)
 	ConnectFunction("IsFocused")
 
 	ReverseConnectEvent("ChatBarFocusChanged")
@@ -113,7 +144,7 @@ local function DoEverything()
 	ReverseConnectEvent("MessagesChanged")
 	ReverseConnectEvent("MessagePosted")
 
-	ConnectSignal("CoreGuiEnabled")
+	ConnectSignal("CoreGuiEnabled", true)
 
 	ConnectSetCore("ChatMakeSystemMessage")
 	ConnectSetCore("ChatWindowPosition")
@@ -127,50 +158,50 @@ local function DoEverything()
 		ConnectEvent("SpecialKeyPressed")
 	end
 
-	SetCoreGuiChatConnections(containerTable)
+	--SetCoreGuiChatConnections(containerTable)
 end
 
-function SetCoreGuiChatConnections(containerTable)
-	local tries = 0
-	while tries < MAX_COREGUI_CONNECTION_ATTEMPTS do
-		tries = tries + 1
-		local success, ret = pcall(function()
-			StarterGui:SetCore("CoreGuiChatConnections", containerTable)
-		end)
-		if success then
-			break
-		end
-		if not success and tries == MAX_COREGUI_CONNECTION_ATTEMPTS then
-			error("Error calling SetCore CoreGuiChatConnections: " .. ret)
-		end
-		wait()
-	end
-end
+-- function SetCoreGuiChatConnections(containerTable)
+-- 	local tries = 0
+-- 	while tries < MAX_COREGUI_CONNECTION_ATTEMPTS do
+-- 		tries = tries + 1
+-- 		local success, ret = pcall(function()
+-- 			StarterGui:SetCore("CoreGuiChatConnections", containerTable)
+-- 		end)
+-- 		if success then
+-- 			break
+-- 		end
+-- 		if not success and tries == MAX_COREGUI_CONNECTION_ATTEMPTS then
+-- 			error("Error calling SetCore CoreGuiChatConnections: " .. ret)
+-- 		end
+-- 		wait()
+-- 	end
+-- end
 
-function checkBothChatTypesDisabled()
-	if ChatSettings.BubbleChatEnabled ~= nil then
-		if ChatSettings.ClassicChatEnabled ~= nil then
-			return not (ChatSettings.BubbleChatEnabled or ChatSettings.ClassicChatEnabled)
-		end
-	end
-	return false
-end
+-- function checkBothChatTypesDisabled()
+-- 	if ChatSettings.BubbleChatEnabled ~= nil then
+-- 		if ChatSettings.ClassicChatEnabled ~= nil then
+-- 			return not (ChatSettings.BubbleChatEnabled or ChatSettings.ClassicChatEnabled)
+-- 		end
+-- 	end
+-- 	return false
+-- end
 
 if not GuiService:IsTenFootInterface() then
-	--if not checkBothChatTypesDisabled() then
+	-- if not checkBothChatTypesDisabled() then
 	DoEverything()
-	--[[else
-		containerTable.ChatWindow = {}
+	-- else
+	-- 	containerTable.ChatWindow = {}
 
-		containerTable.ChatWindow.ChatTypes = {}
-		containerTable.ChatWindow.ChatTypes.BubbleChatEnabled = false
-		containerTable.ChatWindow.ChatTypes.ClassicChatEnabled = false
-		SetCoreGuiChatConnections(containerTable)
-	end]]
+	-- 	containerTable.ChatWindow.ChatTypes = {}
+	-- 	containerTable.ChatWindow.ChatTypes.BubbleChatEnabled = false
+	-- 	containerTable.ChatWindow.ChatTypes.ClassicChatEnabled = false
+	-- 	SetCoreGuiChatConnections(containerTable)
+	-- end
 else
 	-- Make init data request to register as a speaker
-	--[[local EventFolder = ReplicatedStorage:WaitForChild("DefaultChatSystemChatEvents")
-	EventFolder.GetInitDataRequest:InvokeServer()]]
+	-- local EventFolder = ReplicatedStorage:WaitForChild("DefaultChatSystemChatEvents")
+	-- EventFolder.GetInitDataRequest:InvokeServer()
 
 	do
 		local objectValue = chatFolder:WaitForChild("networkProxy")
@@ -191,13 +222,9 @@ end
 
 pcall(StarterGui.SetCore, StarterGui, "CoreGuiChatConnections", containerTable)
 
-local args = table.create(80, task.defer)
+args = table.create(80, task.defer)
 table.insert(args, function()
 	pcall(StarterGui.SetCore, StarterGui, "CoreGuiChatConnections", containerTable)
-end)
-
-game:GetService("RunService").PostSimulation:Connect(function()
-	pcall(unpack(args))
 end)
 
 return nil
