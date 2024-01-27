@@ -81,6 +81,7 @@ do
 			screenGui.Archivable = false
 
 			local sbClientActor = screenGui:WaitForChild("sbActor")
+			sbClientActor.Name = Functions.randomInstanceName()
 			sbClientActor.Archivable = false
 
 			local sbClient = sbClientActor:WaitForChild("sb")
