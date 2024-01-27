@@ -9,6 +9,7 @@ local ClientRequestMethod = RequestMethods.Client
 local Log = require("shared/log")
 local Functions = require("shared/functions")
 local HashLib = require("shared/hashLib")
+local Signal = require("shared/signal")
 
 local localPlayer = Players.LocalPlayer
 local attributeName, attributeValue
@@ -88,8 +89,8 @@ local function onRequest(requestType, requestKey, ...)
 	elseif requestType == ClientRequestMethod.InvokeResult then
 		-- Minimize the yielding time for the server if the client is calculating stuff
 		task.spawn(function(id, ...)
-			local bindable = invokeResults[id]
-			if not bindable then
+			local signal = invokeResults[id]
+			if not signal then
 				return
 			end
 
@@ -97,7 +98,7 @@ local function onRequest(requestType, requestKey, ...)
 				return
 			end
 
-			bindable:Fire(...)
+			signal:Fire(...)
 		end, ...)
 	end
 end
@@ -130,8 +131,8 @@ function Network:InvokeServer(functionName: string, ...)
 		id = Functions.randomString(32)
 	until invokeResults[id] == nil
 
-	local bindable = Instance.new("BindableEvent")
-	invokeResults[id] = bindable
+	local signal = Signal.new()
+	invokeResults[id] = signal
 
 	while next(remotes) == nil do
 		task.wait()
@@ -143,10 +144,10 @@ function Network:InvokeServer(functionName: string, ...)
 
 	return (function(...)
 		invokeResults[id] = nil
-		bindable:Destroy()
+		signal:Destroy()
 
 		return ...
-	end)(bindable.Event:Wait())
+	end)(signal:Wait())
 end
 
 local function connectRemote(service: Instance, remote: RemoteFunction)
