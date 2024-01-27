@@ -2,6 +2,9 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local services = require("shared/network/services")
+local RequestMethods = require("shared/network/requestMethods")
+local ServerRequestMethod = RequestMethods.Server
+local ClientRequestMethod = RequestMethods.Client
 
 local Log = require("shared/log")
 local Functions = require("shared/functions")
@@ -90,7 +93,7 @@ local function onRequest(player: Player, requestType, requestKey, ...)
 
 	-- We allow them for the handshake because if the remote gets destroyed the client would have to make another handshake to the new remote anyways, and because if we did a client invoke it could get intercepted
 
-	if requestType == 0 then -- Key exchange
+	if requestType == ServerRequestMethod.KeyExchange then
 		if lockedKeys[player] then
 			return
 		end
@@ -101,7 +104,7 @@ local function onRequest(player: Player, requestType, requestKey, ...)
 		keys[player] = key
 
 		return key
-	elseif requestType == 1 then -- Handshake
+	elseif requestType == ServerRequestMethod.Handshake then
 		-- Basic handshake to verify the servers identity, is not 100% immune to man in the middle attacks, but checking the time it took for the request to complete compared to your ping should help
 
 		if not isValidRequestKey(player, requestKey) then
@@ -112,7 +115,7 @@ local function onRequest(player: Player, requestType, requestKey, ...)
 		lockedKeys[player] = true
 
 		return generateRequestKey(player)
-	elseif requestType == 2 then -- Event
+	elseif requestType == ServerRequestMethod.Event then
 		-- Minimize the yielding time for the client if the server is calculating stuff
 		task.spawn(function(eventName, ...)
 			local callback = registeredEvents[eventName]
@@ -126,7 +129,7 @@ local function onRequest(player: Player, requestType, requestKey, ...)
 
 			callback(player, ...)
 		end, ...)
-	elseif requestType == 3 then -- Invoke
+	elseif requestType == ServerRequestMethod.Invoke then
 		-- Minimize the yielding time for the client if the server is calculating stuff
 		task.spawn(function(id, functionName, ...)
 			local callback = registeredFunctions[functionName]
@@ -143,13 +146,7 @@ local function onRequest(player: Player, requestType, requestKey, ...)
 					task.wait()
 				end
 
-				remote:InvokeClient(
-					player,
-					1, -- Invoke result
-					generateRequestKey(player),
-					id,
-					...
-				)
+				remote:InvokeClient(player, ClientRequestMethod.InvokeResult, generateRequestKey(player), id, ...)
 			end)(callback(player, ...))
 		end, ...)
 	end
@@ -163,13 +160,7 @@ function Network:FireClient(player: Player, eventName: string, ...: any)
 			task.wait()
 		end
 
-		remote:InvokeClient(
-			player,
-			0, -- Event
-			generateRequestKey(player),
-			eventName,
-			...
-		)
+		remote:InvokeClient(player, ClientRequestMethod.Event, generateRequestKey(player), eventName, ...)
 	end, ...)
 end
 

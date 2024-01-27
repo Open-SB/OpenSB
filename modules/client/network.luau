@@ -2,6 +2,9 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local services = require("shared/network/services")
+local RequestMethods = require("shared/network/requestMethods")
+local ServerRequestMethod = RequestMethods.Server
+local ClientRequestMethod = RequestMethods.Client
 
 local Log = require("shared/log")
 local Functions = require("shared/functions")
@@ -68,8 +71,8 @@ local remotes: { [RemoteFunction]: Instance } = {}
 local invokeResults: { [string]: BindableEvent } = {}
 
 local function onRequest(requestType, requestKey, ...)
-	if requestType == 0 then -- Event
-		-- Minimize the yielding time for the server if the server is calculating stuff
+	if requestType == ClientRequestMethod.Event then
+		-- Minimize the yielding time for the server if the client is calculating stuff
 		task.spawn(function(eventName, ...)
 			local callback = registeredEvents[eventName]
 			if not callback then
@@ -82,8 +85,8 @@ local function onRequest(requestType, requestKey, ...)
 
 			callback(...)
 		end, ...)
-	elseif requestType == 1 then -- Invoke result
-		-- Minimize the yielding time for the server if the server is calculating stuff
+	elseif requestType == ClientRequestMethod.InvokeResult then
+		-- Minimize the yielding time for the server if the client is calculating stuff
 		task.spawn(function(id, ...)
 			local bindable = invokeResults[id]
 			if not bindable then
@@ -111,14 +114,7 @@ function Network:FireServer(eventName: string, ...)
 		end
 
 		for remote, _ in remotes do
-			task.spawn(
-				remote.InvokeServer,
-				remote,
-				2, -- Event
-				requestKey,
-				eventName,
-				...
-			)
+			task.spawn(remote.InvokeServer, remote, ServerRequestMethod.Event, requestKey, eventName, ...)
 		end
 	end, ...)
 end
@@ -142,15 +138,7 @@ function Network:InvokeServer(functionName: string, ...)
 	end
 
 	for remote, _ in remotes do
-		task.spawn(
-			remote.InvokeServer,
-			remote,
-			3, -- Invoke
-			requestKey,
-			id,
-			functionName,
-			...
-		)
+		task.spawn(remote.InvokeServer, remote, ServerRequestMethod.Invoke, requestKey, id, functionName, ...)
 	end
 
 	return (function(...)
@@ -174,9 +162,7 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 		-- (Not the most reliable way of detecting a mitm attack.)
 
 		local requestStart, ping = os.clock(), localPlayer:GetNetworkPing()
-		local newKey, requestTime = remote:InvokeServer(
-			0 -- Key exchange
-		), os.clock() - requestStart
+		local newKey, requestTime = remote:InvokeServer(ServerRequestMethod.KeyExchange), os.clock() - requestStart
 
 		if not newKey then
 			return Log.warn(
@@ -195,10 +181,7 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 
 	local requestStart, ping = os.clock(), localPlayer:GetNetworkPing()
 	local requestKey, requestTime =
-		remote:InvokeServer(
-			1, -- Handshake
-			generateRequestKey()
-		), os.clock() - requestStart
+		remote:InvokeServer(ServerRequestMethod.Handshake, generateRequestKey()), os.clock() - requestStart
 
 	-- If the handshake fails on the server then the client has an incorrect key, so we redo the key exchange
 	if not requestKey then
