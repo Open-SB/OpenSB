@@ -1,0 +1,3 @@
+# The create utility function for UI relies on not using parentheses to make code cleaner,
+# parentheses should still be used when calling functions otherwise.
+call_parentheses = "Input"

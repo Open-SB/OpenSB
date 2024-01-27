@@ -51,5 +51,7 @@ return function(Commands)
 		player.CameraMode = Enum.CameraMode.Classic
 		player.HealthDisplayDistance = 100
 		player.NameDisplayDistance = 100
+
+		return "Got camera fix."
 	end)
 end

@@ -31,16 +31,29 @@ Log.debug("Loading modules...")
 
 local Network = require("client/network")
 local Commands = require("client/commands")
+local UI = require("client/ui")
 local Chat = require("client/chat")
 local StarterScripts = require("client/starterScripts")
+local Output = require("client/output")
 
 Network:Init(networkAttribute)
-Chat:Init()
 Commands:Init()
+UI:Init()
+Chat:Init()
 StarterScripts:Init()
 
 -- Finalize
 Log.debug("Finalizing...")
-Log.print(`Loaded in {math.round((os.clock() - __start) * 1000)}ms`)
+
+local loadTime = math.round((os.clock() - __start) * 1000)
+Log.print(`Loaded in {loadTime}ms.`)
+
+task.defer(function()
+	-- Make sure UI is loaded.
+	UI:WaitUntilLoaded()
+
+	local buildType = if _G.DEV then "development" else "production"
+	Output:append(Output.MessageType.System, `OpenSB {buildType} build. Ran in {loadTime}ms.`)
+end)
 
 return nil

@@ -15,6 +15,8 @@ return function(Commands)
 	--:base
 	define("base", function()
 		World:AddBase()
+
+		return "Got base."
 	end)
 
 	--:noBase
@@ -24,11 +26,15 @@ return function(Commands)
 
 	define("noBase", function()
 		World:RemoveBase()
+
+		return "Got no base."
 	end)
 
 	--:respawn
 	define("respawn", function(context)
 		context.Player:LoadCharacter()
+
+		return "Got respawn."
 	end)
 
 	--:refresh
@@ -50,6 +56,8 @@ return function(Commands)
 		end
 
 		player:LoadCharacter()
+
+		return "Got refresh."
 	end)
 
 	--:nil
@@ -59,10 +67,14 @@ return function(Commands)
 
 	define("nil", function(context)
 		context.Player.Character = nil
+
+		return "Got nil."
 	end)
 
 	--:clear
 	define("clear", function()
 		World:Clear()
+
+		return "Got clear."
 	end)
 end

@@ -2,6 +2,9 @@ local Players = game:GetService("Players")
 
 local Chat = require("client/chat")
 local Network = require("client/network")
+local Output = require("client/output")
+local ProcessResult = require("shared/commands/processResults")
+local InputContext = require("shared/commands/inputContexts")
 local Log = require("shared/log")
 
 local Commands = {}
@@ -69,27 +72,26 @@ function Commands:Run(command, context, arguments)
 
 	local success, message = pcall(command.callback, context, arguments)
 	if not success then
-		Log.warn(message)
-		return false
+		return false, message
 	end
 
-	return true
+	return true, message
 end
 
 function Commands:ProcessServer(data, input, inputContext)
 	return Network:InvokeServer("processCommand", data, input, inputContext)
 end
 
-function Commands:Process(input, inputContext)
+function Commands:ProcessClient(input, inputContext)
 	-- Check if the input matches a command string, if not then we can ignore it.
 	if not string.match(input, "^.+/") then
-		return false
+		return ProcessResult.Fail, "Not a valid command string."
 	end
 
 	local arguments = string.split(input, "/")
 	local prefix = table.remove(arguments, 1)
 	if not prefix then
-		return false
+		return ProcessResult.Fail, "No prefix was found."
 	end
 
 	-- Find namespace, and get the command.
@@ -103,32 +105,65 @@ function Commands:Process(input, inputContext)
 		-- Not default namespace, command should be the 2nd split string (prefix/command/arguments).
 		commandName = table.remove(arguments, 1)
 	else
-		return false
+		return ProcessResult.Fail, "No command given."
 	end
 
 	local command = namespace.commandLookup[string.lower(commandName)]
 	if not command then
-		return false
+		return ProcessResult.Fail, `Command "{commandName}" was not found.`
 	end
 
 	local context = Commands:CreateContext(command, input, inputContext)
 	local valid, message = Commands:Validate(command, context, arguments)
 	if not valid then
-		Log.warn(message)
-		return false
+		return ProcessResult.Error, message
 	end
 
-	local clientSuccess, clientMessage = Commands:Run(command, context, arguments)
-	local serverSuccess, serverMessage = Commands:ProcessServer(context.Data, input, context.inputContext)
+	local success, commadMessage = Commands:Run(command, context, arguments)
+	if not success then
+		return ProcessResult.Error, commadMessage
+	end
 
-	-- TODO: Handle result.
+	return ProcessResult.Success, commadMessage, context.Data
+end
+
+function Commands:Process(input, inputContext)
+	local clientResult, clientMessage, contextData = Commands:ProcessClient(input, inputContext)
+	if clientResult ~= ProcessResult.Success then
+		-- Only output fail messages if the inputContext wasn't the chat (because you can also send chat messages in chat, duh),
+		-- Error messages should always be displayed.
+		if
+			clientResult == ProcessResult.Error
+			or (clientResult == ProcessResult.Fail and inputContext ~= InputContext.Chat)
+		then
+			Output:append(Output.MessageType.Error, clientMessage or "Unexpected error occured while running command.")
+		end
+
+		return
+	end
+
+	local serverResult, serverMessage = Commands:ProcessServer(contextData, input, inputContext)
+	if serverResult ~= ProcessResult.Success then
+		-- We don't check if the ProcessResult was a Fail or Error here, because it should always be an Error.
+		Output:append(Output.MessageType.Error, serverMessage or "Unexpected error occured while running command.")
+
+		return
+	end
+
+	if clientMessage then
+		Output:append(Output.MessageType.Success, clientMessage)
+	end
+
+	if serverMessage then
+		Output:append(Output.MessageType.Success, serverMessage)
+	end
 end
 
 function Commands:Init()
 	Log.debug("Loading commands...")
 
 	Chat:ConnectHook("SayMessageRequest", function(message)
-		Commands:Process(message, "chat")
+		Commands:Process(message, InputContext.Chat)
 	end)
 
 	-- Load Namespaces
