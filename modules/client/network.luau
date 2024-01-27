@@ -128,7 +128,7 @@ function Network:InvokeServer(functionName: string, ...)
 	local requestKey, id = generateRequestKey(), nil
 
 	repeat
-		id = Functions.randomString(32)
+		id = Functions.randomString(8)
 	until invokeResults[id] == nil
 
 	local signal = Signal.new()
