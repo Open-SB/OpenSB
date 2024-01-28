@@ -140,6 +140,8 @@ function Commands:Process(input, inputContext)
 		end
 
 		return
+	elseif clientMessage then
+		Output:append(Output.MessageType.Success, clientMessage)
 	end
 
 	local serverResult, serverMessage = Commands:ProcessServer(contextData, input, inputContext)
@@ -148,13 +150,7 @@ function Commands:Process(input, inputContext)
 		Output:append(Output.MessageType.Error, serverMessage or "Unexpected error occured while running command.")
 
 		return
-	end
-
-	if clientMessage then
-		Output:append(Output.MessageType.Success, clientMessage)
-	end
-
-	if serverMessage then
+	elseif serverMessage then
 		Output:append(Output.MessageType.Success, serverMessage)
 	end
 end
