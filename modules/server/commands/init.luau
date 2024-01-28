@@ -68,7 +68,7 @@ function Commands:Run(command, context, arguments)
 
 	local success, message = pcall(command.callback, context, arguments)
 	if not success then
-		return false, message
+		return false, `Command runtime error: {message}`
 	end
 
 	return true, message
