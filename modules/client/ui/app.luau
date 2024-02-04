@@ -51,35 +51,24 @@ local output
 local outputScale
 local outputList
 
+local enterPressedKeycodes = {
+	[Enum.KeyCode.Return] = true,
+	[Enum.KeyCode.KeypadEnter] = true,
+}
+
 -- Checks if the enter key is about to be pressed, useful for checking if a textBox enterPressed was spoofed with :ReleaseFocus(true)
 local function checkIfEnterPressed()
-	local gotResult = false
 	local event = Signal.new()
 
-	task.defer(function()
-		if gotResult then
-			return
-		end
-
-		event:Fire(false)
-	end)
-
+	local thread = task.delay(0, event.Fire, event, false)
 	local connection = UserInputService.InputBegan:Connect(function(input)
-		if gotResult then
-			return
-		end
-
-		if
-			input.UserInputType == Enum.UserInputType.Keyboard
-			and (input.KeyCode == Enum.KeyCode.Return or input.KeyCode == Enum.KeyCode.KeypadEnter)
-		then
+		if input.UserInputType == Enum.UserInputType.Keyboard and enterPressedKeycodes[input.KeyCode] then
 			event:Fire(true)
 		end
 	end)
 
 	local result = event:Wait()
-	gotResult = true
-
+	task.cancel(thread)
 	connection:Disconnect()
 	event:Destroy()
 
