@@ -1,5 +1,9 @@
 _prefixes = ["get", "g"]
 
+[commands]
+description = "Shows a list of commands."
+aliases = ["commands", "cmds", "help"]
+
 [base]
 description = "Adds a base."
 aliases = ["base", "b"]

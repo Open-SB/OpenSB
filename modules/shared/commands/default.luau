@@ -1,12 +1,12 @@
 return function(Commands)
 	local definitions = require("shared/commands/namespaces/default.toml")
-	local namespace = "default"
-	Commands:RegisterNamespace(namespace, definitions)
+	local _namespace = "default"
+	Commands:RegisterNamespace(_namespace, definitions)
 
 	local function defineValidator(...)
-		Commands:DefineValidator(namespace, ...)
+		Commands:DefineValidator(_namespace, ...)
 	end
 	local function define(...)
-		Commands:Define(namespace, ...)
+		Commands:Define(_namespace, ...)
 	end
 end

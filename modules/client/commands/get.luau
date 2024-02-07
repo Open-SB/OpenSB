@@ -1,14 +1,44 @@
+local Output = require("client/output")
+
 return function(Commands)
 	-- Load shared definitions
 	require("shared/commands/get")(Commands)
 
-	local namespace = "get"
+	local _namespace = "get"
 	local function defineValidator(...)
-		Commands:DefineValidator(namespace, ...)
+		Commands:DefineValidator(_namespace, ...)
 	end
 	local function define(...)
-		Commands:Define(namespace, ...)
+		Commands:Define(_namespace, ...)
 	end
+
+	--:commands
+	define("commands", function()
+		for _, data in ipairs({
+			{ "default", "Commands:" },
+			{ "get", "Get commands:" },
+		}) do
+			local namespace = Commands.namespaces[data[1]]
+			Output:append(Output.MessageType.System, data[2])
+
+			if namespace.prefixes then
+				Output:append(Output.MessageType.Information, `Prefixes: {table.concat(namespace.prefixes, ", ")}`)
+			end
+
+			local sorted = {}
+			for _, command in namespace.commands do
+				table.insert(sorted, command)
+			end
+
+			table.sort(sorted, function(a, b)
+				return a.aliases[1] < b.aliases[1]
+			end)
+
+			for _, command in ipairs(sorted) do
+				Output:append(Output.MessageType.Log, `{table.concat(command.aliases, ", ")}: {command.description}`)
+			end
+		end
+	end)
 
 	--:refresh
 	define("refresh", function(context)
