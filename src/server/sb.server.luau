@@ -36,6 +36,7 @@ Log.debug("Loading modules...")
 
 local Network = require("server/network")
 local Commands = require("server/commands")
+local Output = require("server/output")
 local Chat = require("server/chat")
 local World = require("server/world")
 local Functions = require("shared/functions")
@@ -55,15 +56,21 @@ do
 
 		if not _G.DEV and player.AccountAge < 7 then
 			Log.debug(`{player.Name}'s account age is too young (<7).`)
-			player:Kick("Your account age has to be atleast one week old to play this game.")
+			player:Kick("Your account needs to be atleast one week old to play this game.")
 
-			-- TODO: Alert to others why they couldnt join
+			Output:appendToOthers(
+				player,
+				Output.MessageType.Success,
+				`{player.Name} was kicked due to their account not being older than one week.`
+			)
 
 			return
 		end
 
 		Log.debug(`Checking ban on {player.Name}...`)
 		-- TODO: Ban check
+
+		Output:appendToOthers(player, Output.MessageType.Success, `{player.Name} has joined the server.`)
 
 		do
 			Log.debug(`Loading SB client on {player.Name}...`)
