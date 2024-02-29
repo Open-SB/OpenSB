@@ -106,11 +106,11 @@ function Commands:ProcessClient(input, inputContext)
 		-- No namespace with prefix found, default namespace, command should be the 1st split string (command/arguments).
 		commandName = prefix
 		namespace = Commands.namespaces.default
-	elseif #arguments > 0 then -- Check if there is a 2nd split string, otherwise no command was given.
+	elseif arguments[1] and #arguments[1] > 0 then -- Check if there is a 2nd split string, otherwise no command was given.
 		-- Not default namespace, command should be the 2nd split string (prefix/command/arguments).
 		commandName = table.remove(arguments, 1)
 	else
-		return ProcessResult.Fail, "No command given."
+		return ProcessResult.Fail, "No command was given."
 	end
 
 	local command = namespace.commandLookup[string.lower(commandName)]
