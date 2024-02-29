@@ -94,6 +94,11 @@ function Commands:ProcessClient(input, inputContext)
 		return ProcessResult.Fail, "No prefix was found."
 	end
 
+	-- Remove last argument if empty.
+	if #arguments[#arguments] == 0 then
+		table.remove(arguments, #arguments)
+	end
+
 	-- Find namespace, and get the command.
 	local commandName
 	local namespace = Commands.namespaceLookup[string.lower(prefix)]
