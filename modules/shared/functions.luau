@@ -1,3 +1,5 @@
+-- Maybe this should be rewritten to have each function in it's own file?
+
 local Functions = {}
 
 function Functions.empty() end
