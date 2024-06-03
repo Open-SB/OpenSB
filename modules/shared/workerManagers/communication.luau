@@ -1,18 +1,9 @@
 local setmetatable = setmetatable
 local table = table
 local error = error
-local warn = warn
-local print = print
 
-local Enum = require("shared/enum")
 local Signal = require("shared/signal")
 local Functions = require("shared/functions")
-
-local Method = Enum({
-	"Fire",
-	"Invoke",
-	"InvokeResult",
-})
 
 local MangerCommunication = {}
 MangerCommunication.__index = MangerCommunication
@@ -24,42 +15,35 @@ function MangerCommunication.new(...)
 	return self
 end
 
-function MangerCommunication:init(send: BindableEvent, recieve: BindableEvent)
+function MangerCommunication:init(
+	send: BindableEvent,
+	recieve: BindableEvent,
+	invoke: BindableFunction,
+	invoked: BindableFunction
+)
 	self.__send = send
+	self.__invoke = invoke
 
 	self.__events = {}
+	self.__invokes = {}
 
-	self.__invokeCallbacks = {}
-	self.__invokeResults = {}
-
-	recieve.Event:Connect(function(method, topic: string, ...)
-		if method == Method.Fire then
-			local event = self.__events[topic]
-			if not event then
-				return
-			end
-
-			event:Fire(...)
-		elseif method == Method.Invoke then
-			local callback = self.__invokeCallbacks[topic]
-			if not callback then
-				return error(`"{topic}" is not a valid topic.`, 2)
-			end
-
-			(function(id: string, ...)
-				send:Fire(Method.InvokeResult, topic, id, callback(...))
-			end)(...)
-		elseif method == Method.InvokeResult then
-			(function(id: string, ...)
-				local invokeResult = self.__invokeResults[id]
-				if not invokeResult then
-					return
-				end
-
-				invokeResult:Fire(...)
-			end)(...)
+	recieve.Event:Connect(function(topic: string, ...)
+		local event = self.__events[topic]
+		if not event then
+			return
 		end
+
+		event:Fire(...)
 	end)
+
+	invoked.OnInvoke = function(topic: string, ...)
+		local callback = self.__invokes[topic]
+		if not callback then
+			return error(`"{topic}" is not a valid topic.`, 2)
+		end
+
+		return callback(...)
+	end
 
 	table.freeze(self)
 end
@@ -78,31 +62,15 @@ function MangerCommunication:on(topic: string, callback: () -> never)
 end
 
 function MangerCommunication:onInvoke(topic: string, callback: () -> never)
-	self.__invokeCallbacks[topic] = callback
+	self.__invokes[topic] = callback
 end
 
 function MangerCommunication:Send(topic: string, ...)
-	self.__send:Fire(Method.Fire, topic, ...)
+	self.__send:Fire(topic, ...)
 end
 
 function MangerCommunication:Invoke(topic: string, ...)
-	local id
-	repeat
-		id = Functions.randomString(8)
-	until self.__invokeResults[id] == nil
-
-	local signal = Signal.new()
-	self.__invokeResults[id] = signal
-
-	-- Defer so we can actually setup a :Wait() listener before the invoked function returns
-	task.defer(self.__send.Fire, self.__send, Method.Invoke, topic, id, ...)
-
-	return (function(...)
-		self.__invokeResults[id] = nil
-		signal:Destroy()
-
-		return ...
-	end)(signal:Wait())
+	return self.__invoke:Invoke(topic, ...)
 end
 
 return MangerCommunication

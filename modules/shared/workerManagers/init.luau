@@ -26,9 +26,16 @@ function WorkerManagers:Init(root, managerName)
 	local function createManager(parent, index)
 		local manager = managerTemplate:Clone()
 		local communicationExchange = Instance.new("BindableFunction")
-		local send, recieve = Instance.new("BindableEvent"), Instance.new("BindableEvent")
+		local send, recieve, invoke, invoked =
+			Instance.new("BindableEvent"),
+			Instance.new("BindableEvent"),
+			Instance.new("BindableFunction"),
+			Instance.new("BindableFunction")
+
 		send.Name = Functions.randomInstanceName()
 		recieve.Name = Functions.randomInstanceName()
+		invoke.Name = Functions.randomInstanceName()
+		invoked.Name = Functions.randomInstanceName()
 
 		-- Secure (ish) exchange (atleast can't be obtained by other scripts).
 		communicationExchange.OnInvoke = function()
@@ -36,13 +43,13 @@ function WorkerManagers:Init(root, managerName)
 			communicationExchange:Destroy()
 
 			Log.debug(`Exchanged communication bindables with {managerName}{index}`)
-			return recieve, send -- Reversed on the recieveing end
+			return recieve, send, invoked, invoke -- Reversed on the recieveing end
 		end
 
 		communicationExchange.Name = Functions.randomInstanceName()
 		communicationExchange.Parent = manager
 
-		local Manager = MangerCommunication.new(send, recieve)
+		local Manager = MangerCommunication.new(send, recieve, invoke, invoked)
 		WorkerManagers[index] = Manager
 
 		manager.Name ..= index
