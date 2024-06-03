@@ -11,6 +11,7 @@ local error = error
 local unpack = unpack
 local math = math
 local tostring = tostring
+local os = os
 
 local Log = require("shared/log")
 Log:SetPrefix("[" .. script.Name .. "]")
