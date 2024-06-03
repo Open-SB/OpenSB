@@ -42,7 +42,7 @@ function WorkerManagers:Init(root, managerName)
 			communicationExchange.OnInvoke = Functions.empty
 			communicationExchange:Destroy()
 
-			Log.debug(`Exchanged communication bindables with {managerName}{index}`)
+			Log.debug(`Exchanged communication bindables with {managerName}{index}.`)
 			return recieve, send, invoked, invoke -- Reversed on the recieveing end
 		end
 
