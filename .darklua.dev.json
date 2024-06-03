@@ -17,6 +17,21 @@
       "identifier": "DEV",
       "value": true
     },
+    {
+      "rule": "inject_global_value",
+      "identifier": "workerThreads",
+      "value": 2
+    },
+    {
+      "rule": "inject_global_value",
+      "identifier": "scriptHostKey",
+      "value": "devKey"
+    },
+    {
+      "rule": "inject_global_value",
+      "identifier": "localScriptHostKey",
+      "value": "devKey"
+    },
 
     "convert_local_function_to_assign"
   ]

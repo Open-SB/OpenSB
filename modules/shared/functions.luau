@@ -1,4 +1,6 @@
 -- Maybe this should be rewritten to have each function in it's own file?
+local string = string
+local math = math
 
 local Functions = {}
 

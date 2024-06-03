@@ -18,10 +18,24 @@
         }
       },
 
-      "sandbox": {
-        "$path": "out/server/sandbox.server.luau",
+      "workerManager": {
+        "$path": "out/server/workerManager.server.luau",
         "$properties": {
-          "RunContext": "Server"
+          "RunContext": "Server",
+          "Disabled": true
+        }
+      },
+
+      "scriptHost": {
+        "$path": "out/hosts/script.server.luau",
+        "$properties": {
+          "Disabled": true
+        }
+      },
+      "localScriptHost": {
+        "$path": "out/hosts/localScript.client.luau",
+        "$properties": {
+          "Disabled": true
         }
       },
 
@@ -50,13 +64,14 @@
             }
           },
 
-          "sandbox": {
-            "$path": "out/client/sandbox.luau",
+          "localWorkerManager": {
+            "$path": "out/client/localWorkerManager.luau",
 
             "start": {
               "$path": "out/start.server.luau",
               "$properties": {
-                "RunContext": "Client"
+                "RunContext": "Client",
+                "Disabled": true
               }
             }
           },

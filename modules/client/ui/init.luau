@@ -69,6 +69,7 @@ function UI:Init()
 
 		UI:Create()
 		Output.MessageOut:Connect(App.onMessageOut)
+		Output.MessageIdDropped:Connect(App.onMessageIdDropped)
 
 		UI.IsLoaded = true
 		UI.Loaded:Fire()

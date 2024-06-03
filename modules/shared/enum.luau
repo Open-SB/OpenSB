@@ -1,3 +1,6 @@
+local ipairs = ipairs
+local table = table
+
 return function(enumItems)
 	local enum = {}
 	for index, name in ipairs(enumItems) do

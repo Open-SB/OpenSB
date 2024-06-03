@@ -2,3 +2,8 @@
 description = "Executes server sided code."
 aliases = ["execute", "c"]
 useCases = [["code"]]
+
+[localExecute]
+description = "Executes client sided code."
+aliases = ["localExecute", "cl", "l", "x"]
+useCases = [["code"]]

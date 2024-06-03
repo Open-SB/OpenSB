@@ -100,7 +100,7 @@ local function clearOutput()
 	outputList.CanvasPosition = Vector2.zero
 end
 
-function App.onMessageOut(dateTime, message, color)
+function App.onMessageOut(id, dateTime, message, color)
 	local formattedDateTime = dateTime:FormatLocalTime("LTS", Players.LocalPlayer.LocaleId)
 
 	-- Determine if we are scrolled all down (with a one pixel safe zone),
@@ -108,25 +108,38 @@ function App.onMessageOut(dateTime, message, color)
 	local wasAtBottom = outputList.AbsoluteCanvasSize.Y - outputList.AbsoluteWindowSize.Y - 1
 		<= outputList.CanvasPosition.Y
 
-	local label = create "TextLabel" {
-		Parent = outputList,
-		AutomaticSize = Enum.AutomaticSize.XY,
-		BackgroundTransparency = 1,
-		FontFace = OUTPUT_TEXT_FONT,
-		Text = `{formattedDateTime}  {message}`,
-		TextColor3 = color,
-		TextSize = OUTPUT_TEXT_SIZE,
-		TextWrapped = true,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Center,
-	}
+	local label
+	if id and outputLabels[id] then
+		label = outputLabels[id]
+	else
+		label = create "TextLabel" {
+			Parent = outputList,
+			AutomaticSize = Enum.AutomaticSize.XY,
+			BackgroundTransparency = 1,
+			FontFace = OUTPUT_TEXT_FONT,
+			TextSize = OUTPUT_TEXT_SIZE,
+			TextWrapped = true,
+			TextXAlignment = Enum.TextXAlignment.Left,
+			TextYAlignment = Enum.TextYAlignment.Center,
+		}
 
-	table.insert(outputLabels, label)
+		table.insert(outputLabels, label)
+		if id then
+			outputLabels[id] = label
+		end
+	end
+
+	label.Text = `{formattedDateTime}  {message}`
+	label.TextColor3 = color
 
 	if wasAtBottom then
 		outputList.CanvasPosition =
 			Vector2.new(outputList.CanvasPosition.X, outputList.AbsoluteCanvasSize.Y - outputList.AbsoluteWindowSize.Y)
 	end
+end
+
+function App.onMessageIdDropped(id)
+	outputLabels[id] = nil
 end
 
 function App.mount(screenGui)

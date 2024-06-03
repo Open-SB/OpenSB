@@ -9,4 +9,14 @@ return function(Commands)
 	local function define(...)
 		Commands:Define(_namespace, ...)
 	end
+
+	--:execute
+	defineValidator("execute", function(_, arguments)
+		return arguments[1], "No source was given."
+	end)
+
+	--:localExecute
+	defineValidator("localExecute", function(_, arguments)
+		return arguments[1], "No source was given."
+	end)
 end

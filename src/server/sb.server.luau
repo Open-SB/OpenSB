@@ -1,7 +1,20 @@
 local __start = os.clock()
 
 local Log = require("shared/log")
+Log:SetPrefix("[SB]")
 Log.print("Loading...")
+
+if not _G.DEV and _G.scriptHostKey == "CHANGE_THIS_KEY" then
+	Log.warn(
+		"The 'scriptHostKey' global is set to the default value while in a production build! Consider changing it."
+	)
+end
+
+if not _G.DEV and _G.localScriptHostKey == "CHANGE_THIS_KEY" then
+	Log.warn(
+		"The 'localScriptHostKey' global is set to the default value while in a production build! Consider changing it."
+	)
+end
 
 -- Fetch assets and destroy script
 local sbActor = script.Parent
@@ -26,8 +39,10 @@ local Assets = require("shared/assets")
 Assets:Init(root, "assets")
 
 local clientScripts = Assets:get("clientScripts")
-local clientAssets = clientScripts:WaitForChild("assets")
-clientAssets:SetAttribute("_descendants", #clientAssets:GetDescendants())
+do
+	local clientAssets = clientScripts:WaitForChild("assets")
+	clientAssets:SetAttribute("_descendants", #clientAssets:GetDescendants())
+end
 
 -- Services and modules
 local Players = game:GetService("Players")
@@ -39,8 +54,10 @@ local Commands = require("server/commands")
 local Output = require("server/output")
 local Chat = require("server/chat")
 local World = require("server/world")
+local WorkerManagers = require("shared/workerManagers")
 local Functions = require("shared/functions")
 
+WorkerManagers:Init(root, "workerManager")
 Network:Init()
 Chat:Init()
 Commands:Init()
@@ -95,9 +112,8 @@ do
 			sbClient.Name = Functions.randomInstanceName()
 			sbClient.Archivable = false
 
-			local sandboxClient = screenGui:WaitForChild("sandbox")
-			sandboxClient.Name = Functions.randomInstanceName()
-			sandboxClient.Archivable = false
+			local clientWorkerManager = screenGui:WaitForChild("localWorkerManager")
+			local clientAssets = screenGui:WaitForChild("assets")
 
 			-- Tranfer the remote attribute to find the remote
 			sbClient:SetAttribute(Network.attributeName, Network.attributeValue)
@@ -107,7 +123,8 @@ do
 				screenGui:Destroy()
 				sbClientActor:Destroy()
 				sbClient:Destroy()
-				sandboxClient:Destroy()
+				clientWorkerManager:Destroy()
+				clientAssets:Destroy()
 			end)
 		end
 	end

@@ -2,6 +2,7 @@ local __start = os.clock()
 local networkAttribute = { next(script:GetAttributes()) }
 
 local Log = require("shared/log")
+Log:SetPrefix("[SB Client]")
 Log.print("Loading...")
 
 -- Fetch assets and destroy script
@@ -35,7 +36,9 @@ local UI = require("client/ui")
 local Chat = require("client/chat")
 local StarterScripts = require("client/starterScripts")
 local Output = require("client/output")
+local WorkerManagers = require("shared/workerManagers")
 
+WorkerManagers:Init(root, "localWorkerManager")
 Network:Init(networkAttribute)
 Commands:Init()
 UI:Init()
