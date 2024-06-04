@@ -55,14 +55,14 @@ do
 	coroutine.yield() -- Yield thread until script has been destroyed, so events dont get connected in the process (then disconnected by :Destroy())
 end
 
-local MangerCommunication = require("shared/workerManagers/communication")
-MangerCommunication:init(unpack(communicationBindables))
+local ManagerCommunication = require("shared/workerManagers/communication")
+ManagerCommunication:init(unpack(communicationBindables))
 
 local Functions = require("shared/functions")
 
 local sources: { [string]: (any...) -> any... } = {}
 
-MangerCommunication:onInvoke("CreateSourceId", function(owner, source, name, compile)
+ManagerCommunication:onInvoke("CreateSourceId", function(owner, source, name, compile)
 	local id = Functions.randomString(16)
 	sources[id] = source
 
