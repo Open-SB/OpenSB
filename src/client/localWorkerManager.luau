@@ -48,8 +48,8 @@ do
 	coroutine.yield() -- Yield thread until script has been destroyed, so events dont get connected in the process (then disconnected by :Destroy())
 end
 
-local MangerCommunication = require("shared/workerManagers/communication")
-MangerCommunication:init(unpack(communicationBindables))
+local ManagerCommunication = require("shared/workerManagers/communication")
+ManagerCommunication:init(unpack(communicationBindables))
 
 setmetatable(shared, {
 	__metatable = "The metatable is locked",
