@@ -1,7 +1,7 @@
 local Log = require("shared/log")
 local Functions = require("shared/functions")
 
-local MangerCommunication = require("./communication")
+local ManagerCommunication = require("./communication")
 
 local WorkerManagers = {}
 
@@ -49,7 +49,7 @@ function WorkerManagers:Init(root, managerName)
 		communicationExchange.Name = Functions.randomInstanceName()
 		communicationExchange.Parent = manager
 
-		local Manager = MangerCommunication.new(send, recieve, invoke, invoked)
+		local Manager = ManagerCommunication.new(send, recieve, invoke, invoked)
 		WorkerManagers[index] = Manager
 
 		manager.Name ..= index
