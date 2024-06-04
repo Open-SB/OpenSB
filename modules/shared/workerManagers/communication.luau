@@ -5,17 +5,17 @@ local error = error
 local Signal = require("shared/signal")
 local Functions = require("shared/functions")
 
-local MangerCommunication = {}
-MangerCommunication.__index = MangerCommunication
+local ManagerCommunication = {}
+ManagerCommunication.__index = ManagerCommunication
 
-function MangerCommunication.new(...)
-	local self = setmetatable({}, MangerCommunication)
+function ManagerCommunication.new(...)
+	local self = setmetatable({}, ManagerCommunication)
 	self:init(...)
 
 	return self
 end
 
-function MangerCommunication:init(
+function ManagerCommunication:init(
 	send: BindableEvent,
 	recieve: BindableEvent,
 	invoke: BindableFunction,
@@ -48,7 +48,7 @@ function MangerCommunication:init(
 	table.freeze(self)
 end
 
-function MangerCommunication:on(topic: string, callback: () -> never)
+function ManagerCommunication:on(topic: string, callback: () -> never)
 	-- This will not destroy the signal once all connections are disconnected, but it's likely this will never happen.
 	-- If we add topics that are temporary and used once then this should be reworked to avoid memory leaks.
 
@@ -61,16 +61,16 @@ function MangerCommunication:on(topic: string, callback: () -> never)
 	return event:Connect(callback)
 end
 
-function MangerCommunication:onInvoke(topic: string, callback: () -> never)
+function ManagerCommunication:onInvoke(topic: string, callback: () -> never)
 	self.__invokes[topic] = callback
 end
 
-function MangerCommunication:Send(topic: string, ...)
+function ManagerCommunication:Send(topic: string, ...)
 	self.__send:Fire(topic, ...)
 end
 
-function MangerCommunication:Invoke(topic: string, ...)
+function ManagerCommunication:Invoke(topic: string, ...)
 	return self.__invoke:Invoke(topic, ...)
 end
 
-return MangerCommunication
+return ManagerCommunication
