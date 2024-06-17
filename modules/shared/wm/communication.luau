@@ -3,7 +3,6 @@ local table = table
 local error = error
 
 local Signal = require("shared/signal")
-local Functions = require("shared/functions")
 
 local ManagerCommunication = {}
 ManagerCommunication.__index = ManagerCommunication
