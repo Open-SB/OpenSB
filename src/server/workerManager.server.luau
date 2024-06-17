@@ -55,7 +55,7 @@ do
 	coroutine.yield() -- Yield thread until script has been destroyed, so events dont get connected in the process (then disconnected by :Destroy())
 end
 
-local ManagerCommunication = require("shared/workerManagers/communication")
+local ManagerCommunication = require("shared/wm/communication")
 ManagerCommunication:init(unpack(communicationBindables))
 
 local ScriptTypes = require("server/scriptManager/scriptTypes")
