@@ -32,6 +32,11 @@
       "identifier": "localScriptHostKey",
       "value": "devKey"
     },
+    {
+      "rule": "inject_global_value",
+      "identifier": "moduleScriptHostKey",
+      "value": "devKey"
+    },
 
     "convert_local_function_to_assign"
   ]

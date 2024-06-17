@@ -9,12 +9,17 @@ local function getHost(name)
 	local host = game:GetService("ServerScriptService"):WaitForChild(name)
 	host.Parent = nil
 
+	if host.ClassName ~= "ModuleScript" then
+		host.Enabled = true
+	end
+
 	return host
 end
 
 local scriptHosts = {
 	[ScriptTypes.Script] = getHost("scriptHost"),
 	[ScriptTypes.LocalScript] = getHost("localScriptHost"),
+	[ScriptTypes.ModuleScript] = getHost("moduleScriptHost"),
 }
 
 function Module:CreateScript(owner, scriptType, name, source, arguments): BaseScript
@@ -26,14 +31,18 @@ function Module:CreateScript(owner, scriptType, name, source, arguments): BaseSc
 	assert(arguments == nil or type(arguments) == "table", "Invalid arguments datatype.")
 
 	if not name then
-		name = if scriptType == ScriptTypes.LocalScript then "LocalScript" else "Script"
+		if scriptType == ScriptTypes.LocalScript then
+			name = "LocalScript"
+		elseif scriptType == ScriptTypes.ModuleScript then
+			name = "ModuleScript"
+		else
+			name = "Script"
+		end
 	end
 
-	local sourceId =
-		WorkerManagers.main:Invoke("CreateSourceId", owner, source, name, scriptType == ScriptTypes.LocalScript) -- 3rd arg is if to compile.
+	local sourceId = WorkerManagers.main:Invoke("CreateSourceId", owner, scriptType, source, name)
 	local host = scriptHosts[scriptType]:Clone()
 	host.Name = name
-	host.Enabled = true
 	host:SetAttribute("source", sourceId) -- TODO: Protect attribute, or find another way of setting it that is copyable via :Clone()
 
 	return host

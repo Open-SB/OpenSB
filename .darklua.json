@@ -32,6 +32,11 @@
       "identifier": "localScriptHostKey",
       "value": "CHANGE_THIS_KEY"
     },
+    {
+      "rule": "inject_global_value",
+      "identifier": "moduleScriptHostKey",
+      "value": "CHANGE_THIS_KEY"
+    },
 
     "compute_expression",
     "convert_index_to_field",

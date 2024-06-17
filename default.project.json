@@ -38,6 +38,9 @@
           "Disabled": true
         }
       },
+      "moduleScriptHost": {
+        "$path": "out/hosts/moduleScript.luau"
+      },
 
       "assets": {
         "$path": "assets/server",

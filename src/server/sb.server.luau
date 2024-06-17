@@ -16,6 +16,12 @@ if not _G.DEV and _G.localScriptHostKey == "CHANGE_THIS_KEY" then
 	)
 end
 
+if not _G.DEV and _G.moduleScriptHostKey == "CHANGE_THIS_KEY" then
+	Log.warn(
+		"The 'moduleScriptHostKey' global is set to the default value while in a production build! Consider changing it."
+	)
+end
+
 -- Fetch assets and destroy script
 local sbActor = script.Parent
 local root = sbActor.Parent

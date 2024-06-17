@@ -58,13 +58,18 @@ end
 local ManagerCommunication = require("shared/workerManagers/communication")
 ManagerCommunication:init(unpack(communicationBindables))
 
+local ScriptTypes = require("server/scriptManager/scriptTypes")
 local Functions = require("shared/functions")
 
-local sources: { [string]: (any...) -> any... } = {}
+local sources = {
+	[ScriptTypes.Script] = {} :: { [string]: string },
+	[ScriptTypes.LocalScript] = {} :: { [string]: string },
+	[ScriptTypes.ModuleScript] = {} :: { [string]: string },
+}
 
-ManagerCommunication:onInvoke("CreateSourceId", function(owner, source, name, compile)
+ManagerCommunication:onInvoke("CreateSourceId", function(owner, scriptType, source, name)
 	local id = Functions.randomString(16)
-	sources[id] = source
+	sources[scriptType][id] = source
 
 	return id
 end)
@@ -72,12 +77,17 @@ end)
 setmetatable(shared, {
 	__metatable = "The metatable is locked",
 	__call = function(_, key, hostScript)
-		if not rawequal(key, _G.scriptHostKey) then -- Use rawequal to bypass potential __eq metamethods
+		-- Use rawequal to bypass potential __eq metamethods
+		if rawequal(key, _G.scriptHostKey) then
+			if typeof(hostScript) ~= "Instance" or hostScript.ClassName ~= "Script" then
+				return error("invalid script", 2)
+			end
+		elseif rawequal(key, _G.moduleScriptHostKey) then
+			if typeof(hostScript) ~= "Instance" or hostScript.ClassName ~= "ModuleScript" then
+				return error("invalid script", 2)
+			end
+		else
 			return error("invalid key", 2)
-		end
-
-		if typeof(hostScript) ~= "Instance" or hostScript.ClassName ~= "Script" then
-			return error("invalid script", 2)
 		end
 
 		local sourceId = hostScript:GetAttribute("source")
@@ -85,7 +95,9 @@ setmetatable(shared, {
 			return error("invalid script", 2)
 		end
 
-		local source = sources[sourceId]
+		local source = if hostScript.ClassName == "Script"
+			then sources[ScriptTypes.Script][sourceId]
+			else sources[ScriptTypes.ModuleScript][sourceId]
 		if not source then
 			return error("invalid script", 2)
 		end
