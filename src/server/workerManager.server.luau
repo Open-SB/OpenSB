@@ -4,15 +4,8 @@ local setfenv = setfenv
 local script = script
 local coroutine = coroutine
 local task = task
-local setmetatable = setmetatable
-local shared = shared
-local rawequal = rawequal
-local error = error
-local loadstring = loadstring
 local unpack = unpack
 local math = math
-local tostring = tostring
-local typeof = typeof
 local os = os
 
 local Log = require("shared/log")
@@ -58,57 +51,7 @@ end
 local ManagerCommunication = require("shared/wm/communication")
 ManagerCommunication:init(unpack(communicationBindables))
 
-local ScriptTypes = require("server/scriptManager/scriptTypes")
-local Functions = require("shared/functions")
-
-local sources = {
-	[ScriptTypes.Script] = {} :: { [string]: string },
-	[ScriptTypes.LocalScript] = {} :: { [string]: string },
-	[ScriptTypes.ModuleScript] = {} :: { [string]: string },
-}
-
-ManagerCommunication:onInvoke("CreateSourceId", function(owner, scriptType, source, name)
-	local id = Functions.randomString(16)
-	sources[scriptType][id] = source
-
-	return id
-end)
-
-setmetatable(shared, {
-	__metatable = "The metatable is locked",
-	__call = function(_, key, hostScript)
-		-- Use rawequal to bypass potential __eq metamethods
-		if rawequal(key, _G.scriptHostKey) then
-			if typeof(hostScript) ~= "Instance" or hostScript.ClassName ~= "Script" then
-				return error("invalid script", 2)
-			end
-		elseif rawequal(key, _G.moduleScriptHostKey) then
-			if typeof(hostScript) ~= "Instance" or hostScript.ClassName ~= "ModuleScript" then
-				return error("invalid script", 2)
-			end
-		else
-			return error("invalid key", 2)
-		end
-
-		local sourceId = hostScript:GetAttribute("source")
-		if not sourceId then
-			return error("invalid script", 2)
-		end
-
-		local source = if hostScript.ClassName == "Script"
-			then sources[ScriptTypes.Script][sourceId]
-			else sources[ScriptTypes.ModuleScript][sourceId]
-		if not source then
-			return error("invalid script", 2)
-		end
-
-		local func, err = loadstring(source, "=" .. hostScript:GetFullName()) -- Prefixing with a "=" removes the [string ""] from the chunkname.
-		if not func then
-			return nil, err
-		end
-
-		return func
-	end,
-})
+local ScriptManager = require("server/wm/scriptManager")
+ScriptManager:Init()
 
 Log.print(`Loaded in {math.round((os.clock() - __start) * 1000)}ms.`)

@@ -51,15 +51,7 @@ end
 local ManagerCommunication = require("shared/wm/communication")
 ManagerCommunication:init(unpack(communicationBindables))
 
-setmetatable(shared, {
-	__metatable = "The metatable is locked",
-	__call = function(_, key, hostScript)
-		if not rawequal(key, _G.localScriptHostKey) then -- Use rawequal to bypass potential __eq metamethods
-			return error("invalid key", 2)
-		end
-
-		return function() end
-	end,
-})
+local ScriptManager = require("client/wm/scriptManager")
+ScriptManager:Init()
 
 Log.print(`Loaded in {math.round((os.clock() - __start) * 1000)}ms.`)
