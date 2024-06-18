@@ -5,12 +5,12 @@ return function(Commands)
 	-- Load shared definitions
 	require("shared/commands/default")(Commands)
 
-	local namespace = "default"
+	local _namespace = "default"
 	local function defineValidator(...)
-		Commands:DefineValidator(namespace, ...)
+		Commands:DefineValidator(_namespace, ...)
 	end
 	local function define(...)
-		Commands:Define(namespace, ...)
+		Commands:Define(_namespace, ...)
 	end
 
 	--:execute
