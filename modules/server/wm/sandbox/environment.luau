@@ -407,7 +407,7 @@ function Module:Init()
 				return error("'setfenv' cannot change environment of given object", seekSafeLevel(1))
 			end
 		elseif stackType == "nil" then
-			stack = seekSafeLevel(1, 1)
+			stack = seekSafeLevel(1)
 		else
 			return invalidArg("getfenv", 1, "number expected, got " .. typeof(stack), 1)
 		end
