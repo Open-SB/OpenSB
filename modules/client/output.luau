@@ -3,8 +3,6 @@ local MessageTypes = require("shared/output/messageTypes")
 local Signal = require("shared/signal")
 local Functions = require("shared/functions")
 
-local MessageTypeColors = require("./colors")
-
 local Output = {}
 Output.MessageType = MessageTypes
 Output.MessageOut = Signal.new()
@@ -15,7 +13,7 @@ function Output:append(messageType, message, dateTime)
 	assert(MessageTypes[messageType], "Invalid message type.")
 	assert(message, "No message given.")
 
-	Output.MessageOut:Fire(nil, dateTime or DateTime.now(), message, MessageTypeColors[messageType])
+	Output.MessageOut:Fire(nil, dateTime or DateTime.now(), message, messageType)
 end
 
 function Output:appendWithId(messageType, message, dateTime, id)
@@ -24,7 +22,7 @@ function Output:appendWithId(messageType, message, dateTime, id)
 	assert(message, "No message given.")
 
 	id = id or Functions.randomString()
-	Output.MessageOut:Fire(id, dateTime or DateTime.now(), message, MessageTypeColors[messageType])
+	Output.MessageOut:Fire(id, dateTime or DateTime.now(), message, messageType)
 
 	return id
 end
@@ -35,7 +33,7 @@ function Output:edit(id, messageType, message, dateTime)
 	assert(MessageTypes[messageType], "Invalid message type.")
 	assert(message, "No message given.")
 
-	Output.MessageOut:Fire(id, dateTime or DateTime.now(), message, MessageTypeColors[messageType])
+	Output.MessageOut:Fire(id, dateTime or DateTime.now(), message, messageType)
 end
 
 function Output:dropId(id)

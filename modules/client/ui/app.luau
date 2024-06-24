@@ -5,6 +5,7 @@ local Commands = require("client/commands")
 local CommandInputContext = require("shared/commands/inputContexts")
 local Maid = require("shared/maid")
 local Signal = require("shared/signal")
+local MessageType = require("shared/output/messageTypes")
 
 local create = require("./create")
 
@@ -31,6 +32,14 @@ local APP_SCROLL_TRANSPARENCY = 0
 local OUTPUT_TRANSPARENCY = 0.6
 local OUTPUT_TEXT_FONT = APP_TEXT_FONT
 local OUTPUT_TEXT_SIZE = 14 -- If the UI is att max size
+local OUTPUT_MESSAGE_COLORS = {
+	[MessageType.Log] = Color3.fromRGB(204, 204, 204),
+	[MessageType.Warning] = Color3.fromRGB(255, 142, 60),
+	[MessageType.Error] = Color3.fromRGB(255, 68, 68),
+	[MessageType.Success] = Color3.fromRGB(0, 204, 103),
+	[MessageType.Information] = Color3.fromRGB(128, 215, 255),
+	[MessageType.System] = Color3.fromRGB(209, 93, 255),
+}
 
 local COMMAND_BAR_TRANSPARENCY = 0
 local COMMAND_BAR_INPUT_KEY = Enum.KeyCode.Quote
@@ -100,7 +109,7 @@ local function clearOutput()
 	outputList.CanvasPosition = Vector2.zero
 end
 
-function App.onMessageOut(id, dateTime, message, color)
+function App.onMessageOut(id, dateTime, message, messageType)
 	local formattedDateTime = dateTime:FormatLocalTime("LTS", Players.LocalPlayer.LocaleId)
 
 	-- Determine if we are scrolled all down (with a one pixel safe zone),
@@ -130,7 +139,7 @@ function App.onMessageOut(id, dateTime, message, color)
 	end
 
 	label.Text = `{formattedDateTime}  {message}`
-	label.TextColor3 = color
+	label.TextColor3 = OUTPUT_MESSAGE_COLORS[messageType] or OUTPUT_MESSAGE_COLORS[MessageType.Log]
 
 	if wasAtBottom then
 		outputList.CanvasPosition =
