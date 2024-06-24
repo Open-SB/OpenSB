@@ -3,7 +3,7 @@
 
 # To add a new tool, add an entry to this table.
 [tools]
-rojo = "rojo-rbx/rojo@7.3.0"
-darklua = "seaofvoices/darklua@0.12.1"
-selene = "Kampfkarren/selene@0.26.1"
-StyLua = "JohnnyMorganz/StyLua@0.19.1"
+rojo = "rojo-rbx/rojo@7.4.1"
+darklua = "seaofvoices/darklua@0.13.1"
+selene = "Kampfkarren/selene@0.27.1"
+StyLua = "JohnnyMorganz/StyLua@0.20.0"
