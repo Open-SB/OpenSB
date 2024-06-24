@@ -29,7 +29,7 @@ local claimEnvironment
 
 local wrap, unwrap = Wrapper.wrap, Wrapper.unwrap
 local wrapMany, unwrapMany = Wrapper.wrapMany, Wrapper.unwrapMany
-local isWrapped, typeofWrapped = Wrapper.isWrapped, Wrapper.typeofWrapped
+local typeofWrapped = Wrapper.typeofWrapped
 
 local toCString = Functions.toCString
 

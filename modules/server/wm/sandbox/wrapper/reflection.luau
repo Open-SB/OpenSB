@@ -11,7 +11,6 @@ local Functions = require("shared/functions")
 
 local wrap, unwrap
 local wrapMany, unwrapMany
-local isWrapped, typeofWrapped
 
 local Module = {}
 
@@ -23,7 +22,6 @@ function Module.setWrapper(wrapper)
 	Wrapper = wrapper
 	wrap, unwrap = Wrapper.wrap, Wrapper.unwrap
 	wrapMany, unwrapMany = Wrapper.wrapMany, Wrapper.unwrapMany
-	isWrapped, typeofWrapped = Wrapper.isWrapped, Wrapper.typeofWrapped
 end
 
 function Module.set(meta, reflection)

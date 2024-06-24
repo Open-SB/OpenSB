@@ -41,7 +41,7 @@ function Module:CreateScript(owner, scriptType, name, source, arguments): BaseSc
 		end
 	end
 
-	local sourceId = WorkerManagers.main:Invoke("CreateSourceId", owner, scriptType, source, name)
+	local sourceId = WorkerManagers.main:Invoke("CreateSourceId", owner, scriptType, source)
 	local host = scriptHosts[scriptType]:Clone()
 	host.Name = name
 	host:SetAttribute("source", sourceId) -- TODO: Protect attribute, or find another way of setting it that is copyable via :Clone()

@@ -27,7 +27,6 @@ function Module.Init(_, Sandbox, Wrapper, Reflection)
 
 	local wrap, unwrap = Wrapper.wrap, Wrapper.unwrap
 	local wrapMany, unwrapMany = Wrapper.wrapMany, Wrapper.unwrapMany
-	local typeofWrapped = Wrapper.typeofWrapped
 
 	-- Map the C implementation of __index and __newindex to their sandboxed versions
 	wmap[Functions.indexInstance] = Reflection.Instance.__index

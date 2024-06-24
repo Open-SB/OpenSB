@@ -29,7 +29,7 @@ local sources = {
 local Module = {}
 
 function Module:Init()
-	ManagerCommunication:onInvoke("CreateSourceId", function(owner, scriptType, source, name)
+	ManagerCommunication:onInvoke("CreateSourceId", function(owner, scriptType, source)
 		local id = Functions.randomString(16)
 		sources[scriptType][id] = {
 			owner = owner,
