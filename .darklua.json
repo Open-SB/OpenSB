@@ -41,18 +41,20 @@
     "compute_expression",
     "convert_index_to_field",
     "convert_local_function_to_assign",
+    "remove_unused_variable",
+    "remove_nil_declaration",
+    "remove_unused_while",
+    "remove_unused_if_branch",
     "filter_after_early_return",
-    "group_local_assignment",
-    "remove_assertions",
-    "remove_comments",
-    "remove_debug_profiling",
     "remove_empty_do",
     "remove_function_call_parens",
-    "remove_method_definition",
-    "remove_nil_declaration",
-    "remove_spaces",
+    "group_local_assignment",
+
+    "remove_assertions",
+    "remove_debug_profiling",
+
     "remove_types",
-    "remove_unused_if_branch",
-    "remove_unused_while"
+    "remove_comments",
+    "remove_spaces"
   ]
 }
