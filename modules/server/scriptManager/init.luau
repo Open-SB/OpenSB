@@ -1,4 +1,5 @@
 local WorkerManagers = require("shared/workerManagers")
+local Output = require("server/output")
 
 local ScriptTypes = require("./scriptTypes")
 
@@ -47,5 +48,17 @@ function Module:CreateScript(owner, scriptType, name, source, arguments): BaseSc
 
 	return host
 end
+
+WorkerManagers:on("log", function(player: Player, message: string)
+	Output:appendTo(player, Output.MessageType.Log, message)
+end)
+
+WorkerManagers:on("warn", function(player: Player, message: string)
+	Output:appendTo(player, Output.MessageType.Warning, message)
+end)
+
+WorkerManagers:on("error", function(player: Player, message: string)
+	Output:appendTo(player, Output.MessageType.Error, message)
+end)
 
 return Module

@@ -5,16 +5,25 @@ local error = error
 local pcall = pcall
 local rawequal = rawequal
 local loadstring = loadstring
+local getfenv = getfenv
+local coroutine = coroutine
 
+local Sandbox = require("server/wm/sandbox")
+local Wrapper = require("server/wm/sandbox/wrapper")
 local ManagerCommunication = require("shared/wm/communication")
 
 local ScriptTypes = require("server/scriptManager/scriptTypes")
 local Functions = require("shared/functions")
 
+type source = {
+	owner: Player,
+	source: string,
+}
+
 local sources = {
-	[ScriptTypes.Script] = {} :: { [string]: string },
-	[ScriptTypes.LocalScript] = {} :: { [string]: string },
-	[ScriptTypes.ModuleScript] = {} :: { [string]: string },
+	[ScriptTypes.Script] = {} :: { [string]: source },
+	[ScriptTypes.LocalScript] = {} :: { [string]: source },
+	[ScriptTypes.ModuleScript] = {} :: { [string]: source },
 }
 
 local Module = {}
@@ -22,11 +31,15 @@ local Module = {}
 function Module:Init()
 	ManagerCommunication:onInvoke("CreateSourceId", function(owner, scriptType, source, name)
 		local id = Functions.randomString(16)
-		sources[scriptType][id] = source
+		sources[scriptType][id] = {
+			owner = owner,
+			source = source,
+		}
 
 		return id
 	end)
 
+	setmetatable(_G, { __metatable = "The metatable is locked" })
 	setmetatable(shared, {
 		__metatable = "The metatable is locked",
 		__call = function(_, key, hostScript)
@@ -58,19 +71,32 @@ function Module:Init()
 				return error("invalid script", 2)
 			end
 
-			local source = if hostScript.ClassName == "Script"
+			local sourceData = if className == "Script"
 				then sources[ScriptTypes.Script][sourceId]
 				else sources[ScriptTypes.ModuleScript][sourceId]
-			if not source then
+			if not sourceData then
 				return error("invalid script", 2)
 			end
 
-			local func, err = loadstring(source, "=" .. hostScript:GetFullName()) -- Prefixing with a "=" removes the [string ""] from the chunkname.
+			local func, err = loadstring(sourceData.source, "=" .. hostScript:GetFullName()) -- Prefixing with a "=" removes the [string ""] from the chunkname
 			if not func then
-				return nil, err
+				return nil, nil, err
 			end
 
-			return func
+			local scriptSandbox = Sandbox.new(sourceData.owner, hostScript)
+			setfenv(func, scriptSandbox.Environment)
+
+			-- Track the calling thread (this thread)
+			scriptSandbox.Threads[coroutine.running()] = true
+
+			return func,
+				if className == "Script"
+					then function(thread)
+						scriptSandbox.Threads[thread] = true
+					end
+					else function(...)
+						return Wrapper.unwrapMany(...)
+					end
 		end,
 	})
 end

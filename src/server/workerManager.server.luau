@@ -51,7 +51,9 @@ end
 local ManagerCommunication = require("shared/wm/communication")
 ManagerCommunication:init(unpack(communicationBindables))
 
+local Sandbox = require("server/wm/sandbox")
 local ScriptManager = require("server/wm/scriptManager")
+Sandbox:Init()
 ScriptManager:Init()
 
 Log.print(`Loaded in {math.round((os.clock() - __start) * 1000)}ms.`)

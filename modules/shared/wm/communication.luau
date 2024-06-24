@@ -47,7 +47,7 @@ function ManagerCommunication:init(
 	table.freeze(self)
 end
 
-function ManagerCommunication:on(topic: string, callback: () -> never)
+function ManagerCommunication:on(topic: string, callback: (any...) -> never)
 	-- This will not destroy the signal once all connections are disconnected, but it's likely this will never happen.
 	-- If we add topics that are temporary and used once then this should be reworked to avoid memory leaks.
 
@@ -60,7 +60,7 @@ function ManagerCommunication:on(topic: string, callback: () -> never)
 	return event:Connect(callback)
 end
 
-function ManagerCommunication:onInvoke(topic: string, callback: () -> never)
+function ManagerCommunication:onInvoke(topic: string, callback: (any...) -> any...)
 	self.__invokes[topic] = callback
 end
 

@@ -68,4 +68,18 @@ function WorkerManagers:Init(root, managerName)
 	table.freeze(WorkerManagers)
 end
 
+function WorkerManagers:on(topic: string, callback: (any...) -> never)
+	WorkerManagers.main:on(topic, callback)
+	for _, Manager in ipairs(WorkerManagers) do
+		Manager:on(topic, callback)
+	end
+end
+
+function WorkerManagers:onInvoke(topic: string, callback: (any...) -> any...)
+	WorkerManagers.main:onInvoke(topic, callback)
+	for _, Manager in ipairs(WorkerManagers) do
+		Manager:onInvoke(topic, callback)
+	end
+end
+
 return WorkerManagers
