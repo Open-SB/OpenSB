@@ -1006,6 +1006,82 @@ function Module:Init()
 	    Custom global functions
     --]]
 
+	senv.NewScript = function(...)
+		local sandbox = getSandbox()
+		assertTerminated(sandbox)
+
+		local source = checkArg("NewScript", "string", 1, ...)
+		local parent = unwrap(checkOptionalArg("NewScript", "Instance", 2, ...)) or renv.workspace
+
+		-- Check if the parent is RobloxLocked
+		assertArg(
+			"NewScript",
+			2,
+			pcall(function()
+				local _ = parent.Name
+			end),
+			"instance is RobloxLocked",
+			1
+		)
+
+		local script = ManagerCommunication:Invoke("newScript", sandbox.Owner, source)
+		script.Parent = parent
+
+		return wrap(script)
+	end
+	senv.NS = senv.NewScript
+
+	senv.NewLocalScript = function(...)
+		local sandbox = getSandbox()
+		assertTerminated(sandbox)
+
+		local source = checkArg("NewLocalScript", "string", 1, ...)
+		local parent = unwrap(checkOptionalArg("NewLocalScript", "Instance", 2, ...))
+			or sandbox.Owner:FindFirstChildOfClass("PlayerGui")
+
+		-- Check if the parent is RobloxLocked
+		assertArg(
+			"NewLocalScript",
+			2,
+			pcall(function()
+				local _ = parent.Name
+			end),
+			"instance is RobloxLocked",
+			1
+		)
+
+		local script = ManagerCommunication:Invoke("newLocalScript", sandbox.Owner, source)
+		script.Parent = parent
+
+		return wrap(script)
+	end
+	senv.NLS = senv.NewLocalScript
+
+	senv.NewModuleScript = function(...)
+		local sandbox = getSandbox()
+		assertTerminated(sandbox)
+
+		local source = checkArg("NewModuleScript", "string", 1, ...)
+		local parent = unwrap(checkOptionalArg("NewModuleScript", "Instance", 2, ...))
+
+		-- Check if the parent is RobloxLocked
+		assertArg(
+			"NewModuleScript",
+			2,
+			pcall(function()
+				local _ = parent.Name
+			end),
+			"instance is RobloxLocked",
+			1
+		)
+
+		local script = ManagerCommunication:Invoke("newModuleScript", sandbox.Owner, source)
+		script.Parent = parent
+
+		return wrap(script)
+	end
+	senv.NMS = senv.NewModuleScript
+
 	setmetatable(senv, nil)
 	table.freeze(senv)
 end
