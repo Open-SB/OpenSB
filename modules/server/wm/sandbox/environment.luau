@@ -1064,16 +1064,18 @@ function Module:Init()
 		local source = checkArg("NewModuleScript", "string", 1, ...)
 		local parent = unwrap(checkOptionalArg("NewModuleScript", "Instance", 2, ...))
 
-		-- Check if the parent is RobloxLocked
-		assertArg(
-			"NewModuleScript",
-			2,
-			pcall(function()
-				local _ = parent.Name
-			end),
-			"instance is RobloxLocked",
-			1
-		)
+		if parent then
+			-- Check if the parent is RobloxLocked
+			assertArg(
+				"NewModuleScript",
+				2,
+				pcall(function()
+					local _ = parent.Name
+				end),
+				"instance is RobloxLocked",
+				1
+			)
+		end
 
 		local script = ManagerCommunication:Invoke("newModuleScript", sandbox.Owner, source)
 		script.Parent = parent
