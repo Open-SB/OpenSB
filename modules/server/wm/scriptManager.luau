@@ -7,6 +7,10 @@ local rawequal = rawequal
 local loadstring = loadstring
 local getfenv = getfenv
 local coroutine = coroutine
+local game = game
+local debug = debug
+local string = string
+local warn = warn
 
 local Sandbox = require("server/wm/sandbox")
 local Wrapper = require("server/wm/sandbox/wrapper")
@@ -25,6 +29,7 @@ local sources = {
 	[ScriptTypes.LocalScript] = {} :: { [string]: source },
 	[ScriptTypes.ModuleScript] = {} :: { [string]: source },
 }
+local scripts = {}
 
 local Module = {}
 
@@ -80,25 +85,54 @@ function Module:Init()
 
 			local func, err = loadstring(sourceData.source, "=" .. hostScript:GetFullName()) -- Prefixing with a "=" removes the [string ""] from the chunkname
 			if not func then
+				ManagerCommunication:Send("error", sourceData.owner, err)
 				return nil, nil, err
 			end
 
-			local scriptSandbox = Sandbox.new(sourceData.owner, hostScript)
-			setfenv(func, scriptSandbox.Environment)
+			local sandbox = Sandbox.new(sourceData.owner, hostScript)
+			scripts[hostScript] = sandbox
+			setfenv(func, sandbox.Environment)
 
 			-- Track the calling thread (this thread)
-			scriptSandbox.Threads[coroutine.running()] = true
+			sandbox.Threads[coroutine.running()] = true
 
 			return func,
 				if className == "Script"
 					then function(thread)
-						scriptSandbox.Threads[thread] = true
+						sandbox.Threads[thread] = true
 					end
 					else function(...)
 						return Wrapper.unwrapMany(...)
 					end
 		end,
 	})
+
+	-- Get the source of the worker manager (to filter out stack traces)
+	local wmSource = debug.info(Functions.empty, "s")
+
+	-- Listen to script errors
+	game:GetService("ScriptContext").Error:Connect(function(message, stackTrace, script)
+		local sandbox = scripts[script]
+		if not sandbox then
+			return
+		end
+
+		local player = sandbox.Owner
+		ManagerCommunication:Send("error", player, message)
+		ManagerCommunication:Send("info", player, "Stack Begin")
+
+		local traces = string.split(stackTrace, "\n")
+		for index = 1, #traces - 1 do -- Last trace is always ""
+			local source, line = string.match(traces[index], "^(.+), line (%d+)$")
+			if source == wmSource then
+				continue
+			end
+
+			ManagerCommunication:Send("info", player, `Script '{source}', Line {line}`)
+		end
+
+		ManagerCommunication:Send("info", player, "Stack End")
+	end)
 end
 
 return Module

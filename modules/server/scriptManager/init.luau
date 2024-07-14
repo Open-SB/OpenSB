@@ -61,6 +61,10 @@ WorkerManagers:on("error", function(player: Player, message: string)
 	Output:appendTo(player, Output.MessageType.Error, message)
 end)
 
+WorkerManagers:on("info", function(player: Player, message: string)
+	Output:appendTo(player, Output.MessageType.Information, message)
+end)
+
 WorkerManagers:onInvoke("newScript", function(owner: Player, source: string)
 	return Module:CreateScript(owner, ScriptTypes.Script, nil, source)
 end)
