@@ -10,7 +10,6 @@ local coroutine = coroutine
 local game = game
 local debug = debug
 local string = string
-local warn = warn
 
 local Sandbox = require("server/wm/sandbox")
 local Wrapper = require("server/wm/sandbox/wrapper")
