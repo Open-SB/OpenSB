@@ -14,7 +14,7 @@ local tostring = tostring
 local os = os
 
 local Log = require("shared/log")
-Log:SetPrefix("[" .. script.Name .. "]")
+Log:SetPrefix("[" .. string.match(script.Name, "^(.+)@") .. "]") -- Remove the random part of the name (check shared/workerManagers.luau)
 Log.print("Loading...")
 
 local communicationBindables = { script:FindFirstChildOfClass("BindableFunction"):Invoke() }

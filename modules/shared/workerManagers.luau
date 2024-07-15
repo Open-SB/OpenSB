@@ -52,7 +52,7 @@ function WorkerManagers:Init(root, managerName)
 		local Manager = ManagerCommunication.new(send, recieve, invoke, invoked)
 		WorkerManagers[index] = Manager
 
-		manager.Name ..= index
+		manager.Name ..= `{index}@{math.random()}` -- We give them a random name to help filter out sb stack traces from other code
 		manager.Parent = parent
 
 		return Manager
