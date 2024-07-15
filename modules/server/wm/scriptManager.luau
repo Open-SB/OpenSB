@@ -109,7 +109,7 @@ function Module:Init()
 	-- Get the source of the worker manager (to filter out stack traces)
 	local wmSource = debug.info(Functions.empty, "s")
 
-	-- Listen to script errors
+	-- Listen for script errors
 	game:GetService("ScriptContext").Error:Connect(function(message, stackTrace, script)
 		local sandbox = scripts[script]
 		if not sandbox then
@@ -120,8 +120,9 @@ function Module:Init()
 		ManagerCommunication:Send("error", player, message)
 		ManagerCommunication:Send("info", player, "Stack Begin")
 
+		-- Format and filter out sb stack traces
 		local traces = string.split(stackTrace, "\n")
-		for index = 1, #traces - 1 do -- Last trace is always ""
+		for index = 1, #traces - 1 do -- Last trace is always "" (so we skip it)
 			local source, line = string.match(traces[index], "^(.+), line (%d+)$")
 			if source == wmSource then
 				continue
