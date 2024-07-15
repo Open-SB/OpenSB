@@ -1011,18 +1011,22 @@ function Module:Init()
 		assertTerminated(sandbox)
 
 		local source = checkArg("NewScript", "string", 1, ...)
-		local parent = unwrap(checkOptionalArg("NewScript", "Instance", 2, ...)) or renv.workspace
+		local parent = unwrap(checkOptionalArg("NewScript", "Instance", 2, ...))
 
-		-- Check if the parent is RobloxLocked
-		assertArg(
-			"NewScript",
-			2,
-			pcall(function()
-				local _ = parent.Name
-			end),
-			"instance is RobloxLocked",
-			1
-		)
+		if not parent and select("#", ...) < 2 then -- No parent specified and "nil" wasn't passed
+			parent = renv.workspace
+		elseif parent then
+			-- Check if the parent is RobloxLocked
+			assertArg(
+				"NewScript",
+				2,
+				pcall(function()
+					local _ = parent.Name
+				end),
+				"instance is RobloxLocked",
+				1
+			)
+		end
 
 		local script = ManagerCommunication:Invoke("newScript", sandbox.Owner, source)
 		script.Parent = parent
@@ -1037,18 +1041,21 @@ function Module:Init()
 
 		local source = checkArg("NewLocalScript", "string", 1, ...)
 		local parent = unwrap(checkOptionalArg("NewLocalScript", "Instance", 2, ...))
-			or sandbox.Owner:FindFirstChildOfClass("PlayerGui")
 
-		-- Check if the parent is RobloxLocked
-		assertArg(
-			"NewLocalScript",
-			2,
-			pcall(function()
-				local _ = parent.Name
-			end),
-			"instance is RobloxLocked",
-			1
-		)
+		if not parent and select("#", ...) < 2 then -- No parent specified and "nil" wasn't passed
+			parent = sandbox.Owner:FindFirstChildOfClass("PlayerGui")
+		elseif parent then
+			-- Check if the parent is RobloxLocked
+			assertArg(
+				"NewLocalScript",
+				2,
+				pcall(function()
+					local _ = parent.Name
+				end),
+				"instance is RobloxLocked",
+				1
+			)
+		end
 
 		local script = ManagerCommunication:Invoke("newLocalScript", sandbox.Owner, source)
 		script.Parent = parent
