@@ -10,6 +10,7 @@ local coroutine = coroutine
 local game = game
 local debug = debug
 local string = string
+local task = task
 
 local Sandbox = require("server/wm/sandbox")
 local Wrapper = require("server/wm/sandbox/wrapper")
@@ -41,6 +42,22 @@ function Module:Init()
 		}
 
 		return id
+	end)
+
+	ManagerCommunication:on("NewWorker", function(owner: Player, source: string, host: ModuleScript, ...)
+		local id = Functions.randomString(16)
+		sources[ScriptTypes.ModuleScript][id] = {
+			owner = owner,
+			source = source,
+			isWorker = true,
+		}
+
+		-- We need an actual host for workers for error catching to work correctly and due to how we track sandboxes (getfenv(0))
+		-- We use a modulescript because it allows us to start the script under our actor while the actor is destroyed
+		-- Only downside to this is that it will cost a little extra memory for each worker (due to them having their own ModuleScript)
+		-- It will still throw warnings on task.desynchronize but doesn't cause any issues as of right now (can be fixed by parenting it into a newly created actor instance)
+		host:SetAttribute("source", id)
+		task.defer(require, host)
 	end)
 
 	setmetatable(_G, { __metatable = "The metatable is locked" })
@@ -88,7 +105,7 @@ function Module:Init()
 				return nil, nil, err
 			end
 
-			local sandbox = Sandbox.new(sourceData.owner, hostScript)
+			local sandbox = Sandbox.new(sourceData.owner, if not sourceData.isWorker then hostScript else nil)
 			scripts[hostScript] = sandbox
 			setfenv(func, sandbox.Environment)
 
@@ -96,7 +113,7 @@ function Module:Init()
 			sandbox.Threads[coroutine.running()] = true
 
 			return func,
-				if className == "Script"
+				if className == "Script" or sourceData.isWorker
 					then function(thread)
 						sandbox.Threads[thread] = true
 					end

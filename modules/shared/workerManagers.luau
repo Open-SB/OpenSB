@@ -59,7 +59,7 @@ function WorkerManagers:Init(root, managerName)
 	end
 
 	WorkerManagers.main = createManager(root, 0)
-	for index = 1, _G.workerThreads - 1 do
+	for index = 1, _G.workerThreads do
 		local actor = Instance.new("Actor")
 		createManager(actor, index)
 		actor.Parent = root

@@ -41,6 +41,9 @@
       "moduleScriptHost": {
         "$path": "out/hosts/moduleScript.luau"
       },
+      "workerHost": {
+        "$path": "out/hosts/worker.luau"
+      },
 
       "assets": {
         "$path": "assets/server",

@@ -20,7 +20,7 @@
     {
       "rule": "inject_global_value",
       "identifier": "workerThreads",
-      "value": 4
+      "value": 8
     },
     {
       "rule": "inject_global_value",

@@ -21,6 +21,7 @@ local scriptHosts = {
 	[ScriptTypes.Script] = getHost("scriptHost"),
 	[ScriptTypes.LocalScript] = getHost("localScriptHost"),
 	[ScriptTypes.ModuleScript] = getHost("moduleScriptHost"),
+	Worker = getHost("workerHost"),
 }
 
 function Module:CreateScript(owner, scriptType, name, source, arguments): BaseScript
@@ -76,5 +77,18 @@ end)
 WorkerManagers:onInvoke("newModuleScript", function(owner: Player, source: string)
 	return Module:CreateScript(owner, ScriptTypes.ModuleScript, nil, source)
 end)
+
+do
+	local currentWorker = 1
+	WorkerManagers:on("newWorker", function(owner: Player, source: string, name: string, ...)
+		local host = scriptHosts.Worker:Clone()
+		host.Name = name
+
+		WorkerManagers[currentWorker]:Send("NewWorker", owner, source, host, ...)
+
+		-- Round robin is used to split up workers
+		currentWorker = currentWorker % _G.workerThreads + 1
+	end)
+end
 
 return Module

@@ -1091,6 +1091,16 @@ function Module:Init()
 	end
 	senv.NMS = senv.NewModuleScript
 
+	senv.NewWorker = function(...)
+		local sandbox = getSandbox()
+		assertTerminated(sandbox)
+
+		local source = checkArg("NewWorker", "string", 1, ...)
+		local name = checkOptionalArg("NewWorker", "string", 2, ...)
+		ManagerCommunication:Send("newWorker", sandbox.Owner, source, name or "Worker", unwrapMany(select(3, ...)))
+	end
+	senv.NW = senv.NewWorker
+
 	setmetatable(senv, nil)
 	table.freeze(senv)
 end
