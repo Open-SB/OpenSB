@@ -55,7 +55,7 @@ function Module:Init()
 		-- We need an actual host for workers for error catching to work correctly and due to how we track sandboxes (getfenv(0))
 		-- We use a modulescript because it allows us to start the script under our actor while the actor is destroyed
 		-- Only downside to this is that it will cost a little extra memory for each worker (due to them having their own ModuleScript)
-		-- It will still throw warnings on task.desynchronize but doesn't cause any issues as of right now (can be fixed by parenting it into a newly created actor instance)
+		host.Parent = Instance.new("Actor")
 		host:SetAttribute("source", id)
 		task.defer(require, host)
 	end)
