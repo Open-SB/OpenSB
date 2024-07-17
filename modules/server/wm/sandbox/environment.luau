@@ -1028,7 +1028,6 @@ function Module:Init()
 			)
 		end
 
-		renv.print(unwrapMany(select(3, ...)))
 		local script = ManagerCommunication:Invoke("newScript", sandbox.Owner, source, unwrapMany(select(3, ...)))
 		script.Parent = parent
 

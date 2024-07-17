@@ -119,7 +119,6 @@ function Module:Init()
 			-- Track the calling thread (this thread)
 			sandbox.Threads[coroutine.running()] = true
 
-			warn(unpack(sourceData.arguments, 1, sourceData.arguments.n or #sourceData.arguments))
 			return func,
 				table.pack(
 					Wrapper.wrapMany(unpack(sourceData.arguments, 1, sourceData.arguments.n or #sourceData.arguments))
