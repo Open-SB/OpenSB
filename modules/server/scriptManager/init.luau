@@ -42,7 +42,13 @@ function Module:CreateScript(owner, scriptType, name, source, arguments): BaseSc
 		end
 	end
 
-	local sourceId = WorkerManagers.main:Invoke("CreateSourceId", owner, scriptType, source)
+	local sourceId = WorkerManagers.main:Invoke(
+		"CreateSourceId",
+		owner,
+		scriptType,
+		source,
+		if arguments then table.clone(arguments) else nil
+	)
 	local host = scriptHosts[scriptType]:Clone()
 	host.Name = name
 	host:SetAttribute("source", sourceId) -- TODO: Protect attribute, or find another way of setting it that is copyable via :Clone()
@@ -66,16 +72,16 @@ WorkerManagers:on("info", function(player: Player, message: string)
 	Output:appendTo(player, Output.MessageType.Information, message)
 end)
 
-WorkerManagers:onInvoke("newScript", function(owner: Player, source: string)
-	return Module:CreateScript(owner, ScriptTypes.Script, nil, source)
+WorkerManagers:onInvoke("newScript", function(owner: Player, source: string, ...)
+	return Module:CreateScript(owner, ScriptTypes.Script, nil, source, table.pack(...))
 end)
 
-WorkerManagers:onInvoke("newLocalScript", function(owner: Player, source: string)
-	return Module:CreateScript(owner, ScriptTypes.LocalScript, nil, source)
+WorkerManagers:onInvoke("newLocalScript", function(owner: Player, source: string, ...)
+	return Module:CreateScript(owner, ScriptTypes.LocalScript, nil, source, table.pack(...))
 end)
 
-WorkerManagers:onInvoke("newModuleScript", function(owner: Player, source: string)
-	return Module:CreateScript(owner, ScriptTypes.ModuleScript, nil, source)
+WorkerManagers:onInvoke("newModuleScript", function(owner: Player, source: string, ...)
+	return Module:CreateScript(owner, ScriptTypes.ModuleScript, nil, source, table.pack(...))
 end)
 
 do
@@ -84,7 +90,7 @@ do
 		local host = scriptHosts.Worker:Clone()
 		host.Name = name
 
-		WorkerManagers[currentWorker]:Send("NewWorker", owner, source, host, ...)
+		WorkerManagers[currentWorker]:Send("NewWorker", owner, source, host, table.pack(...))
 
 		-- Round robin is used to split up workers
 		currentWorker = currentWorker % _G.workerThreads + 1

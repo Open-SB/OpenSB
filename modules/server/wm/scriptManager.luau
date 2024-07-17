@@ -11,6 +11,8 @@ local game = game
 local debug = debug
 local string = string
 local task = task
+local table = table
+local warn = warn
 
 local Sandbox = require("server/wm/sandbox")
 local Wrapper = require("server/wm/sandbox/wrapper")
@@ -34,23 +36,28 @@ local scripts = {}
 local Module = {}
 
 function Module:Init()
-	ManagerCommunication:onInvoke("CreateSourceId", function(owner, scriptType, source)
+	ManagerCommunication:onInvoke(
+		"CreateSourceId",
+		function(owner: Player, scriptType, source: string, arguments: table?)
+			local id = Functions.randomString(16)
+			sources[scriptType][id] = table.freeze({
+				owner = owner,
+				source = source,
+				arguments = table.freeze(arguments or {}),
+			})
+
+			return id
+		end
+	)
+
+	ManagerCommunication:on("NewWorker", function(owner: Player, source: string, host: ModuleScript, arguments: table?)
 		local id = Functions.randomString(16)
-		sources[scriptType][id] = {
+		sources[ScriptTypes.ModuleScript][id] = table.freeze({
 			owner = owner,
 			source = source,
-		}
-
-		return id
-	end)
-
-	ManagerCommunication:on("NewWorker", function(owner: Player, source: string, host: ModuleScript, ...)
-		local id = Functions.randomString(16)
-		sources[ScriptTypes.ModuleScript][id] = {
-			owner = owner,
-			source = source,
+			arguments = table.freeze(arguments or {}),
 			isWorker = true,
-		}
+		})
 
 		-- We need an actual host for workers for error catching to work correctly and due to how we track sandboxes (getfenv(0))
 		-- We use a modulescript because it allows us to start the script under our actor while the actor is destroyed
@@ -102,7 +109,7 @@ function Module:Init()
 			local func, err = loadstring(sourceData.source, "=" .. hostScript:GetFullName()) -- Prefixing with a "=" removes the [string ""] from the chunkname
 			if not func then
 				ManagerCommunication:Send("error", sourceData.owner, err)
-				return nil, nil, err
+				return nil, nil, nil, err
 			end
 
 			local sandbox = Sandbox.new(sourceData.owner, if not sourceData.isWorker then hostScript else nil)
@@ -112,7 +119,11 @@ function Module:Init()
 			-- Track the calling thread (this thread)
 			sandbox.Threads[coroutine.running()] = true
 
+			warn(unpack(sourceData.arguments, 1, sourceData.arguments.n or #sourceData.arguments))
 			return func,
+				table.pack(
+					Wrapper.wrapMany(unpack(sourceData.arguments, 1, sourceData.arguments.n or #sourceData.arguments))
+				), -- We don't want to wrap a table, just the arguments
 				if className == "Script" or sourceData.isWorker
 					then function(thread)
 						sandbox.Threads[thread] = true

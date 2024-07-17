@@ -1028,7 +1028,8 @@ function Module:Init()
 			)
 		end
 
-		local script = ManagerCommunication:Invoke("newScript", sandbox.Owner, source)
+		renv.print(unwrapMany(select(3, ...)))
+		local script = ManagerCommunication:Invoke("newScript", sandbox.Owner, source, unwrapMany(select(3, ...)))
 		script.Parent = parent
 
 		return wrap(script)
@@ -1057,7 +1058,7 @@ function Module:Init()
 			)
 		end
 
-		local script = ManagerCommunication:Invoke("newLocalScript", sandbox.Owner, source)
+		local script = ManagerCommunication:Invoke("newLocalScript", sandbox.Owner, source, unwrapMany(select(3, ...)))
 		script.Parent = parent
 
 		return wrap(script)
@@ -1084,7 +1085,7 @@ function Module:Init()
 			)
 		end
 
-		local script = ManagerCommunication:Invoke("newModuleScript", sandbox.Owner, source)
+		local script = ManagerCommunication:Invoke("newModuleScript", sandbox.Owner, source, unwrapMany(select(3, ...)))
 		script.Parent = parent
 
 		return wrap(script)
