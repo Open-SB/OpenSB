@@ -15,6 +15,7 @@ local warn = warn
 local rawset = rawset
 local math = math
 local tonumber = tonumber
+local Instance = Instance
 
 local ManagerCommunication = require("shared/wm/communication")
 local Functions = require("shared/functions")
@@ -237,6 +238,23 @@ local function manyToString(...): string
 	end
 
 	return table.concat(output, " ")
+end
+
+-- We package args inside bindble functions when transmitting them via ManagerCommunication
+-- This prevents roblox from replacing functions that are being sent over with ones that errors with "Attempt to load a function from a different Lua VM"
+-- (Because we only read from the bindable when it has been sent back to this WorkerManager)
+local function package(...)
+	local packed = table.pack(...)
+	local bindable = Instance.new("BindableFunction")
+	bindable.OnInvoke = function()
+		-- Single use
+		bindable.OnInvoke = function() end
+		bindable:Destroy()
+
+		return unpack(packed, 1, packed.n)
+	end
+
+	return bindable
 end
 
 -- Anything such as "senv.x = renv.x" is purely for optimization, to skip any potential wrapping of the global.
@@ -1028,7 +1046,8 @@ function Module:Init()
 			)
 		end
 
-		local script = ManagerCommunication:Invoke("newScript", sandbox.Owner, source, unwrapMany(select(3, ...)))
+		local script =
+			ManagerCommunication:Invoke("newScript", sandbox.Owner, source, package(unwrapMany(select(3, ...))))
 		script.Parent = parent
 
 		return wrap(script)
@@ -1057,7 +1076,8 @@ function Module:Init()
 			)
 		end
 
-		local script = ManagerCommunication:Invoke("newLocalScript", sandbox.Owner, source, unwrapMany(select(3, ...)))
+		local script =
+			ManagerCommunication:Invoke("newLocalScript", sandbox.Owner, source, package(unwrapMany(select(3, ...))))
 		script.Parent = parent
 
 		return wrap(script)
@@ -1084,7 +1104,8 @@ function Module:Init()
 			)
 		end
 
-		local script = ManagerCommunication:Invoke("newModuleScript", sandbox.Owner, source, unwrapMany(select(3, ...)))
+		local script =
+			ManagerCommunication:Invoke("newModuleScript", sandbox.Owner, source, package(unwrapMany(select(3, ...))))
 		script.Parent = parent
 
 		return wrap(script)
@@ -1097,7 +1118,13 @@ function Module:Init()
 
 		local source = checkArg("NewWorker", "string", 1, ...)
 		local name = checkOptionalArg("NewWorker", "string", 2, ...)
-		ManagerCommunication:Send("newWorker", sandbox.Owner, source, name or "Worker", unwrapMany(select(3, ...)))
+		ManagerCommunication:Send(
+			"newWorker",
+			sandbox.Owner,
+			source,
+			name or "Worker",
+			package(unwrapMany(select(3, ...)))
+		)
 	end
 	senv.NW = senv.NewWorker
 
