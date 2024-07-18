@@ -12,7 +12,6 @@ local debug = debug
 local string = string
 local task = task
 local table = table
-local warn = warn
 
 local Sandbox = require("server/wm/sandbox")
 local Wrapper = require("server/wm/sandbox/wrapper")
@@ -151,12 +150,20 @@ function Module:Init()
 		-- Format and filter out sb stack traces
 		local traces = string.split(stackTrace, "\n")
 		for index = 1, #traces - 1 do -- Last trace is always "" (so we skip it)
-			local source, line = string.match(traces[index], "^(.+), line (%d+)$")
+			local source, line, func = string.match(traces[index], "^(.+), line (%d+) %- function (.+)$")
+			if not func then
+				source, line = string.match(traces[index], "^(.+), line (%d+)$")
+			end
+
 			if source == wmSource then
 				continue
 			end
 
-			ManagerCommunication:Send("info", player, `Script '{source}', Line {line}`)
+			if func then
+				ManagerCommunication:Send("info", player, `Script '{source}', Line {line} - function {func}`)
+			else
+				ManagerCommunication:Send("info", player, `Script '{source}', Line {line}`)
+			end
 		end
 
 		ManagerCommunication:Send("info", player, "Stack End")
