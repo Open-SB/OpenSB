@@ -61,9 +61,10 @@ export type sandbox = {
 	Terminated: boolean,
 	Script: BaseScript?,
 	Owner: Player,
+	Environment: table,
 	Connections: { [RBXScriptConnection]: true },
 	Threads: { [thread]: true },
-	Environment: table,
+	Environments: { table },
 }
 
 function Module.new(owner: Player, script: BaseScript?): sandbox
