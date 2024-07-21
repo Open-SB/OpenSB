@@ -18,11 +18,15 @@ local Wrapper = require("server/wm/sandbox/wrapper")
 local ManagerCommunication = require("shared/wm/communication")
 
 local ScriptTypes = require("server/scriptManager/scriptTypes")
+local compile = require("server/compile")
 local Functions = require("shared/functions")
 
 type source = {
 	owner: Player,
-	source: string,
+	error: string?,
+	source: string?,
+	bytecode: string?,
+	arguments: { n: number } & { any },
 }
 
 local sources = {
@@ -39,11 +43,31 @@ function Module:Init()
 		"CreateSourceId",
 		function(owner: Player, scriptType, source: string, arguments: BindableFunction?)
 			local id = Functions.randomString(16)
-			sources[scriptType][id] = table.freeze({
-				owner = owner,
-				source = source,
-				arguments = table.freeze(if arguments then table.pack(arguments:Invoke()) else table.pack()),
-			})
+
+			if scriptType == ScriptTypes.LocalScript then
+				local data = {
+					owner = owner,
+					arguments = table.freeze(if arguments then table.pack(arguments:Invoke()) else table.pack()),
+				}
+				sources[scriptType][id] = data
+
+				task.spawn(function() -- compile() yields
+					local success, result = compile(source)
+					if not success then
+						data.error = result
+					else
+						data.bytecode = result
+					end
+
+					table.freeze(data)
+				end)
+			else
+				sources[scriptType][id] = table.freeze({
+					owner = owner,
+					source = source,
+					arguments = table.freeze(if arguments then table.pack(arguments:Invoke()) else table.pack()),
+				})
+			end
 
 			return id
 		end
