@@ -27,6 +27,7 @@ type source = {
 	source: string?,
 	bytecode: string?,
 	arguments: { n: number } & { any },
+	isWorker: boolean?,
 }
 
 local sources = {
@@ -42,15 +43,15 @@ function Module:Init()
 	ManagerCommunication:onInvoke(
 		"CreateSourceId",
 		function(owner: Player, scriptType, source: string, arguments: BindableFunction?)
-			local id = Functions.randomString(16)
+			local data = {
+				owner = owner,
+				arguments = table.freeze(if arguments then table.pack(arguments:Invoke()) else table.pack()),
+			}
 
-			if scriptType == ScriptTypes.LocalScript then
-				local data = {
-					owner = owner,
-					arguments = table.freeze(if arguments then table.pack(arguments:Invoke()) else table.pack()),
-				}
-				sources[scriptType][id] = data
-
+			if scriptType ~= ScriptTypes.LocalScript then
+				data.source = source
+				table.freeze(data)
+			else
 				task.spawn(function() -- compile() yields
 					local success, result = compile(source)
 					if not success then
@@ -61,14 +62,10 @@ function Module:Init()
 
 					table.freeze(data)
 				end)
-			else
-				sources[scriptType][id] = table.freeze({
-					owner = owner,
-					source = source,
-					arguments = table.freeze(if arguments then table.pack(arguments:Invoke()) else table.pack()),
-				})
 			end
 
+			local id = Functions.randomString(16)
+			sources[scriptType][id] = data
 			return id
 		end
 	)
