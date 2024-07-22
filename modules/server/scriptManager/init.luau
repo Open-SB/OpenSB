@@ -1,13 +1,15 @@
-local WorkerManagers = require("shared/workerManagers")
 local Output = require("server/output")
+local Assets = require("shared/assets")
+local WorkerManagers = require("shared/workerManagers")
 
 local ScriptTypes = require("./scriptTypes")
 
 local Module = {}
 Module.ScriptType = ScriptTypes
 
+local hosts = Assets:get("hosts")
 local function getHost(name)
-	local host = game:GetService("ServerScriptService"):WaitForChild(name)
+	local host = hosts:WaitForChild(name)
 	host.Parent = nil
 
 	if host.ClassName ~= "ModuleScript" then
@@ -18,10 +20,10 @@ local function getHost(name)
 end
 
 local scriptHosts = {
-	[ScriptTypes.Script] = getHost("scriptHost"),
-	[ScriptTypes.LocalScript] = getHost("localScriptHost"),
-	[ScriptTypes.ModuleScript] = getHost("moduleScriptHost"),
-	Worker = getHost("workerHost"),
+	[ScriptTypes.Script] = getHost("script"),
+	[ScriptTypes.LocalScript] = getHost("localScript"),
+	[ScriptTypes.ModuleScript] = getHost("moduleScript"),
+	Worker = getHost("worker"),
 }
 
 function Module:CreateScript(owner, scriptType, name, source, arguments: (table | BindableFunction)?): BaseScript

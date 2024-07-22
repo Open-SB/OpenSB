@@ -26,27 +26,31 @@
         }
       },
 
-      "scriptHost": {
-        "$path": "out/hosts/script.server.luau",
-        "$properties": {
-          "Disabled": true
-        }
-      },
-      "localScriptHost": {
-        "$path": "out/hosts/localScript.client.luau",
-        "$properties": {
-          "Disabled": true
-        }
-      },
-      "moduleScriptHost": {
-        "$path": "out/hosts/moduleScript.luau"
-      },
-      "workerHost": {
-        "$path": "out/hosts/worker.luau"
-      },
-
       "assets": {
         "$path": "assets/server",
+
+        "hosts": {
+          "$className": "Folder",
+
+          "script": {
+            "$path": "out/hosts/script.server.luau",
+            "$properties": {
+              "Disabled": true
+            }
+          },
+          "localScript": {
+            "$path": "out/hosts/localScript.client.luau",
+            "$properties": {
+              "Disabled": true
+            }
+          },
+          "moduleScript": {
+            "$path": "out/hosts/moduleScript.luau"
+          },
+          "worker": {
+            "$path": "out/hosts/worker.luau"
+          }
+        },
 
         "clientScripts": {
           "$className": "ScreenGui",
