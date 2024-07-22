@@ -17,9 +17,9 @@ local Sandbox = require("server/wm/sandbox")
 local Wrapper = require("server/wm/sandbox/wrapper")
 local ManagerCommunication = require("shared/wm/communication")
 
-local ScriptTypes = require("server/scriptManager/scriptTypes")
 local compile = require("server/compile")
 local Functions = require("shared/functions")
+local ScriptTypes = require("shared/scriptManager/scriptTypes")
 
 type source = {
 	owner: Player,

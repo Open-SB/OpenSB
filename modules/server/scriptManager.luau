@@ -2,7 +2,7 @@ local Output = require("server/output")
 local Assets = require("shared/assets")
 local WorkerManagers = require("shared/workerManagers")
 
-local ScriptTypes = require("./scriptTypes")
+local ScriptTypes = require("shared/scriptManager/scriptTypes")
 
 local Module = {}
 Module.ScriptType = ScriptTypes
