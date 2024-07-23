@@ -143,6 +143,11 @@
       "ChatScript": {
         "$className": "LocalScript"
       }
+    },
+    "HttpService": {
+      "$properties": {
+        "HttpEnabled": true
+      }
     }
   }
 }
