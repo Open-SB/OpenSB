@@ -35,10 +35,23 @@ return function(Commands)
 	end)
 
 	--:localExecute
-	--[[define("localExecute", function(context, arguments)
+	define("localExecute", function(context, arguments)
+		local scriptName = "LocalScript"
+		local id = Output:appendWithIdTo(context.Player, Output.MessageType.Information, `Compiling "{scriptName}"...`)
+
 		local source = table.concat(arguments, "/") -- The "/" key is used as the argument delimiter.
-		local hostScript = ScriptManager:CreateScript(context.Player, ScriptManager.ScriptType.LocalScript, nil, source)
-		Output:appendTo(context.Player, Output.MessageType.Information, `Running "{hostScript.Name}"...`)
+		local _, err = loadstring(source, "=" .. scriptName) -- Prefixing with a "=" removes the [string ""] from the chunkname.
+		if err then
+			Output:dropIdFrom(context.Player, id)
+			Output:appendTo(context.Player, Output.MessageType.Error, err)
+
+			return
+		end
+
+		local hostScript =
+			ScriptManager:CreateScript(context.Player, ScriptManager.ScriptType.LocalScript, scriptName, source)
+		Output:editFrom(context.Player, id, Output.MessageType.Information, `Running "{hostScript.Name}"...`)
+		Output:dropIdFrom(context.Player, id)
 		hostScript.Parent = context.Player.PlayerGui
-	end)]]
+	end)
 end
