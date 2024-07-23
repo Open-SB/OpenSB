@@ -14,6 +14,10 @@ local compilerOptions = table.freeze({
 })
 
 return function(source: string): (boolean, string)
+	if not HttpService.HttpEnabled then
+		return false, "HttpService is disabled, cannot use online Luau compiler."
+	end
+
 	-- https://github.com/Open-SB/luau-compile
 	local response = HttpService:RequestAsync({
 		Url = "https://luau-compile.shuttleapp.rs/compile",
