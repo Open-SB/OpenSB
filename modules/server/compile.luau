@@ -1,5 +1,6 @@
 local buffer = buffer
 local string = string
+local pcall = pcall
 
 local HttpService = game:GetService("HttpService")
 
@@ -19,7 +20,7 @@ return function(source: string): (boolean, string)
 	end
 
 	-- https://github.com/Open-SB/luau-compile
-	local response = HttpService:RequestAsync({
+	local success, response = pcall(HttpService.RequestAsync, HttpService, {
 		Url = "https://luau-compile.shuttleapp.rs/compile",
 		Method = "POST",
 		Headers = {
@@ -30,6 +31,10 @@ return function(source: string): (boolean, string)
 			options = compilerOptions,
 		}),
 	})
+
+	if not success then
+		return false, `Error while using online Luau compiler: {response}`
+	end
 
 	-- Check if response was an error
 	if not response.Success then
