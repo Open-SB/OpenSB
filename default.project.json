@@ -87,7 +87,24 @@
           },
 
           "assets": {
-            "$path": "assets/client"
+            "$path": "assets/client",
+
+            "hosts": {
+              "$className": "Folder",
+
+              "localScript": {
+                "$path": "out/hosts/localScript.client.luau",
+                "$properties": {
+                  "Disabled": true
+                }
+              },
+              "moduleScript": {
+                "$path": "out/hosts/moduleScript.luau"
+              },
+              "worker": {
+                "$path": "out/hosts/worker.luau"
+              }
+            }
           }
         }
       }

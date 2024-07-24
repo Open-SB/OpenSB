@@ -51,6 +51,10 @@ function UI:WaitUntilLoaded()
 	end
 end
 
+function UI:MakeScriptPrompt(bindable: BindableEvent, owner: Player, script: BaseScript)
+	App.scriptPrompt(bindable, owner, script)
+end
+
 function UI:Init()
 	Log.debug("Initializing UI...")
 

@@ -39,6 +39,7 @@ local Output = require("client/output")
 local WorkerManagers = require("shared/workerManagers")
 
 WorkerManagers:Init(root, "localWorkerManager")
+require("client/scriptManager")
 Network:Init(networkAttribute)
 Commands:Init()
 UI:Init()

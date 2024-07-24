@@ -28,6 +28,7 @@ type source = {
 	bytecode: string?,
 	arguments: { n: number } & { any },
 	isWorker: boolean?,
+	compiling: boolean?,
 }
 
 local sources = {
@@ -40,6 +41,33 @@ local scripts = {}
 local Module = {}
 
 function Module:Init()
+	ManagerCommunication:onInvoke("fetchSource", function(player: Player, scriptType, sourceId: string)
+		local classSources = sources[scriptType]
+		if not classSources then
+			return
+		end
+
+		local sourceData = classSources[sourceId]
+		if not sourceData then
+			return
+		end
+
+		-- TODO: Compile modules if not already
+		-- TODO: Check if the player can run the script
+
+		while sourceData.compiling do
+			-- Wait for script to finish compiling if it hasn't already
+			task.wait()
+		end
+
+		return {
+			owner = sourceData.owner,
+			error = sourceData.error,
+			bytecode = sourceData.bytecode,
+			arguments = sourceData.arguments,
+		}
+	end)
+
 	ManagerCommunication:onInvoke(
 		"CreateSourceId",
 		function(owner: Player, scriptType, source: string, arguments: BindableFunction?)
@@ -52,6 +80,8 @@ function Module:Init()
 				data.source = source
 				table.freeze(data)
 			else
+				data.compiling = true
+
 				task.spawn(function() -- compile() yields
 					local success, result = compile(source)
 					if not success then
@@ -60,6 +90,7 @@ function Module:Init()
 						data.bytecode = result
 					end
 
+					data.compiling = false
 					table.freeze(data)
 				end)
 			end

@@ -1,5 +1,6 @@
-local Output = require("server/output")
-local Network = require("server/network")
+local Output = require("client/output")
+local Network = require("client/network")
+local UI = require("client/ui")
 local Assets = require("shared/assets")
 local WorkerManagers = require("shared/workerManagers")
 
@@ -21,7 +22,6 @@ local function getHost(name)
 end
 
 local scriptHosts = {
-	[ScriptTypes.Script] = getHost("script"),
 	[ScriptTypes.LocalScript] = getHost("localScript"),
 	[ScriptTypes.ModuleScript] = getHost("moduleScript"),
 	Worker = getHost("worker"),
@@ -70,30 +70,28 @@ function Module:CreateScript(owner, scriptType, name, source, arguments: (table 
 	return host
 end
 
-Network:RegisterFunction("fetchSource", function(player: Player, scriptType, sourceId: string)
-	if not scriptType or type(sourceId) ~= "string" then
-		return
-	elseif scriptType ~= ScriptTypes.LocalScript and scriptType ~= ScriptTypes.ModuleScript then
-		return
-	end
-
-	return WorkerManagers.main:Invoke("fetchSource", player, scriptType, sourceId)
+WorkerManagers:onInvoke("fetchSource", function(scriptType, sourceId: string)
+	return Network:InvokeServer("fetchSource", scriptType, sourceId)
 end)
 
-WorkerManagers:on("log", function(player: Player, message: string)
-	Output:appendTo(player, Output.MessageType.Log, message)
+WorkerManagers:on("makeScriptPrompt", function(bindable: BindableEvent, owner: Player, script: BaseScript)
+	UI:MakeScriptPrompt(bindable, owner, script)
 end)
 
-WorkerManagers:on("warn", function(player: Player, message: string)
-	Output:appendTo(player, Output.MessageType.Warning, message)
+WorkerManagers:on("log", function(message: string)
+	Output:append(Output.MessageType.Log, message)
 end)
 
-WorkerManagers:on("error", function(player: Player, message: string)
-	Output:appendTo(player, Output.MessageType.Error, message)
+WorkerManagers:on("warn", function(message: string)
+	Output:append(Output.MessageType.Warning, message)
 end)
 
-WorkerManagers:on("info", function(player: Player, message: string)
-	Output:appendTo(player, Output.MessageType.Information, message)
+WorkerManagers:on("error", function(message: string)
+	Output:append(Output.MessageType.Error, message)
+end)
+
+WorkerManagers:on("info", function(message: string)
+	Output:append(Output.MessageType.Information, message)
 end)
 
 WorkerManagers:onInvoke("newScript", function(owner: Player, source: string, arguments: (table | BindableFunction)?)

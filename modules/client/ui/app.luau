@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
 
 local Commands = require("client/commands")
 local CommandInputContext = require("shared/commands/inputContexts")
@@ -149,6 +150,34 @@ end
 
 function App.onMessageIdDropped(id)
 	outputLabels[id] = nil
+end
+
+function App.scriptPrompt(bindable: BindableEvent, owner: Player, script: BaseScript)
+	local bindableFunction = Instance.new("BindableFunction")
+	function bindableFunction.OnInvoke(button)
+		if button == "Allow" then
+			return bindable:Fire(true)
+		elseif button == "Decline" then
+			return bindable:Fire(false)
+		end
+
+		bindable:Fire()
+	end
+
+	StarterGui:SetCore("SendNotification", {
+		Title = `{script.ClassName} request`,
+		Text = `{owner.DisplayName} would like to run a script on you.\n({script:GetFullName()})`,
+		Duration = 15,
+		Callback = bindableFunction,
+		Button1 = "Allow",
+		Button2 = "Decline",
+	})
+
+	local thread = task.delay(15 + 1, bindableFunction.Invoke, bindableFunction)
+	bindable.Event:Once(function()
+		bindableFunction:Destroy()
+		task.defer(task.cancel, thread)
+	end)
 end
 
 function App.mount(screenGui)
