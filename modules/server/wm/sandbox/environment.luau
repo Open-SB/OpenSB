@@ -710,6 +710,7 @@ function Module:Init()
 			end
 		end
 
+		-- https://create.roblox.com/docs/reference/engine/libraries/coroutine#yield
 		l.yield = function(...)
 			local sandbox = getSandbox()
 			assertTerminated(sandbox)

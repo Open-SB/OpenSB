@@ -620,6 +620,7 @@ function Module:Init()
 			end
 		end
 
+		-- https://create.roblox.com/docs/reference/engine/libraries/coroutine#yield
 		l.yield = rl.yield
 	end)
 
