@@ -863,19 +863,22 @@ function Module:Init()
 		end
 
 		-- https://create.roblox.com/docs/reference/engine/libraries/task#delay
-		l.delay = function(delayTime, arg, ...)
+		l.delay = function(...)
 			local sandbox = getSandbox()
 			assertTerminated(sandbox)
 
-			local thread = if type(arg) == "function"
-				then task.delay(delayTime, function(...)
-					assertTerminated(sandbox)
+			local delayTime = checkOptionalArg("delay", "number", 1, ...) or 0
+			local functionOrThread = getArg(2, ...)
 
-					arg(...)
-				end, ...)
-				else task.delay(delayTime, arg, ...)
+			local thread
+			local datatype = type(functionOrThread)
+			if datatype == "function" or datatype == "thread" then
+				thread = task.delay(delayTime, functionOrThread, select(3, ...))
+			else
+				return invalidArg("delay", 2, "function or thread expected")
+			end
+
 			sandbox.Threads[thread] = true
-
 			return thread
 		end
 
