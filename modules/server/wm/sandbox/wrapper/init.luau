@@ -9,6 +9,8 @@ local tostring = tostring
 local game = game
 local type = type
 local string = string
+local select = select
+local unpack = unpack
 
 local Rules = require("./rules")
 local Reflection = require("./reflection")
