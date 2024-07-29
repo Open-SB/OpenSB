@@ -67,7 +67,7 @@ export type sandbox = {
 	Environments: { table },
 }
 
-function Module.new(owner: Player, script: BaseScript?): sandbox
+function Module.new(owner: Player, mainFunc: () -> (), script: BaseScript?): sandbox
 	local environment = Environment.new({
 		script = script,
 		owner = owner,
@@ -91,7 +91,7 @@ function Module.new(owner: Player, script: BaseScript?): sandbox
 		scriptLookup[script] = sandbox
 	end
 
-	return sandbox
+	return sandbox, setfenv(mainFunc, sandbox.Environment)
 end
 
 function Module.getSandbox(): sandbox?

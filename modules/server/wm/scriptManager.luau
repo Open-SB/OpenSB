@@ -166,14 +166,14 @@ function Module:Init()
 				return nil, nil, nil, err
 			end
 
-			local sandbox = Sandbox.new(sourceData.owner, if not sourceData.isWorker then hostScript else nil)
+			local sandbox, sandboxedFunc =
+				Sandbox.new(sourceData.owner, func, if not sourceData.isWorker then hostScript else nil)
 			scripts[hostScript] = sandbox
-			setfenv(func, sandbox.Environment)
 
 			-- Track the calling thread (this thread)
 			sandbox.Threads[coroutine.running()] = true
 
-			return func,
+			return sandboxedFunc,
 				table.pack(Wrapper.wrapMany(unpack(sourceData.arguments, 1, sourceData.arguments.n))), -- We don't want to wrap a table, just the arguments
 				if className == "Script" or sourceData.isWorker
 					then function(thread)
