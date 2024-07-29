@@ -342,13 +342,7 @@ function Module:Init()
 			return invalidArg("getfenv", 1, "invalid level", 1)
 		end
 
-		local fenv
-		if type(stack) == "function" and not Sandbox.getSandboxFromFunction(stack) then
-			fenv = getfenv(unwrap(stack))
-		else
-			fenv = getfenv(stack)
-		end
-
+		local fenv = getfenv(unwrap(stack))
 		return if Sandbox.getSandboxFromEnvironment(fenv) then fenv else wrap(fenv)
 	end
 
