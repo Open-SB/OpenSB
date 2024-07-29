@@ -100,7 +100,7 @@ function Module.Init(_, Sandbox, Wrapper)
 			end
 
 			assertTerminated(sandbox)
-			return child
+			return wrap(child)
 		end
 	end
 
