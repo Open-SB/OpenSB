@@ -107,15 +107,6 @@ function Module.getSandbox(): sandbox?
 	error("failed to get sandbox", 0)
 end
 
--- Calling it "assertTerminated" may make it sound like we error if it's NOT terminated (i.e something like "refuseTerminated" or "assertRunning" would be better).
-function Module.assertTerminated(sandbox: sandbox?)
-	if (sandbox or Module.getSandbox()).Terminated then
-		-- We use task.delay to schedule termination instead of task.defer because defer may throw an error if it exceeds the limit of 80
-		task.delay(0, Module.Terminate, Module, sandbox)
-		error("sandbox terminated", 0)
-	end
-end
-
 function Module.claimEnvironment(environment: table, sandbox: sandbox?)
 	sandbox = sandbox or Module.getSandbox()
 	Module.assertTerminated(sandbox)

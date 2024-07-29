@@ -24,7 +24,6 @@ local Sandbox
 local BlockedInstances = require("./blockedInstances")
 
 local getSandbox
-local assertTerminated
 local claimEnvironment
 
 local toCString = Functions.toCString
@@ -43,7 +42,6 @@ function Module.setSandbox(sandbox)
 	Sandbox = sandbox
 	fmap, rfmap = Sandbox.FunctionMap, Sandbox.ReverseFunctionMap
 	getSandbox = Sandbox.getSandbox
-	assertTerminated = Sandbox.assertTerminated
 	claimEnvironment = Sandbox.claimEnvironment
 end
 
@@ -457,16 +455,9 @@ function Module:Init()
 		end
 
 		local delayTime, callback = ...
-		local sandbox = getSandbox()
-		assertTerminated(sandbox)
-
-		sandbox.Threads[task.spawn(function()
-			(fmap[callback] or callback)((function(...)
-				assertTerminated(sandbox)
-				return ...
-			end)(renv.wait(delayTime)))
-		end)] =
-			true
+		getSandbox().Threads[task.spawn(function()
+			(fmap[callback] or callback)(renv.wait(delayTime))
+		end)] = true
 	end
 
 	-- delay == Delay is false
@@ -521,16 +512,9 @@ function Module:Init()
 		end
 
 		local callback = ...
-		local sandbox = getSandbox()
-		assertTerminated(sandbox)
-
-		sandbox.Threads[task.spawn(function()
-			(fmap[callback] or callback)((function(...)
-				assertTerminated(sandbox)
-				return ...
-			end)(renv.wait()))
-		end)] =
-			true
+		getSandbox().Threads[task.spawn(function()
+			(fmap[callback] or callback)(renv.wait())
+		end)] = true
 	end
 
 	-- spawn == Spawn is false
@@ -600,11 +584,8 @@ function Module:Init()
 
 		-- https://create.roblox.com/docs/reference/engine/libraries/coroutine#resume
 		l.resume = function(...)
-			local sandbox = getSandbox()
-			assertTerminated(sandbox)
-
 			local thread = checkArg("resume", "thread", 1, ...)
-			sandbox.Threads[thread] = true
+			getSandbox().Threads[thread] = true
 
 			return coroutine.resume(thread, select(2, ...))
 		end
@@ -622,16 +603,13 @@ function Module:Init()
 			getSandbox().Threads[thread] = true
 
 			return function(...)
-				local sandbox = getSandbox()
-				assertTerminated(sandbox)
-
 				if coroutine.status(thread) == "dead" then
-					sandbox.Threads[thread] = nil
+					getSandbox().Threads[thread] = nil
 
 					return error("cannot resume dead coroutine", seekSafeLevel(1))
 				end
 
-				sandbox.Threads[thread] = true
+				getSandbox().Threads[thread] = true
 
 				local resumeSuccess, resumeResult = coroutine.resume(thread, ...)
 				if not resumeSuccess then
@@ -642,15 +620,7 @@ function Module:Init()
 			end
 		end
 
-		l.yield = function(...)
-			local sandbox = getSandbox()
-			assertTerminated(sandbox)
-
-			return (function(...)
-				assertTerminated(sandbox)
-				return ...
-			end)(coroutine.yield(...))
-		end
+		l.yield = rl.yield
 	end)
 
 	-- https://create.roblox.com/docs/reference/engine/libraries/debug
