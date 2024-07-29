@@ -17,7 +17,7 @@ do
 			script:Destroy()
 			script = nil
 
-			coroutine.resume(thread)
+			task.spawn(thread)
 		end
 	)
 

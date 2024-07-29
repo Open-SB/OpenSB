@@ -41,7 +41,7 @@ do
 				parent:Destroy()
 			end
 
-			coroutine.resume(thread)
+			task.spawn(thread)
 		end
 	)
 
