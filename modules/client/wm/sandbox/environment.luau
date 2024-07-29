@@ -425,28 +425,10 @@ function Module:Init()
 
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#xpcall
 	senv.xpcall = function(...)
-		local errorHandler = checkArg("xpcall", "function", 2, ...)
 		local func = getArg(1, ...)
+		local err = getArg(2, ...)
 
-		local sandbox = getSandbox()
-		assertTerminated(sandbox)
-
-		return (function(success, result1, ...)
-			assertTerminated(sandbox)
-			if success then
-				return true, result1, ...
-			end
-
-			return (function(errorHandlerSuccess, result)
-				assertTerminated(sandbox)
-				if errorHandlerSuccess then
-					-- The error handler in xpcall can only return 1 value
-					return false, result
-				end
-
-				return false, "error in error handling"
-			end)(pcall(errorHandler, result1))
-		end)(pcall(fmap[func] or func, select(3, ...)))
+		return renv.xpcall(fmap[func] or func, fmap[err] or err, select(3, ...))
 	end
 
 	--[[
