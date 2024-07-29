@@ -47,24 +47,48 @@ function Module:Init()
 			return
 		end
 
-		local sourceData = classSources[sourceId]
-		if not sourceData then
+		local data = classSources[sourceId]
+		if not data then
 			return
 		end
 
-		-- TODO: Compile modules if not already
 		-- TODO: Check if the player can run the script
 
-		while sourceData.compiling do
-			-- Wait for script to finish compiling if it hasn't already
-			task.wait()
+		-- Compile source to bytecode if not done already
+		if not data.bytecode and not data.error and not data.compiling then
+			if not data.source then
+				-- Cannot compile without source
+				return
+			end
+
+			data.compiling = true
+
+			local success, result = compile(data.source)
+			if not success then
+				data.error = result
+			else
+				data.bytecode = result
+			end
+
+			data.compiling = false
+		elseif not data.error then
+			repeat
+				-- Wait for script to finish compiling
+				task.wait()
+			until not data.compiling
+		end
+
+		if data.error then
+			return {
+				owner = data.owner,
+				error = data.error,
+			}
 		end
 
 		return {
-			owner = sourceData.owner,
-			error = sourceData.error,
-			bytecode = sourceData.bytecode,
-			arguments = sourceData.arguments,
+			owner = data.owner,
+			bytecode = data.bytecode,
+			arguments = data.arguments,
 		}
 	end)
 
@@ -78,7 +102,6 @@ function Module:Init()
 
 			if scriptType ~= ScriptTypes.LocalScript then
 				data.source = source
-				table.freeze(data)
 			else
 				data.compiling = true
 
@@ -91,7 +114,6 @@ function Module:Init()
 					end
 
 					data.compiling = false
-					table.freeze(data)
 				end)
 			end
 

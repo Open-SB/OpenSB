@@ -125,7 +125,7 @@ function Module:Init()
 				local err = hostScript:GetFullName() .. sourceData.error
 
 				ManagerCommunication:Send("error", err)
-				return nil, nil, err
+				return nil, nil, nil, err
 			end
 
 			local sandbox, sandboxedFunc =
@@ -135,7 +135,15 @@ function Module:Init()
 			-- Track the calling thread (this thread)
 			sandbox.Threads[coroutine.running()] = true
 
-			return sandboxedFunc, sourceData.arguments
+			return sandboxedFunc,
+				sourceData.arguments,
+				if className == "Script" or sourceData.isWorker
+					then function(thread)
+						sandbox.Threads[thread] = true
+					end
+					else function(...)
+						return ...
+					end
 		end,
 	})
 end

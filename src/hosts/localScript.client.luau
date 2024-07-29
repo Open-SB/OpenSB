@@ -3,7 +3,7 @@ if script:GetActor() ~= nil then
 	return error("SB scripts cannot be ran under actors.", 0)
 end
 
-local func, arguments, err = shared(_G.localScriptHostKey, script)
+local func, arguments, track, err = shared(_G.localScriptHostKey, script)
 if err then
 	return task.spawn(error, err) -- Spawning the error function "removes" the error stack messages (excluding the "Stack Begin" and "Stack End").
 end
@@ -17,4 +17,4 @@ setfenv(0, env)
 setfenv(1, env)
 
 -- Spawn the function to not count towards the error stack.
-spawn(func, unpack(arguments, 1, arguments.n))
+track(spawn(func, unpack(arguments, 1, arguments.n)))
