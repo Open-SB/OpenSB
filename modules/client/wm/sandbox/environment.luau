@@ -227,7 +227,7 @@ local function manyToString(...): string
 	return table.concat(output, " ")
 end
 
--- We package args inside bindble functions when transmitting them via ManagerCommunication
+-- We package args inside bindable functions when transmitting them via ManagerCommunication
 -- This prevents roblox from replacing functions that are being sent over with ones that errors with "Attempt to load a function from a different Lua VM"
 -- (Because we only read from the bindable when it has been sent back to this WorkerManager)
 local function package(...)
@@ -245,7 +245,7 @@ local function package(...)
 end
 
 -- Anything such as "senv.x = renv.x" is purely for optimization, to skip any potential wrapping of the global.
--- This kind of optimization doesn't really need to be added for depricated things.
+-- This kind of optimization doesn't really need to be added for deprecated things.
 function Module:Init()
 	do
 		setmetatable(senv, {
