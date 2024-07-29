@@ -172,7 +172,6 @@ local function luau_newsettings()
 			error("Native __namecall handler was not provided")
 		end,
 		callHooks = {},
-		errorHandling = true,
 		generalizedIteration = true,
 		allowProxyErrors = false,
 		useImportConstants = false,
@@ -190,7 +189,6 @@ local function luau_validatesettings(luau_settings)
 	assert(type(luau_settings.useNativeNamecall) == "boolean", "luau_settings.useNativeNamecall should be a boolean")
 	assert(type(luau_settings.namecallHandler) == "function", "luau_settings.namecallHandler should be a function")
 	assert(type(luau_settings.callHooks) == "table", "luau_settings.callHooks should be a table of functions")
-	assert(type(luau_settings.errorHandling) == "boolean", "luau_settings.errorHandling should be a boolean")
 	assert(
 		type(luau_settings.generalizedIteration) == "boolean",
 		"luau_settings.generalizedIteration should be a boolean"
@@ -612,35 +610,28 @@ local function luau_load(module, sandbox, luau_settings)
 	-- selene: allow(shadowing)
 	local function luau_wrapclosure(module, proto, upvals, _env)
 		local function luau_execute(...)
-			local debugging, stack, protos, code, varargs
+			local passed = table_pack(...)
+			local stack = table_create(proto.maxstacksize)
+			local varargs = {
+				len = 0,
+				list = {},
+			}
 
-			if luau_settings.errorHandling then
-				debugging, stack, protos, code, varargs = ...
-			else
-				--// Copied from error handling wrapper
-				local passed = table_pack(...)
-				stack = table_create(proto.maxstacksize)
-				varargs = {
-					len = 0,
-					list = {},
-				}
+			table_move(passed, 1, proto.numparams, 0, stack)
 
-				table_move(passed, 1, proto.numparams, 0, stack)
-
-				if proto.numparams < passed.n then
-					local start = proto.numparams + 1
-					local len = passed.n - proto.numparams
-					varargs.len = len
-					table_move(passed, start, start + len - 1, 1, varargs.list)
-				end
-
-				passed = nil
-
-				debugging = { pc = 0, name = "NONE" }
-
-				protos = proto.protos
-				code = proto.code
+			if proto.numparams < passed.n then
+				local start = proto.numparams + 1
+				local len = passed.n - proto.numparams
+				varargs.len = len
+				table_move(passed, start, start + len - 1, 1, varargs.list)
 			end
+
+			passed = nil
+
+			local debugging = { pc = 0, name = "NONE" }
+
+			local protos = proto.protos
+			local code = proto.code
 
 			local top, pc, open_upvalues, generalized_iterators =
 				-1, 1, setmetatable({}, { __mode = "vs" }), setmetatable({}, { __mode = "ks" })
@@ -1690,84 +1681,8 @@ local function luau_load(module, sandbox, luau_settings)
 			end
 		end
 
-		local function wrapped(...)
-			local passed = table_pack(...)
-			local stack = table_create(proto.maxstacksize)
-			local varargs = {
-				len = 0,
-				list = {},
-			}
-
-			table_move(passed, 1, proto.numparams, 0, stack)
-
-			if proto.numparams < passed.n then
-				local start = proto.numparams + 1
-				local len = passed.n - proto.numparams
-				varargs.len = len
-				table_move(passed, start, start + len - 1, 1, varargs.list)
-			end
-
-			passed = nil
-
-			local debugging = { pc = 0, name = "NONE" }
-			local result
-			if luau_settings.errorHandling then
-				result = table_pack(pcall(luau_execute, debugging, stack, proto.protos, proto.code, varargs))
-			else
-				result = table_pack(true, luau_execute(debugging, stack, proto.protos, proto.code, varargs))
-			end
-
-			if result[1] then
-				return table_unpack(result, 2, result.n)
-			else
-				local message = result[2]
-
-				if panicHook then
-					panicHook(message, stack, debugging, proto, module, upvals)
-				end
-
-				if ttisstring(message) == false then
-					if luau_settings.allowProxyErrors then
-						error(message)
-					else
-						message = type(message)
-					end
-				end
-
-				if proto.lineinfoenabled then
-					return error(
-						string_format(
-							"Fiu VM Error { Name: %s Line: %s PC: %s Opcode: %s }: %s",
-							proto.debugname,
-							proto.instructionlineinfo[debugging.pc],
-							debugging.pc,
-							debugging.name,
-							message
-						),
-						0
-					)
-				else
-					return error(
-						string_format(
-							"Fiu VM Error { Name: %s PC: %s Opcode: %s }: %s",
-							proto.debugname,
-							debugging.pc,
-							debugging.name,
-							message
-						),
-						0
-					)
-				end
-			end
-		end
-
-		if luau_settings.errorHandling then
-			functionLookup[wrapped] = sandbox
-			return setfenv(wrapped, _env or env)
-		else
-			functionLookup[luau_execute] = sandbox
-			return setfenv(luau_execute, _env or env)
-		end
+		functionLookup[luau_execute] = sandbox
+		return setfenv(luau_execute, _env or env)
 	end
 
 	return luau_wrapclosure(module, mainProto), luau_close
