@@ -8,6 +8,7 @@ local table = table
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
+local Sandbox = require("client/wm/sandbox")
 local ManagerCommunication = require("shared/wm/communication")
 
 local ScriptTypes = require("shared/scriptManager/scriptTypes")
@@ -26,6 +27,7 @@ local sources = {
 	[ScriptTypes.LocalScript] = {} :: { [string]: source },
 	[ScriptTypes.ModuleScript] = {} :: { [string]: source },
 }
+local scripts = {}
 local toPrompt = {}
 
 local localPlayer = Players.LocalPlayer
@@ -126,7 +128,14 @@ function Module:Init()
 				return nil, nil, err
 			end
 
-			return function() end, sourceData.arguments
+			local sandbox, sandboxedFunc =
+				Sandbox.new(sourceData.owner, sourceData.bytecode, if not sourceData.isWorker then hostScript else nil)
+			scripts[hostScript] = sandbox
+
+			-- Track the calling thread (this thread)
+			sandbox.Threads[coroutine.running()] = true
+
+			return sandboxedFunc, sourceData.arguments
 		end,
 	})
 end
