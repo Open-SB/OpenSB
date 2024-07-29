@@ -636,7 +636,7 @@ function Module:Init()
 		-- https://create.roblox.com/docs/reference/engine/libraries/coroutine#wrap
 		l.wrap = function(...)
 			local func = checkArg("wrap", "function", 1, ...)
-			local thread = coroutine.create(fmap[func] or func, select(2, ...))
+			local thread = coroutine.create(fmap[func] or func)
 			getSandbox().Threads[thread] = true
 
 			return function(...)
