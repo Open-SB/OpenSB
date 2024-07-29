@@ -75,8 +75,8 @@ function Module.setSandbox(sandbox)
 	Sandbox = sandbox
 	wrapMap, unwrapMap = Sandbox.WrapMap, Sandbox.UnwrapMap
 
-	Reflection.setWrapper(Module)
-	Rules:Init(Sandbox, Module, Reflection)
+	Rules:Init(Sandbox, Module)
+	Reflection:Init(Sandbox, Module)
 end
 
 wrap = function(value: any, wrappedTables: table?): any

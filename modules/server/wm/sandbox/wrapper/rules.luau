@@ -8,7 +8,6 @@ local coroutine = coroutine
 local debug = debug
 
 local ManagerCommunication = require("shared/wm/communication")
-local Functions = require("shared/functions")
 
 local renv = getfenv()
 local removeProtectedClasses = table.freeze({
@@ -20,17 +19,13 @@ local removeProtectedClasses = table.freeze({
 local Module = {}
 Module.RemoveProtectedClasses = removeProtectedClasses
 
-function Module.Init(_, Sandbox, Wrapper, Reflection)
+function Module.Init(_, Sandbox, Wrapper)
 	local wmap = Sandbox.WrapMap
 	local getSandbox = Sandbox.getSandbox
 	local assertTerminated = Sandbox.assertTerminated
 
 	local wrap, unwrap = Wrapper.wrap, Wrapper.unwrap
 	local wrapMany, unwrapMany = Wrapper.wrapMany, Wrapper.unwrapMany
-
-	-- Map the C implementation of __index and __newindex to their sandboxed versions
-	wmap[Functions.indexInstance] = Reflection.Instance.__index
-	wmap[Functions.newindexInstance] = Reflection.Instance.__newindex
 
 	do -- https://create.roblox.com/docs/reference/engine/classes/Instance
 		local ClearAllChildren = game.ClearAllChildren
