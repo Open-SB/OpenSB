@@ -81,7 +81,7 @@ function Module:Init()
 				return error("invalid script", 2)
 			end
 
-			-- Pcall while obtaining the ClassName prevents any Ro bloxLocked instance from throwing an error here
+			-- Pcall while obtaining the ClassName prevents any RobloxLocked instance from throwing an error here
 			local className: string?
 			pcall(function()
 				className = hostScript.ClassName
