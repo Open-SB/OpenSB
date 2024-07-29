@@ -124,6 +124,10 @@ function Module.claimEnvironment(environment: table, sandbox: sandbox?)
 	envLookup[environment] = sandbox
 end
 
+function Module.getSandboxFromEnvironment(environment: table): sandbox?
+	return envLookup[environment]
+end
+
 function Module.getSandboxFromFunction(func: () -> ()): sandbox?
 	local l, s = debug.info(func, "ls")
 	if l == -1 and s == "[C]" then

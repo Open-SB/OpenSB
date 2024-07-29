@@ -342,7 +342,14 @@ function Module:Init()
 			return invalidArg("getfenv", 1, "invalid level", 1)
 		end
 
-		return wrap(getfenv(unwrap(stack)))
+		local fenv
+		if type(stack) == "function" and not Sandbox.getSandboxFromFunction(stack) then
+			fenv = getfenv(unwrap(stack))
+		else
+			fenv = getfenv(stack)
+		end
+
+		return if Sandbox.getSandboxFromEnvironment(fenv) then fenv else wrap(fenv)
 	end
 
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#getmetatable
