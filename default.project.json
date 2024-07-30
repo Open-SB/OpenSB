@@ -111,7 +111,8 @@
     },
     "Workspace": {
       "$properties": {
-        "FilteringEnabled": true
+        "FilteringEnabled": true,
+        "SignalBehavior": "Immediate"
       }
     },
     "Players": {
