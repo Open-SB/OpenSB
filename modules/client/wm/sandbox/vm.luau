@@ -16,6 +16,7 @@ local table_unpack = table.unpack
 local table_create = table.create
 local table_insert = table.insert
 local table_remove = table.remove
+local table_freeze = table.freeze
 
 local coroutine_create = coroutine.create
 local coroutine_yield = coroutine.yield
@@ -1688,7 +1689,7 @@ local function luau_load(module, sandbox, luau_settings)
 	return luau_wrapclosure(module, mainProto), luau_close
 end
 
-return {
+return table_freeze({
 	luau_newsettings = luau_newsettings,
 	luau_validatesettings = luau_validatesettings,
 	luau_deserialize = luau_deserialize,
@@ -1698,4 +1699,4 @@ return {
 		functionLookup = sandbox.FunctionLookup
 		fmap, rfmap = sandbox.FunctionMap, sandbox.ReverseFunctionMap
 	end,
-}
+})
