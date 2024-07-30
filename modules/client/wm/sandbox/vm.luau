@@ -39,14 +39,14 @@ local bit32_lshift = bit32.lshift
 local bit32_extract = bit32.extract
 
 local functionLookup
-local fmap, rfmap
+local fmap
 
 local ttisnumber = function(v)
 	return type(v) == "number"
 end
-local ttisstring = function(v)
-	return type(v) == "string"
-end
+-- local ttisstring = function(v)
+-- 	return type(v) == "string"
+-- end
 local ttisboolean = function(v)
 	return type(v) == "boolean"
 end
@@ -1696,7 +1696,11 @@ return table_freeze({
 	luau_load = luau_load,
 
 	setSandbox = function(sandbox)
+		if functionLookup then
+			return error("already initialized", 0)
+		end
+
 		functionLookup = sandbox.FunctionLookup
-		fmap, rfmap = sandbox.FunctionMap, sandbox.ReverseFunctionMap
+		fmap = sandbox.FunctionMap
 	end,
 })
