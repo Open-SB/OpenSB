@@ -15,7 +15,6 @@ local table_pack = table.pack
 local table_unpack = table.unpack
 local table_create = table.create
 local table_insert = table.insert
-local table_remove = table.remove
 local table_freeze = table.freeze
 
 local coroutine_create = coroutine.create
@@ -37,6 +36,8 @@ local bit32_btest = bit32.btest
 local bit32_rshift = bit32.rshift
 local bit32_lshift = bit32.lshift
 local bit32_extract = bit32.extract
+
+local Vector3_new = Vector3.new
 
 local functionLookup
 local fmap
@@ -162,64 +163,7 @@ local opList = {
 local LUA_MULTRET = -1
 local LUA_GENERALIZED_TERMINATOR = -2
 
-local function luau_newsettings()
-	return {
-		vectorCtor = function()
-			error("vectorCtor was not provided")
-		end,
-		vectorSize = 4,
-		useNativeNamecall = false,
-		namecallHandler = function()
-			error("Native __namecall handler was not provided")
-		end,
-		callHooks = {},
-		generalizedIteration = true,
-		allowProxyErrors = false,
-		useImportConstants = false,
-		staticEnvironment = {},
-		decodeOp = function(op)
-			return op
-		end,
-	}
-end
-
-local function luau_validatesettings(luau_settings)
-	assert(type(luau_settings) == "table", "luau_settings should be a table")
-	assert(type(luau_settings.vectorCtor) == "function", "luau_settings.vectorCtor should be a function")
-	assert(type(luau_settings.vectorSize) == "number", "luau_settings.vectorSize should be a number")
-	assert(type(luau_settings.useNativeNamecall) == "boolean", "luau_settings.useNativeNamecall should be a boolean")
-	assert(type(luau_settings.namecallHandler) == "function", "luau_settings.namecallHandler should be a function")
-	assert(type(luau_settings.callHooks) == "table", "luau_settings.callHooks should be a table of functions")
-	assert(
-		type(luau_settings.generalizedIteration) == "boolean",
-		"luau_settings.generalizedIteration should be a boolean"
-	)
-	assert(type(luau_settings.allowProxyErrors) == "boolean", "luau_settings.allowProxyErrors should be a boolean")
-	assert(type(luau_settings.staticEnvironment) == "table", "luau_settings.staticEnvironment should be a table")
-	assert(type(luau_settings.useImportConstants) == "boolean", "luau_settings.useImportConstants should be a boolean")
-	assert(type(luau_settings.decodeOp) == "function", "luau_settings.function should be a function")
-end
-
-local function resolveImportConstant(static, count, k0, k1, k2)
-	local res = static[k0]
-	if count < 2 or res == nil then
-		return res
-	end
-	res = res[k1]
-	if count < 3 or res == nil then
-		return res
-	end
-	res = res[k2]
-	return res
-end
-
-local function luau_deserialize(bytecode, luau_settings)
-	if luau_settings == nil then
-		luau_settings = luau_newsettings()
-	else
-		luau_validatesettings(luau_settings)
-	end
-
+local function luau_deserialize(bytecode)
 	local stream = if type(bytecode) == "string" then buffer_fromstring(bytecode) else bytecode
 	local cursor = 0
 
@@ -292,7 +236,7 @@ local function luau_deserialize(bytecode, luau_settings)
 	end
 
 	local function readInstruction(codeList)
-		local value = luau_settings.decodeOp(readWord())
+		local value = readWord()
 		local opcode = bit32_band(value, 0xFF)
 
 		local opinfo = opList[opcode + 1]
@@ -366,9 +310,6 @@ local function luau_deserialize(bytecode, luau_settings)
 				inst.K1 = k[id1 + 1]
 				inst.K2 = k[id2 + 1]
 			end
-			if luau_settings.useImportConstants then
-				inst.K = resolveImportConstant(luau_settings.staticEnvironment, count, inst.K0, inst.K1, inst.K2)
-			end
 		elseif kmode == 5 then --// AUX boolean low 1 bit
 			inst.K = bit32_extract(inst.aux, 0, 1) == 1
 			inst.KN = bit32_extract(inst.aux, 31, 1) == 1
@@ -440,13 +381,9 @@ local function luau_deserialize(bytecode, luau_settings)
 			elseif kt == 6 then --// Closure
 				k = readVarInt()
 			elseif kt == 7 then --// Vector
-				local x, y, z, w = readFloat(), readFloat(), readFloat(), readFloat()
+				local x, y, z, _ = readFloat(), readFloat(), readFloat(), readFloat()
 
-				if luau_settings.vectorSize == 4 then
-					k = luau_settings.vectorCtor(x, y, z, w)
-				else
-					k = luau_settings.vectorCtor(x, y, z)
-				end
+				k = Vector3_new(x, y, z)
 			end
 
 			klist[i] = k
@@ -581,26 +518,15 @@ local function luau_deserialize(bytecode, luau_settings)
 	}
 end
 
-local function luau_load(module, sandbox, luau_settings)
-	if luau_settings == nil then
-		luau_settings = luau_newsettings()
-	else
-		luau_validatesettings(luau_settings)
-	end
-
+local function luau_load(module, sandbox)
 	if type(module) ~= "table" then
-		module = luau_deserialize(module, luau_settings)
+		module = luau_deserialize(module)
 	end
 
 	local env = sandbox.Environment
 
 	local protolist = module.protoList
 	local mainProto = module.mainProto
-
-	local breakHook = luau_settings.callHooks.breakHook
-	local stepHook = luau_settings.callHooks.stepHook
-	local interruptHook = luau_settings.callHooks.interruptHook
-	local panicHook = luau_settings.callHooks.panicHook
 
 	local alive = true
 
@@ -655,22 +581,10 @@ local function luau_load(module, sandbox, luau_settings)
 
 				pc += 1
 
-				if stepHook then
-					stepHook(stack, debugging, proto, module, upvals)
-				end
-
 				-- selene: allow(empty_if)
 				if op == 0 then --[[ NOP ]]
 					--// Do nothing
 				elseif op == 1 then --[[ BREAK ]]
-					if breakHook then
-						local results = table.pack(breakHook(stack, debugging, proto, module, upvals))
-
-						if results[1] then
-							return table_unpack(results, 2, #results)
-						end
-					end
-
 					pc -= 1
 					op = debugopcodes[pc]
 					handlingBreak = true
@@ -711,19 +625,15 @@ local function luau_load(module, sandbox, luau_settings)
 						end
 					end
 				elseif op == 12 then --[[ GETIMPORT ]]
-					if luau_settings.useImportConstants then
-						stack[inst.A] = inst.K
-					else
-						local count = inst.KC
-						local k0 = inst.K0
-						local import = getfenv()[k0]
-						if count == 1 then
-							stack[inst.A] = import
-						elseif count == 2 then
-							stack[inst.A] = import[inst.K1]
-						elseif count == 3 then
-							stack[inst.A] = import[inst.K1][inst.K2]
-						end
+					local count = inst.KC
+					local k0 = inst.K0
+					local import = getfenv()[k0]
+					if count == 1 then
+						stack[inst.A] = import
+					elseif count == 2 then
+						stack[inst.A] = import[inst.K1]
+					elseif count == 3 then
+						stack[inst.A] = import[inst.K1][inst.K2]
 					end
 
 					pc += 1 --// adjust for aux
@@ -796,63 +706,8 @@ local function luau_load(module, sandbox, luau_settings)
 
 					pc += 1 --// adjust for aux
 
-					local useFallback = true
-
-					--// Special handling for native namecall behaviour
-					local useNativeHandler = luau_settings.useNativeNamecall
-
-					if useNativeHandler then
-						local nativeNamecall = luau_settings.namecallHandler
-
-						local callInst = code[pc]
-						local callOp = callInst.opcode
-
-						--// Copied from the CALL handler under
-						local callA, callB, callC = callInst.A, callInst.B, callInst.C
-
-						if stepHook then
-							stepHook(stack, debugging, proto, module, upvals)
-						end
-
-						if interruptHook then
-							interruptHook(stack, debugging, proto, module, upvals)
-						end
-
-						local params = if callB == 0 then top - callA else callB - 1
-						local ret_list = table_pack(nativeNamecall(kv, table_unpack(stack, callA + 1, callA + params)))
-
-						if ret_list[1] == true then
-							useFallback = false
-
-							pc += 1 --// Skip next CALL instruction
-
-							inst = callInst
-							op = callOp
-							debugging.pc = pc
-							debugging.name = inst.opname
-
-							table_remove(ret_list, 1)
-
-							local ret_num = ret_list.n - 1
-
-							if callC == 0 then
-								top = callA + ret_num - 1
-							else
-								ret_num = callC - 1
-							end
-
-							table_move(ret_list, 1, ret_num, callA, stack)
-						end
-					end
-
-					if useFallback then
-						stack[A] = sb[kv]
-					end
+					stack[A] = sb[kv]
 				elseif op == 21 then --[[ CALL ]]
-					if interruptHook then
-						interruptHook(stack, debugging, proto, module, upvals)
-					end
-
 					local A, B, C = inst.A, inst.B, inst.C
 
 					local params = if B == 0 then top - A else B - 1
@@ -869,10 +724,6 @@ local function luau_load(module, sandbox, luau_settings)
 
 					table_move(ret_list, 1, ret_num, A, stack)
 				elseif op == 22 then --[[ RETURN ]]
-					if interruptHook then
-						interruptHook(stack, debugging, proto, module, upvals)
-					end
-
 					local A = inst.A
 					local B = inst.B
 					local b = B - 1
@@ -888,10 +739,7 @@ local function luau_load(module, sandbox, luau_settings)
 				elseif op == 23 then --[[ JUMP ]]
 					pc += inst.D
 				elseif op == 24 then --[[ JUMPBACK ]]
-					if interruptHook then
-						interruptHook(stack, debugging, proto, module, upvals)
-					end
-
+					-- selene: allow(if_same_then_else)
 					pc += inst.D
 				elseif op == 25 then --[[ JUMPIF ]]
 					if stack[inst.A] then
@@ -1057,10 +905,6 @@ local function luau_load(module, sandbox, luau_settings)
 						end
 					end
 				elseif op == 57 then --[[ FORNLOOP ]]
-					if interruptHook then
-						interruptHook(stack, debugging, proto, module, upvals)
-					end
-
 					local A = inst.A
 					local limit = stack[A]
 					local step = stack[A + 1]
@@ -1078,10 +922,6 @@ local function luau_load(module, sandbox, luau_settings)
 						end
 					end
 				elseif op == 58 then --[[ FORGLOOP ]]
-					if interruptHook then
-						interruptHook(stack, debugging, proto, module, upvals)
-					end
-
 					local A = inst.A
 					local res = inst.K
 
@@ -1089,7 +929,7 @@ local function luau_load(module, sandbox, luau_settings)
 
 					local it = stack[A]
 
-					if (luau_settings.generalizedIteration == false) or ttisfunction(it) then
+					if ttisfunction(it) then
 						local vals = { it(stack[A + 1], stack[A + 2]) }
 						table_move(vals, 1, res, A + 3, stack)
 
@@ -1174,10 +1014,6 @@ local function luau_load(module, sandbox, luau_settings)
 
 					pc += 1 --// adjust for aux
 				elseif op == 67 then --[[ JUMPX ]]
-					if interruptHook then
-						interruptHook(stack, debugging, proto, module, upvals)
-					end
-
 					pc += inst.E
 				elseif op == 68 then --[[ FASTCALL ]]
 					--[[ Skipped ]]
@@ -1203,7 +1039,7 @@ local function luau_load(module, sandbox, luau_settings)
 				elseif op == 76 then --[[ FORGPREP ]]
 					local iterator = stack[inst.A]
 
-					if luau_settings.generalizedIteration and not ttisfunction(iterator) then
+					if not ttisfunction(iterator) then
 						local loopInstruction = code[pc + inst.D]
 						if generalized_iterators[loopInstruction] == nil then
 							local function gen_iterator(...)
@@ -1690,8 +1526,6 @@ local function luau_load(module, sandbox, luau_settings)
 end
 
 return table_freeze({
-	luau_newsettings = luau_newsettings,
-	luau_validatesettings = luau_validatesettings,
 	luau_deserialize = luau_deserialize,
 	luau_load = luau_load,
 
