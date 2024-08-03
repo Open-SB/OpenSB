@@ -6,12 +6,12 @@ useCases = [["code"]]
 [httpExecute]
 description = "Executes server sided code from a link."
 aliases = ["httpExecute", "h"]
-useCases = [["code"]]
+useCases = [["link"]]
 
 [localExecute]
 description = "Executes client sided code."
 aliases = ["localExecute", "cl", "l", "x"]
-useCases = [["link"]]
+useCases = [["code"]]
 
 [httpLocalExecute]
 description = "Executes client sided code from a link."
