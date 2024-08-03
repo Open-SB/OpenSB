@@ -21,10 +21,14 @@ local ManagerCommunication = require("shared/wm/communication")
 local Functions = require("shared/functions")
 
 local Sandbox
+local VM = require("./vm")
 local BlockedInstances = require("./blockedInstances")
 
 local getSandbox
 local claimEnvironment
+
+local getRunning = VM.getRunning
+local formatError = VM.formatError
 
 local toCString = Functions.toCString
 
@@ -345,7 +349,16 @@ function Module:Init()
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#pcall
 	senv.pcall = function(...)
 		local func = checkArg("pcall", "function", 1, ...)
-		return pcall(fmap[func] or func, select(2, ...))
+		return (function(success, ...)
+			if success then
+				return true, ...
+			end
+
+			local message = ...
+			local running = getRunning()
+
+			return false, if running then formatError(running, message) else message
+		end)(pcall(fmap[func] or func, select(2, ...)))
 	end
 	senv.ypcall = senv.pcall
 
@@ -423,10 +436,14 @@ function Module:Init()
 
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#xpcall
 	senv.xpcall = function(...)
+		local err = checkArg("xpcall", "function", 2, ...)
 		local func = getArg(1, ...)
-		local err = getArg(2, ...)
 
-		return renv.xpcall(fmap[func] or func, fmap[err] or err, select(3, ...))
+		return renv.xpcall(fmap[func] or func, function(message)
+			local running = getRunning()
+
+			return (fmap[err] or err)(if running then formatError(running, message) else message)
+		end, select(3, ...))
 	end
 
 	--[[
