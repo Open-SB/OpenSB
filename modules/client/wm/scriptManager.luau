@@ -21,6 +21,9 @@ local Functions = require("shared/functions")
 local ScriptTypes = require("shared/scriptManager/scriptTypes")
 
 local getRunning = VM.getRunning
+local getDebugInfo = VM.getDebugInfo
+local formatError = VM.formatError
+
 local vmStart = VM.vmStart
 local vmEnd = VM.vmEnd
 
@@ -174,19 +177,7 @@ function Module:Init()
 			return
 		end
 
-		if string.sub(message, 1, #wmSource) ~= wmSource then -- Level 0 error
-			ManagerCommunication:Send("error", message)
-		else
-			local closureInfo = running.closureInfo
-			local proto = closureInfo.proto
-
-			local errorSource = closureInfo.sandbox.StackSource or "(?)"
-			local errorMessage = string.match(message, "^:%d+: (.+)$", #wmSource + 1)
-			local line = if proto.instructionlineinfo then proto.instructionlineinfo[running.pc] or "?" else "?"
-
-			ManagerCommunication:Send("error", `{errorSource}:{line}: {errorMessage}`)
-		end
-
+		ManagerCommunication:Send("error", formatError(running, message))
 		ManagerCommunication:Send("info", "Stack Begin")
 
 		-- Format and filter out sb stack traces
@@ -217,17 +208,11 @@ function Module:Init()
 				continue
 			end
 
-			local closureInfo = currentStack.closureInfo
-			local proto = closureInfo.proto
-
-			local vmSource = closureInfo.sandbox.StackSource or "(?)"
-			local vmLine = if proto.instructionlineinfo then proto.instructionlineinfo[currentStack.pc] or "?" else "?"
-			local vmFunc = proto.debugname
-
+			local vmSource, vmLine, vmFunc = getDebugInfo(currentStack)
 			if vmFunc then
-				ManagerCommunication:Send("info", `Script '{vmSource}', Line {vmLine} - function {vmFunc}`)
+				ManagerCommunication:Send("info", `Script '{vmSource}', Line {vmLine or "?"} - function {vmFunc}`)
 			else
-				ManagerCommunication:Send("info", `Script '{vmSource}', Line {vmLine}`)
+				ManagerCommunication:Send("info", `Script '{vmSource}', Line {vmLine or "?"}`)
 			end
 
 			currentStack = currentStack.stackParent

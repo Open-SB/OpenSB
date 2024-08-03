@@ -9,6 +9,8 @@ local getfenv = getfenv
 local setfenv = setfenv
 
 local string_format = string.format
+local string_match = string.match
+local string_sub = string.sub
 
 local table_move = table.move
 local table_pack = table.pack
@@ -1546,6 +1548,29 @@ local function luau_load(module, sandbox)
 end
 local vmEnd = debug_info(function() end, "l")
 
+local function getDebugInfo(runningInfo: table): (string, number?, string?)
+	local closure = runningInfo.closureInfo
+	local proto = closure.proto
+
+	local source = closure.sandbox.StackSource or "(?)"
+	local line = if proto.instructionlineinfo then proto.instructionlineinfo[runningInfo.pc] else nil
+	local func = proto.debugname
+
+	return source, line, func
+end
+
+local wmSource = debug_info(function() end, "s")
+local function formatError(runningInfo: table, message: string): string
+	if string_sub(message, 1, #wmSource) ~= wmSource then -- Level 0 error
+		return message
+	end
+
+	local errorMessage = string_match(message, "^:%d+: (.+)$", #wmSource + 1)
+	local source, line = getDebugInfo(runningInfo)
+
+	return `{source}:{line}: {errorMessage}`
+end
+
 return table_freeze({
 	luau_deserialize = luau_deserialize,
 	luau_load = luau_load,
@@ -1561,6 +1586,9 @@ return table_freeze({
 	getRunning = function()
 		return running
 	end,
+
+	getDebugInfo = getDebugInfo,
+	formatError = formatError,
 
 	vmStart = vmStart,
 	vmEnd = vmEnd,
