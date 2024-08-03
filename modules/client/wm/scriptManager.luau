@@ -4,14 +4,25 @@ local rawequal = rawequal
 local error = error
 local Instance = Instance
 local table = table
+local game = game
+local task = task
+local debug = debug
+local string = string
+local tonumber = tonumber
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local Sandbox = require("client/wm/sandbox")
+local VM = require("client/wm/sandbox/vm")
 local ManagerCommunication = require("shared/wm/communication")
 
+local Functions = require("shared/functions")
 local ScriptTypes = require("shared/scriptManager/scriptTypes")
+
+local getRunning = VM.getRunning
+local vmStart = VM.vmStart
+local vmEnd = VM.vmEnd
 
 type source = {
 	owner: Player,
@@ -130,6 +141,7 @@ function Module:Init()
 
 			local sandbox, sandboxedFunc =
 				Sandbox.new(sourceData.owner, sourceData.bytecode, if not sourceData.isWorker then hostScript else nil)
+			sandbox.StackSource = hostScript:GetFullName()
 			scripts[hostScript] = sandbox
 
 			-- Track the calling thread (this thread)
@@ -146,6 +158,83 @@ function Module:Init()
 					end
 		end,
 	})
+
+	-- Get the source of the worker manager (to work with stack traces)
+	local wmSource = debug.info(Functions.empty, "s")
+
+	-- Listen for script errors (defer because it doesn't work otherwise, idk why)
+	local ErrorSignal = game:GetService("ScriptContext").Error
+	task.defer(ErrorSignal.Connect, ErrorSignal, function(message, stackTrace, script)
+		if not scripts[script] then
+			return
+		end
+
+		local running = getRunning()
+		if not running then
+			return
+		end
+
+		if string.sub(message, 1, #wmSource) ~= wmSource then -- Level 0 error
+			ManagerCommunication:Send("error", message)
+		else
+			local closureInfo = running.closureInfo
+			local proto = closureInfo.proto
+
+			local errorSource = closureInfo.sandbox.StackSource or "(?)"
+			local errorMessage = string.match(message, "^:%d+: (.+)$", #wmSource + 1)
+			local line = if proto.instructionlineinfo then proto.instructionlineinfo[running.pc] or "?" else "?"
+
+			ManagerCommunication:Send("error", `{errorSource}:{line}: {errorMessage}`)
+		end
+
+		ManagerCommunication:Send("info", "Stack Begin")
+
+		-- Format and filter out sb stack traces
+		local traces = string.split(stackTrace, "\n")
+		local currentStack = running
+		for index = 1, #traces - 1 do -- Last trace is always "" (so we skip it)
+			local source, line, func = string.match(traces[index], "^(.+), line (%d+) %- function (.+)$")
+			if not func then
+				source, line = string.match(traces[index], "^(.+), line (%d+)$")
+			end
+
+			-- Check if the stack is external
+			if source ~= wmSource then
+				if func then
+					ManagerCommunication:Send("info", `Script '{source}', Line {line} - function {func}`)
+				else
+					ManagerCommunication:Send("info", `Script '{source}', Line {line}`)
+				end
+			end
+
+			line = tonumber(line)
+			if line < vmStart or line > vmEnd then
+				-- If the line is before vmStart or after vmEnd, it's not a user owned stack
+				continue
+			end
+
+			if not currentStack then
+				continue
+			end
+
+			local closureInfo = currentStack.closureInfo
+			local proto = closureInfo.proto
+
+			local vmSource = closureInfo.sandbox.StackSource or "(?)"
+			local vmLine = if proto.instructionlineinfo then proto.instructionlineinfo[currentStack.pc] or "?" else "?"
+			local vmFunc = proto.debugname
+
+			if vmFunc then
+				ManagerCommunication:Send("info", `Script '{vmSource}', Line {vmLine} - function {vmFunc}`)
+			else
+				ManagerCommunication:Send("info", `Script '{vmSource}', Line {vmLine}`)
+			end
+
+			currentStack = currentStack.stackParent
+		end
+
+		ManagerCommunication:Send("info", "Stack End")
+	end)
 end
 
 return Module

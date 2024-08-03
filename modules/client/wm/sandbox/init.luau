@@ -12,7 +12,7 @@ local localPlayer = Players.LocalPlayer
 local envLookup = {}
 local scriptLookup = {}
 
-local functionLookup = setmetatable({}, { __mode = "k" })
+local closureInfo = VM.closureInfo
 local functionMap = {} :: { [() -> ()]: () -> () } -- Maps functions to their sandboxed version (used to replace functions upon calling)
 local reverseFunctionMap = {} :: { [() -> ()]: () -> () } -- Reverse of above
 
@@ -49,7 +49,6 @@ local __G = setmetatable({}, { __metatable = "The metatable is locked" })
 local _shared = setmetatable({}, { __metatable = "The metatable is locked" })
 
 local Module = {}
-Module.FunctionLookup = functionLookup
 Module.FunctionMap = functionMap
 Module.ReverseFunctionMap = reverseFunctionMap
 
@@ -57,6 +56,7 @@ export type sandbox = {
 	Terminated: boolean,
 	Terminator: () -> ()?,
 	Script: BaseScript?,
+	StackSource: string?,
 	Owner: Player,
 	Environment: table,
 	Connections: { [RBXScriptConnection]: true },
@@ -116,7 +116,7 @@ function Module.claimEnvironment(environment: table, sandbox: sandbox?)
 end
 
 function Module.getSandboxFromFunction(func: () -> ()): sandbox?
-	return functionLookup[func]
+	return closureInfo[func]
 end
 
 function Module:Terminate(sandbox: sandbox)

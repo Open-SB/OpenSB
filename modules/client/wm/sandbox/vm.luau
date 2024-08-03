@@ -21,6 +21,7 @@ local coroutine_create = coroutine.create
 local coroutine_yield = coroutine.yield
 local coroutine_resume = coroutine.resume
 local coroutine_close = coroutine.close
+local coroutine_running = coroutine.running
 
 local buffer_fromstring = buffer.fromstring
 local buffer_len = buffer.len
@@ -39,7 +40,10 @@ local bit32_extract = bit32.extract
 
 local Vector3_new = Vector3.new
 
-local functionLookup
+local debug_info = debug.info
+
+local closureInfo = setmetatable({}, { __mode = "k" })
+local running
 local fmap
 
 local ttisnumber = function(v)
@@ -408,8 +412,6 @@ local function luau_deserialize(bytecode)
 
 		if debugnameindex ~= 0 then
 			debugname = stringList[debugnameindex]
-		else
-			debugname = "(??)"
 		end
 
 		-- // lineinfo
@@ -506,8 +508,6 @@ local function luau_deserialize(bytecode)
 
 	assert(cursor == buffer_len(stream), "deserializer cursor position mismatch")
 
-	mainProto.debugname = "(main)"
-
 	return {
 		stringList = stringList,
 		protoList = protoList,
@@ -518,6 +518,7 @@ local function luau_deserialize(bytecode)
 	}
 end
 
+local vmStart = debug_info(function() end, "l")
 local function luau_load(module, sandbox)
 	if type(module) ~= "table" then
 		module = luau_deserialize(module)
@@ -536,7 +537,29 @@ local function luau_load(module, sandbox)
 
 	-- selene: allow(shadowing)
 	local function luau_wrapclosure(module, proto, upvals, _env)
+		local info = { proto = proto, sandbox = sandbox }
 		local function luau_execute(...)
+			local runningInfo = { thread = coroutine_running(), pc = 0, closureInfo = info }
+			info.running = runningInfo
+
+			local current = runningInfo
+			local level = 2
+			while true do
+				local func = debug_info(level, "f")
+				if not func then
+					break
+				end
+
+				local cInfo = closureInfo[func]
+				if cInfo then
+					current.stackParent = cInfo.running
+
+					break
+				end
+
+				level += 1
+			end
+
 			local passed = table_pack(...)
 			local stack = table_create(proto.maxstacksize)
 			local varargs = {
@@ -554,8 +577,6 @@ local function luau_load(module, sandbox)
 			end
 
 			passed = nil
-
-			local debugging = { pc = 0, name = "NONE" }
 
 			local protos = proto.protos
 			local code = proto.code
@@ -575,9 +596,8 @@ local function luau_load(module, sandbox)
 
 				handlingBreak = false
 
-				debugging.pc = pc
-				debugging.top = top
-				debugging.name = inst.opname
+				running = runningInfo
+				runningInfo.pc = pc
 
 				pc += 1
 
@@ -1518,23 +1538,30 @@ local function luau_load(module, sandbox)
 			end
 		end
 
-		functionLookup[luau_execute] = sandbox
+		closureInfo[luau_execute] = info
 		return setfenv(luau_execute, _env or env)
 	end
 
 	return luau_wrapclosure(module, mainProto), luau_close
 end
+local vmEnd = debug_info(function() end, "l")
 
 return table_freeze({
 	luau_deserialize = luau_deserialize,
 	luau_load = luau_load,
 
 	setSandbox = function(sandbox)
-		if functionLookup then
+		if fmap then
 			return error("already initialized", 0)
 		end
 
-		functionLookup = sandbox.FunctionLookup
 		fmap = sandbox.FunctionMap
 	end,
+	closureInfo = closureInfo,
+	getRunning = function()
+		return running
+	end,
+
+	vmStart = vmStart,
+	vmEnd = vmEnd,
 })
