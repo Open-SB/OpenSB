@@ -3,7 +3,17 @@ description = "Executes server sided code."
 aliases = ["execute", "c"]
 useCases = [["code"]]
 
+[httpExecute]
+description = "Executes server sided code from a link."
+aliases = ["httpExecute", "h"]
+useCases = [["code"]]
+
 [localExecute]
 description = "Executes client sided code."
 aliases = ["localExecute", "cl", "l", "x"]
-useCases = [["code"]]
+useCases = [["link"]]
+
+[httpLocalExecute]
+description = "Executes client sided code from a link."
+aliases = ["httpLocalExecute", "xl", "hx"]
+useCases = [["link"]]

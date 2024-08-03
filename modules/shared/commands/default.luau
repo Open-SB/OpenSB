@@ -19,4 +19,14 @@ return function(Commands)
 	defineValidator("localExecute", function(_, arguments)
 		return arguments[1], "No source was given."
 	end)
+
+	--:httpExecute
+	defineValidator("httpExecute", function(_, arguments)
+		return arguments[1], "No link was given."
+	end)
+
+	--:httpLocalExecute
+	defineValidator("httpLocalExecute", function(_, arguments)
+		return arguments[1], "No link was given."
+	end)
 end

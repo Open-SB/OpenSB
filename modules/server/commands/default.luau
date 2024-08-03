@@ -1,6 +1,8 @@
 local ScriptManager = require("server/scriptManager")
 local Output = require("server/output")
 
+local HttpService = game:GetService("HttpService")
+
 local function runScript(player, type, name, source, parent)
 	local id = Output:appendWithIdTo(player, Output.MessageType.Information, `Compiling "{name}"...`)
 
@@ -39,6 +41,20 @@ return function(Commands)
 	--:localExecute
 	define("localExecute", function(context, arguments)
 		local source = table.concat(arguments, "/") -- The "/" key is used as the argument delimiter.
+		runScript(context.Player, ScriptManager.ScriptType.LocalScript, "LocalScript", source, context.Player.PlayerGui)
+	end)
+
+	--:httpExecute
+	define("httpExecute", function(context, arguments)
+		local link = table.concat(arguments, "/") -- The "/" key is used as the argument delimiter.
+		local source = HttpService:GetAsync(link)
+		runScript(context.Player, ScriptManager.ScriptType.Script, "Script", source, workspace)
+	end)
+
+	--:httpLocalExecute
+	define("httpLocalExecute", function(context, arguments)
+		local link = table.concat(arguments, "/") -- The "/" key is used as the argument delimiter.
+		local source = HttpService:GetAsync(link)
 		runScript(context.Player, ScriptManager.ScriptType.LocalScript, "LocalScript", source, context.Player.PlayerGui)
 	end)
 end
