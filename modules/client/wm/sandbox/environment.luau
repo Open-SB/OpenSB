@@ -16,6 +16,9 @@ local rawset = rawset
 local math = math
 local tonumber = tonumber
 local Instance = Instance
+local tostring = tostring
+local string = string
+local unpack = unpack
 
 local ManagerCommunication = require("shared/wm/communication")
 local Functions = require("shared/functions")
@@ -29,6 +32,7 @@ local claimEnvironment
 
 local getRunning = VM.getRunning
 local formatError = VM.formatError
+local closureInfo = VM.closureInfo
 
 local toCString = Functions.toCString
 
@@ -670,7 +674,16 @@ function Module:Init()
 				end
 
 				if isStackSafe(func) then
-					local source, line, name = debug.info(func, "sln")
+					local source, line, name
+					local info = closureInfo[func]
+					if not info then
+						source, line, name = debug.info(func, "sln")
+					else
+						source = info.sandbox.StackSource
+						line = info.proto.linedefined
+						name = info.proto.debugname
+					end
+
 					if name and #name > 0 then
 						table.insert(traces, `{source}:{line} function {name}`)
 					else
@@ -729,7 +742,40 @@ function Module:Init()
 			end
 
 			local options = checkArg("info", { "string", "number" }, optionsIndex, ...) -- Numbers are cast into strings
-			return debug.info(rfmap[stack] or stack, options)
+
+			local func = rfmap[stack] or stack
+			local info = closureInfo[func]
+			if not info then
+				return debug.info(func, options)
+			end
+
+			options = tostring(options)
+
+			local usedOptions = {}
+			local result = table.create(#options) -- Will return at minimum #options
+			for index = 1, #options do
+				local option = string.sub(options, index, index)
+				assertArg("info", optionsIndex, not usedOptions[option], "duplicate option")
+
+				if option == "s" then
+					table.insert(result, info.sandbox.StackSource)
+				elseif option == "l" then
+					table.insert(result, info.proto.linedefined)
+				elseif option == "n" then
+					table.insert(result, info.proto.debugname or "")
+				elseif option == "a" then
+					table.insert(result, info.proto.numparams)
+					table.insert(result, info.proto.isvararg)
+				elseif option == "f" then
+					table.insert(result, func)
+				else
+					return invalidArg("info", optionsIndex, "invalid option")
+				end
+
+				usedOptions[option] = true
+			end
+
+			return unpack(result)
 		end
 
 		-- https://create.roblox.com/docs/reference/engine/libraries/debug#profilebegin
