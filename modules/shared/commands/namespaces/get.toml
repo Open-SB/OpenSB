@@ -31,3 +31,11 @@ aliases = ["clear", "c"]
 [fixCamera]
 description = "Fixes your camera."
 aliases = ["fixCamera", "fixCam", "fc"]
+
+[rig6]
+description = "Converts your character to a 6 limb rig."
+aliases = ["rig6", "r6"]
+
+[rig15]
+description = "Converts your character to a 15 limb rig."
+aliases = ["rig15", "r15"]
