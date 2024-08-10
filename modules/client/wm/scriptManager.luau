@@ -87,6 +87,65 @@ function Module:Init()
 		table.clear(toPrompt)
 	end)
 
+	ManagerCommunication:onInvoke(
+		"CreateSourceId",
+		function(owner: Player, scriptType, source: string, arguments: BindableFunction?)
+			local data = {
+				owner = owner,
+				arguments = table.freeze(if arguments then table.pack(arguments:Invoke()) else table.pack()),
+				compiling = true,
+			}
+
+			task.spawn(function() -- compile() yields
+				local success, result = ManagerCommunication:Invoke("compile", source)
+				if not success then
+					data.error = result
+				else
+					data.bytecode = result
+				end
+
+				data.compiling = false
+			end)
+
+			local id = Functions.randomString(16)
+			sources[scriptType][id] = data
+			return id
+		end
+	)
+
+	ManagerCommunication:on(
+		"NewWorker",
+		function(owner: Player, source: string, host: ModuleScript, arguments: BindableFunction?)
+			local data = {
+				owner = owner,
+				arguments = table.freeze(if arguments then table.pack(arguments:Invoke()) else table.pack()),
+				isWorker = true,
+				compiling = true,
+			}
+
+			task.spawn(function() -- compile() yields
+				local success, result = ManagerCommunication:Invoke("compile", source)
+				if not success then
+					data.error = result
+				else
+					data.bytecode = result
+				end
+
+				data.compiling = false
+			end)
+
+			local id = Functions.randomString(16)
+			sources[ScriptTypes.ModuleScript][id] = data
+
+			-- We need an actual host for workers for error catching to work correctly and due to how we track sandboxes (getfenv(0))
+			-- We use a modulescript because it allows us to start the script under our actor while the actor is destroyed
+			-- Only downside to this is that it will cost a little extra memory for each worker (due to them having their own ModuleScript)
+			host.Parent = Instance.new("Actor")
+			host:SetAttribute("source", id)
+			task.defer(require, host)
+		end
+	)
+
 	setmetatable(_G, { __metatable = "The metatable is locked" })
 	setmetatable(shared, {
 		__metatable = "The metatable is locked",
@@ -133,6 +192,10 @@ function Module:Init()
 			if sourceData.owner ~= localPlayer and not prompt(sourceData, hostScript) then
 				-- User doesn't own this script and doesn't allow it to run
 				return error("script not allowed to run", 2)
+			end
+
+			while sourceData.compiling do
+				task.wait()
 			end
 
 			if sourceData.error then

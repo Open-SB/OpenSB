@@ -74,6 +74,10 @@ WorkerManagers:onInvoke("fetchSource", function(scriptType, sourceId: string)
 	return Network:InvokeServer("fetchSource", scriptType, sourceId)
 end)
 
+WorkerManagers:onInvoke("compile", function(source: string)
+	return Network:InvokeServer("compile", source)
+end)
+
 WorkerManagers:on("makeScriptPrompt", function(bindable: BindableEvent, owner: Player, script: BaseScript)
 	UI:MakeScriptPrompt(bindable, owner, script)
 end)
@@ -94,9 +98,16 @@ WorkerManagers:on("info", function(message: string)
 	Output:append(Output.MessageType.Information, message)
 end)
 
-WorkerManagers:onInvoke("newScript", function(owner: Player, source: string, arguments: (table | BindableFunction)?)
-	return Module:CreateScript(owner, ScriptTypes.Script, nil, source, arguments)
-end)
+WorkerManagers:onInvoke(
+	"newScript",
+	function(owner: Player, parent: Instance, source: string, arguments: (table | BindableFunction)?)
+		if type(arguments) == "Instance" and arguments.ClassName == "BindableFunction" then
+			arguments = table.pack(arguments:Invoke())
+		end
+
+		return Network:InvokeServer("newScript", owner, parent, source, arguments)
+	end
+)
 
 WorkerManagers:onInvoke(
 	"newLocalScript",

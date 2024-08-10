@@ -19,6 +19,7 @@ local Instance = Instance
 local tostring = tostring
 local string = string
 local unpack = unpack
+local game = game
 
 local ManagerCommunication = require("shared/wm/communication")
 local Functions = require("shared/functions")
@@ -26,6 +27,8 @@ local Functions = require("shared/functions")
 local Sandbox
 local VM = require("./vm")
 local BlockedInstances = require("./blockedInstances")
+
+local localPlayer = game:GetService("Players").LocalPlayer
 
 local getSandbox
 local claimEnvironment
@@ -987,12 +990,14 @@ function Module:Init()
 	    Custom global functions
     --]]
 
-	--[[senv.NewScript = function(...)
+	senv.NewScript = function(...)
 		local sandbox = getSandbox()
-		assertTerminated(sandbox)
+		if sandbox.Owner ~= localPlayer then
+			return error("LocalScripts from others are not allowed to use NewScript()", seekSafeLevel(1))
+		end
 
 		local source = checkArg("NewScript", "string", 1, ...)
-		local parent = unwrap(checkOptionalArg("NewScript", "Instance", 2, ...))
+		local parent = checkOptionalArg("NewScript", "Instance", 2, ...)
 
 		if not parent and select("#", ...) < 2 then -- No parent specified and "nil" wasn't passed
 			parent = renv.workspace
@@ -1010,22 +1015,21 @@ function Module:Init()
 		end
 
 		local script =
-			ManagerCommunication:Invoke("newScript", sandbox.Owner, source, package(unwrapMany(select(3, ...))))
-		script.Parent = parent
+			ManagerCommunication:Invoke("newScript", sandbox.Owner, parent, source, table.pack(select(3, ...)))
+		assertArg("NewScript", 2, script ~= false, "parent doesn't exist on server")
 
-		return wrap(script)
+		return script
 	end
 	senv.NS = senv.NewScript
 
 	senv.NewLocalScript = function(...)
 		local sandbox = getSandbox()
-		assertTerminated(sandbox)
 
 		local source = checkArg("NewLocalScript", "string", 1, ...)
-		local parent = unwrap(checkOptionalArg("NewLocalScript", "Instance", 2, ...))
+		local parent = checkOptionalArg("NewLocalScript", "Instance", 2, ...)
 
 		if not parent and select("#", ...) < 2 then -- No parent specified and "nil" wasn't passed
-			parent = sandbox.Owner:FindFirstChildOfClass("PlayerGui")
+			parent = localPlayer:FindFirstChildOfClass("PlayerGui")
 		elseif parent then
 			-- Check if the parent is RobloxLocked
 			assertArg(
@@ -1039,20 +1043,18 @@ function Module:Init()
 			)
 		end
 
-		local script =
-			ManagerCommunication:Invoke("newLocalScript", sandbox.Owner, source, package(unwrapMany(select(3, ...))))
+		local script = ManagerCommunication:Invoke("newLocalScript", sandbox.Owner, source, package(select(3, ...)))
 		script.Parent = parent
 
-		return wrap(script)
+		return script
 	end
 	senv.NLS = senv.NewLocalScript
 
 	senv.NewModuleScript = function(...)
 		local sandbox = getSandbox()
-		assertTerminated(sandbox)
 
 		local source = checkArg("NewModuleScript", "string", 1, ...)
-		local parent = unwrap(checkOptionalArg("NewModuleScript", "Instance", 2, ...))
+		local parent = checkOptionalArg("NewModuleScript", "Instance", 2, ...)
 
 		if parent then
 			-- Check if the parent is RobloxLocked
@@ -1067,29 +1069,21 @@ function Module:Init()
 			)
 		end
 
-		local script =
-			ManagerCommunication:Invoke("newModuleScript", sandbox.Owner, source, package(unwrapMany(select(3, ...))))
+		local script = ManagerCommunication:Invoke("newModuleScript", sandbox.Owner, source, package(select(3, ...)))
 		script.Parent = parent
 
-		return wrap(script)
+		return script
 	end
 	senv.NMS = senv.NewModuleScript
 
 	senv.NewWorker = function(...)
 		local sandbox = getSandbox()
-		assertTerminated(sandbox)
 
 		local source = checkArg("NewWorker", "string", 1, ...)
 		local name = checkOptionalArg("NewWorker", "string", 2, ...)
-		ManagerCommunication:Send(
-			"newWorker",
-			sandbox.Owner,
-			source,
-			name or "Worker",
-			package(unwrapMany(select(3, ...)))
-		)
+		ManagerCommunication:Send("newWorker", sandbox.Owner, source, name or "Worker", package(select(3, ...)))
 	end
-	senv.NW = senv.NewWorker]]
+	senv.NW = senv.NewWorker
 
 	setmetatable(senv, nil)
 	table.freeze(senv)

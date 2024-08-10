@@ -38,8 +38,13 @@ do
 	local thread = coroutine.running()
 	task.defer(
 		function() -- Defer has a small yield (under a frame) allowing us to delete the script (instances can't change their parent instantly after there were parented / created)
+			local parent = script.Parent
 			script:Destroy()
 			script = nil
+
+			if parent.ClassName == "Actor" then
+				parent:Destroy()
+			end
 
 			task.spawn(thread)
 		end
@@ -57,3 +62,5 @@ Sandbox:Init()
 ScriptManager:Init()
 
 Log.print(`Loaded in {math.round((os.clock() - __start) * 1000)}ms.`)
+
+return nil -- ModuleScripts require atleast 1 return value

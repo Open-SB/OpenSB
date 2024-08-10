@@ -1,5 +1,6 @@
 local Output = require("server/output")
 local Network = require("server/network")
+local compile = require("server/compile")
 local Assets = require("shared/assets")
 local WorkerManagers = require("shared/workerManagers")
 
@@ -79,6 +80,36 @@ Network:RegisterFunction("fetchSource", function(player: Player, scriptType, sou
 
 	return WorkerManagers.main:Invoke("fetchSource", player, scriptType, sourceId)
 end)
+
+Network:RegisterFunction("compile", function(_, source: string)
+	if type(source) ~= "string" then
+		return
+	end
+
+	return compile(source)
+end)
+
+Network:RegisterFunction(
+	"newScript",
+	function(player: Player, owner: Player, parent: Instance?, source: source, arguments: table)
+		if player ~= owner then
+			return
+		end
+
+		if type(source) ~= "string" or type(arguments) ~= "table" or type(arguments.n) ~= "number" then
+			return
+		end
+
+		if typeof(parent) ~= "Instance" then
+			return false
+		end
+
+		local script = Module:CreateScript(owner, ScriptTypes.Script, nil, source, arguments)
+		script.Parent = parent
+
+		return script
+	end
+)
 
 WorkerManagers:on("log", function(player: Player, message: string)
 	Output:appendTo(player, Output.MessageType.Log, message)

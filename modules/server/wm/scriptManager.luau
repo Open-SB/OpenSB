@@ -127,12 +127,12 @@ function Module:Init()
 		"NewWorker",
 		function(owner: Player, source: string, host: ModuleScript, arguments: BindableFunction?)
 			local id = Functions.randomString(16)
-			sources[ScriptTypes.ModuleScript][id] = table.freeze({
+			sources[ScriptTypes.ModuleScript][id] = {
 				owner = owner,
 				source = source,
 				arguments = table.freeze(if arguments then table.pack(arguments:Invoke()) else table.pack()),
 				isWorker = true,
-			})
+			}
 
 			-- We need an actual host for workers for error catching to work correctly and due to how we track sandboxes (getfenv(0))
 			-- We use a modulescript because it allows us to start the script under our actor while the actor is destroyed
