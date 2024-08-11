@@ -113,18 +113,19 @@ end
 
 -- Level is the how many levels to seek, skip is purely for optimization (automatically skips that many levels as if they were already unsafe, defaults to 1)
 local function seekSafeLevel(
-	level: number,
+	level: number?,
 	options: { skip: number?, thread: thread?, allowCFunctions: boolean?, beginsAt0: boolean? }
 ): number
 	options = options or {}
-	level = math.floor(level)
+	level = math.floor(level or 1)
 
 	local returnTopLevel = level == 0 and not options.beginsAt0
 	local thread = options.thread or coroutine.running()
 	local safeLevels: { number } = {}
 
-	local unsafeAmount = options.skip or 1 -- Amount of unsafe levels at the top
-	local currentLevel = unsafeAmount + (if rawequal(thread, coroutine.running()) then 1 else 0)
+	local offset = if rawequal(thread, coroutine.running()) then 1 else 0
+	local unsafeAmount = (options.skip or offset) + offset -- Amount of unsafe levels at the top (offset this function, and if not set, function above this)
+	local currentLevel = unsafeAmount
 	local size = if options.beginsAt0 then 0 else 1
 	while debug.info(thread, currentLevel, "f") ~= nil do
 		if isStackSafe(currentLevel, { thread = thread, allowCFunctions = options.allowCFunctions }) then
@@ -330,10 +331,10 @@ function Module:Init()
 			stack = seekSafeLevel(stack)
 		elseif stackType == "function" then
 			if not isStackSafe(stack) then
-				stack = seekSafeLevel(1)
+				stack = seekSafeLevel()
 			end
 		elseif stackType == "nil" then
-			stack = seekSafeLevel(1)
+			stack = seekSafeLevel()
 		else
 			return invalidArg("getfenv", 1, "number expected, got " .. typeof(stack), 1)
 		end
@@ -417,16 +418,16 @@ function Module:Init()
 
 			if math.floor(stack) < 1 then
 				-- When stack is under 1 (e.g 0.7) setfenv throws this error
-				return error("'setfenv' cannot change environment of given object", seekSafeLevel(1))
+				return error("'setfenv' cannot change environment of given object", seekSafeLevel())
 			end
 
-			stack = seekSafeLevel(stack, 1)
+			stack = seekSafeLevel(stack)
 		elseif stackType == "function" then
 			if not isStackSafe(stack) then
-				return error("'setfenv' cannot change environment of given object", seekSafeLevel(1))
+				return error("'setfenv' cannot change environment of given object", seekSafeLevel())
 			end
 		elseif stackType == "nil" then
-			stack = seekSafeLevel(1)
+			stack = seekSafeLevel()
 		else
 			return invalidArg("getfenv", 1, "number expected, got " .. typeof(stack), 1)
 		end
@@ -448,7 +449,7 @@ function Module:Init()
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#tostring
 	senv.tostring = function(...)
 		if select("#", ...) < 1 then
-			return error("missing argument #1", seekSafeLevel(1))
+			return error("missing argument #1", seekSafeLevel())
 		end
 
 		return tostring(unwrap((...)))
@@ -505,7 +506,7 @@ function Module:Init()
 	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#delay
 	senv.delay = function(...)
 		if select("#", ...) < 2 then
-			return error("delay function requires 2 arguments", seekSafeLevel(1))
+			return error("delay function requires 2 arguments", seekSafeLevel())
 		end
 
 		local delayTime, callback = ...
@@ -557,7 +558,7 @@ function Module:Init()
 		end
 
 		if type(target) == "number" then
-			return error("require(assetId) is disabled", seekSafeLevel(1))
+			return error("require(assetId) is disabled", seekSafeLevel())
 		end
 
 		return wrap(renv.require(unwrap(target)))
@@ -569,7 +570,7 @@ function Module:Init()
 	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#spawn
 	senv.spawn = function(...)
 		if select("#", ...) < 1 then
-			return error("Spawn function requires 1 argument", seekSafeLevel(1))
+			return error("Spawn function requires 1 argument", seekSafeLevel())
 		end
 
 		local callback = ...
@@ -602,7 +603,7 @@ function Module:Init()
 	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#typeof
 	senv.typeof = function(...)
 		if select("#", ...) < 1 then
-			return error("missing argument #1", seekSafeLevel(1))
+			return error("missing argument #1", seekSafeLevel())
 		end
 
 		return typeofWrapped((...))
@@ -696,7 +697,7 @@ function Module:Init()
 				if coroutine.status(thread) == "dead" then
 					sandbox.Threads[thread] = nil
 
-					return error("cannot resume dead coroutine", seekSafeLevel(1))
+					return error("cannot resume dead coroutine", seekSafeLevel())
 				end
 
 				sandbox.Threads[thread] = true
@@ -779,7 +780,6 @@ function Module:Init()
 				stack = debug.info(
 					stack,
 					seekSafeLevel(level, {
-						skip = if rawequal(stack, coroutine.running()) then 1 else 0, -- Skip this function (if the thread is this thread)
 						thread = stack,
 						allowCFunctions = true,
 						beginsAt0 = true,
@@ -795,7 +795,6 @@ function Module:Init()
 
 				stack = debug.info(
 					seekSafeLevel(stack, {
-						skip = 1, -- Skip this function
 						allowCFunctions = true,
 						beginsAt0 = true,
 					}),
