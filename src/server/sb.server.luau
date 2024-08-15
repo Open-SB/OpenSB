@@ -66,7 +66,7 @@ local Functions = require("shared/functions")
 WorkerManagers:Init(root, "workerManager")
 Network:Init()
 Chat:Init()
-Commands:Init()
+Commands:Init({ require("server/commands/default"), require("server/commands/get") })
 
 Log.debug("Loading systems...") -- Maybe we should move these into their own modules?
 

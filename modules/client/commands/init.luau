@@ -160,7 +160,7 @@ function Commands:Process(input, inputContext)
 	end
 end
 
-function Commands:Init()
+function Commands:Init(namespaces)
 	Log.debug("Loading commands...")
 
 	Chat:ConnectHook("SayMessageRequest", function(message)
@@ -168,8 +168,9 @@ function Commands:Init()
 	end)
 
 	-- Load Namespaces
-	require("./default")(self)
-	require("./get")(self)
+	for _, namespace in ipairs(namespaces) do
+		namespace(self)
+	end
 end
 
 return Commands

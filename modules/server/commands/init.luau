@@ -124,7 +124,7 @@ function Commands:Process(player, data, input, inputContext)
 	return ProcessResult.Success, commandMessage
 end
 
-function Commands:Init()
+function Commands:Init(namespaces)
 	Log.debug("Loading commands...")
 
 	Network:RegisterFunction("processCommand", function(player, data, input, inputContext)
@@ -141,8 +141,9 @@ function Commands:Init()
 	end)
 
 	-- Load Namespaces
-	require("./default")(self)
-	require("./get")(self)
+	for _, namespace in ipairs(namespaces) do
+		namespace(self)
+	end
 end
 
 return Commands
