@@ -124,12 +124,12 @@ function Commands:ProcessClient(input, inputContext)
 		return ProcessResult.Error, message
 	end
 
-	local success, commadMessage = Commands:Run(command, context, arguments)
+	local success, commandMessage = Commands:Run(command, context, arguments)
 	if not success then
-		return ProcessResult.Error, commadMessage
+		return ProcessResult.Error, commandMessage
 	end
 
-	return ProcessResult.Success, commadMessage, context.Data
+	return ProcessResult.Success, commandMessage, context.Data
 end
 
 function Commands:Process(input, inputContext)

@@ -116,12 +116,12 @@ function Commands:Process(player, data, input, inputContext)
 		return ProcessResult.Error, message
 	end
 
-	local success, commadMessage = Commands:Run(command, context, arguments)
+	local success, commandMessage = Commands:Run(command, context, arguments)
 	if not success then
-		return ProcessResult.Error, commadMessage
+		return ProcessResult.Error, commandMessage
 	end
 
-	return ProcessResult.Success, commadMessage
+	return ProcessResult.Success, commandMessage
 end
 
 function Commands:Init()
