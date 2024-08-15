@@ -354,11 +354,6 @@ local function luau_deserialize(bytecode)
 			skipnext = readInstruction(codelist)
 		end
 
-		local debugcodelist = table_create(sizecode)
-		for i = 1, sizecode do
-			debugcodelist[i] = codelist[i].opcode
-		end
-
 		local sizek = readVarInt()
 		local klist = table_create(sizek)
 
@@ -473,7 +468,6 @@ local function luau_deserialize(bytecode)
 
 			sizecode = sizecode,
 			code = codelist,
-			debugcode = debugcodelist,
 
 			sizek = sizek,
 			k = klist,
@@ -586,17 +580,11 @@ local function luau_load(module, sandbox)
 			local top, pc, open_upvalues, generalized_iterators =
 				-1, 1, setmetatable({}, { __mode = "vs" }), setmetatable({}, { __mode = "ks" })
 			local constants = proto.k
-			local debugopcodes = proto.debugcode
 
-			local handlingBreak = false
 			local inst, op
 			while alive do
-				if not handlingBreak then
-					inst = code[pc]
-					op = inst.opcode
-				end
-
-				handlingBreak = false
+				inst = code[pc]
+				op = inst.opcode
 
 				running = runningInfo
 				runningInfo.pc = pc
@@ -607,9 +595,7 @@ local function luau_load(module, sandbox)
 				if op == 0 then --[[ NOP ]]
 					--// Do nothing
 				elseif op == 1 then --[[ BREAK ]]
-					pc -= 1
-					op = debugopcodes[pc]
-					handlingBreak = true
+					--[[ Skipped ]]
 				elseif op == 2 then --[[ LOADNIL ]]
 					stack[inst.A] = nil
 				elseif op == 3 then --[[ LOADB ]]
