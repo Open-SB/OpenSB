@@ -5,7 +5,6 @@ local StarterGui = game:GetService("StarterGui")
 local Commands = require("client/commands")
 local CommandInputContext = require("shared/commands/inputContexts")
 local Maid = require("shared/maid")
-local Signal = require("shared/signal")
 local MessageType = require("shared/output/messageTypes")
 
 local create = require("./create")
@@ -61,30 +60,6 @@ local output
 local outputScale
 local outputList
 
-local enterPressedKeycodes = {
-	[Enum.KeyCode.Return] = true,
-	[Enum.KeyCode.KeypadEnter] = true,
-}
-
--- Checks if the enter key is about to be pressed, useful for checking if a textBox enterPressed was spoofed with :ReleaseFocus(true)
-local function checkIfEnterPressed()
-	local event = Signal.new()
-
-	local thread = task.delay(0, event.Fire, event, false)
-	local connection = UserInputService.InputBegan:Connect(function(input)
-		if input.UserInputType == Enum.UserInputType.Keyboard and enterPressedKeycodes[input.KeyCode] then
-			event:Fire(true)
-		end
-	end)
-
-	local result = event:Wait()
-	task.cancel(thread)
-	connection:Disconnect()
-	event:Destroy()
-
-	return result
-end
-
 local function updateOutputScale()
 	local scale = root.AbsoluteSize.Y / APP_MAX_SIZE
 	outputScale.Scale = scale
@@ -108,6 +83,12 @@ local function clearOutput()
 
 	outputList.CanvasSize = UDim2.new()
 	outputList.CanvasPosition = Vector2.zero
+end
+
+local function processCommandBarInput()
+	local input = commandBarInput.Text
+	commandBarInput.Text = ""
+	Commands:Process(input, CommandInputContext.CommandBar)
 end
 
 function App.onMessageOut(id, dateTime, message, messageType)
@@ -209,23 +190,18 @@ function App.mount(screenGui)
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Center,
 
-		ReturnPressedFromOnScreenKeyboard = function()
-			local input = commandBarInput.Text
-			commandBarInput.Text = ""
-			Commands:Process(input, CommandInputContext.CommandBar)
-		end,
-		FocusLost = function(enterPressed)
+		ReturnPressedFromOnScreenKeyboard = processCommandBarInput,
+		FocusLost = function(enterPressed, inputObject)
 			if not enterPressed then
 				return
 			end
 
-			local input = commandBarInput.Text
-			if not checkIfEnterPressed() then
+			-- If enterPressed is true but no inputObject exists then the input was forced via :ReleaseFocus(true).
+			if not inputObject then
 				return
 			end
 
-			commandBarInput.Text = ""
-			Commands:Process(input, CommandInputContext.CommandBar)
+			processCommandBarInput()
 		end,
 	}
 
