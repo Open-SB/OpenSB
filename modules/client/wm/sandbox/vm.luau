@@ -608,13 +608,11 @@ local function luau_load(module, sandbox)
 				elseif op == 6 then --[[ MOVE ]]
 					stack[inst.A] = stack[inst.B]
 				elseif op == 7 then --[[ GETGLOBAL ]]
-					local kv = inst.K
-					stack[inst.A] = getfenv()[kv]
+					stack[inst.A] = getfenv()[inst.K]
 
 					pc += 1 --// adjust for aux
 				elseif op == 8 then --[[ SETGLOBAL ]]
-					local kv = inst.K
-					getfenv()[kv] = stack[inst.A]
+					getfenv()[inst.K] = stack[inst.A]
 
 					pc += 1 --// adjust for aux
 				elseif op == 9 then --[[ GETUPVAL ]]
@@ -634,8 +632,7 @@ local function luau_load(module, sandbox)
 					end
 				elseif op == 12 then --[[ GETIMPORT ]]
 					local count = inst.KC
-					local k0 = inst.K0
-					local import = getfenv()[k0]
+					local import = getfenv()[inst.K0]
 					if count == 1 then
 						stack[inst.A] = import
 					elseif count == 2 then
@@ -650,13 +647,11 @@ local function luau_load(module, sandbox)
 				elseif op == 14 then --[[ SETTABLE ]]
 					stack[inst.B][stack[inst.C]] = stack[inst.A]
 				elseif op == 15 then --[[ GETTABLEKS ]]
-					local index = inst.K
-					stack[inst.A] = stack[inst.B][index]
+					stack[inst.A] = stack[inst.B][inst.K]
 
 					pc += 1 --// adjust for aux
 				elseif op == 16 then --[[ SETTABLEKS ]]
-					local index = inst.K
-					stack[inst.B][index] = stack[inst.A]
+					stack[inst.B][inst.K] = stack[inst.A]
 
 					pc += 1 --// adjust for aux
 				elseif op == 17 then --[[ GETTABLEN ]]
@@ -704,27 +699,24 @@ local function luau_load(module, sandbox)
 					end
 				elseif op == 20 then --[[ NAMECALL ]]
 					local A = inst.A
-					local B = inst.B
-
-					local kv = inst.K
-
-					local sb = stack[B]
+					local sb = stack[inst.B]
 
 					stack[A + 1] = sb
 
 					pc += 1 --// adjust for aux
 
-					stack[A] = sb[kv]
+					stack[A] = sb[inst.K]
 				elseif op == 21 then --[[ CALL ]]
 					local A, B, C = inst.A, inst.B, inst.C
 
-					local params = if B == 0 then top - A else B - 1
 					local func = stack[A]
-					local ret_list = table_pack((fmap[func] or func)(table_unpack(stack, A + 1, A + params)))
+					local ret_list = table_pack(
+						(fmap[func] or func)(table_unpack(stack, A + 1, A + if B == 0 then top - A else (B - 1)))
+					)
 
-					local ret_num = ret_list.n
-
+					local ret_num
 					if C == 0 then
+						ret_num = ret_list.n
 						top = A + ret_num - 1
 					else
 						ret_num = C - 1
@@ -734,16 +726,8 @@ local function luau_load(module, sandbox)
 				elseif op == 22 then --[[ RETURN ]]
 					local A = inst.A
 					local B = inst.B
-					local b = B - 1
-					local nresults
 
-					if b == LUA_MULTRET then
-						nresults = top - A + 1
-					else
-						nresults = B - 1
-					end
-
-					return table_unpack(stack, A, A + nresults - 1)
+					return table_unpack(stack, A, A + if B - 1 == LUA_MULTRET then top - A else (B - 2))
 				elseif op == 23 then --[[ JUMP ]]
 					pc += inst.D
 				elseif op == 24 then --[[ JUMPBACK ]]
@@ -846,22 +830,16 @@ local function luau_load(module, sandbox)
 
 					pc += 1 --// adjust for aux
 				elseif op == 54 then --[[ DUPTABLE ]]
-					local template = inst.K
 					local serialized = {}
-					for _, id in template do
+					for _, id in inst.K do
 						serialized[constants[id + 1]] = nil
 					end
 					stack[inst.A] = serialized
 				elseif op == 55 then --[[ SETLIST ]]
-					local A = inst.A
 					local B = inst.B
-					local c = inst.C - 1
+					local C = inst.C
 
-					if c == LUA_MULTRET then
-						c = top - B + 1
-					end
-
-					table_move(stack, B, B + c - 1, inst.aux, stack[A])
+					table_move(stack, B, B + if C - 1 == LUA_MULTRET then top - B else (C - 2), inst.aux, stack[inst.A])
 
 					pc += 1 --// adjust for aux
 				elseif op == 56 then --[[ FORNPREP ]]
@@ -914,24 +892,22 @@ local function luau_load(module, sandbox)
 					end
 				elseif op == 57 then --[[ FORNLOOP ]]
 					local A = inst.A
-					local limit = stack[A]
 					local step = stack[A + 1]
 					local index = stack[A + 2] + step
 
 					stack[A + 2] = index
 
 					if step > 0 then
-						if index <= limit then
+						if index <= stack[A] then
 							pc += inst.D
 						end
 					else
-						if limit <= index then
+						if stack[A] <= index then
 							pc += inst.D
 						end
 					end
 				elseif op == 58 then --[[ FORGLOOP ]]
 					local A = inst.A
-					local res = inst.K
 
 					top = A + 6
 
@@ -939,7 +915,7 @@ local function luau_load(module, sandbox)
 
 					if ttisfunction(it) then
 						local vals = { it(stack[A + 1], stack[A + 2]) }
-						table_move(vals, 1, res, A + 3, stack)
+						table_move(vals, 1, inst.K, A + 3, stack)
 
 						if stack[A + 3] ~= nil then
 							stack[A + 2] = stack[A + 3]
@@ -956,7 +932,7 @@ local function luau_load(module, sandbox)
 							generalized_iterators[inst] = nil
 							pc += 1
 						else
-							table_move(vals, 1, res, A + 3, stack)
+							table_move(vals, 1, inst.K, A + 3, stack)
 
 							stack[A + 2] = stack[A + 3]
 							pc += inst.D
@@ -979,15 +955,17 @@ local function luau_load(module, sandbox)
 
 					pc += inst.D
 				elseif op == 63 then --[[ GETVARARGS ]]
-					local A = inst.A
 					local b = inst.B - 1
-
 					if b == LUA_MULTRET then
+						local A = inst.A
+
 						b = varargs.len
 						top = A + b - 1
-					end
 
-					table_move(varargs.list, 1, b, A, stack)
+						table_move(varargs.list, 1, b, A, stack)
+					else
+						table_move(varargs.list, 1, b, inst.A, stack)
+					end
 				elseif op == 64 then --[[ DUPCLOSURE ]]
 					local newPrototype = protolist[inst.K + 1] --// correct behavior would be to reuse the prototype if possible but it would not be useful here
 
@@ -1017,8 +995,7 @@ local function luau_load(module, sandbox)
 				elseif op == 65 then --[[ PREPVARARGS ]]
 					--[[ Handled by wrapper ]]
 				elseif op == 66 then --[[ LOADKX ]]
-					local kv = inst.K
-					stack[inst.A] = kv
+					stack[inst.A] = inst.K
 
 					pc += 1 --// adjust for aux
 				elseif op == 67 then --[[ JUMPX ]]
@@ -1466,40 +1443,32 @@ local function luau_load(module, sandbox)
 
 					pc += inst.D
 				elseif op == 77 then --[[ JUMPXEQKNIL ]]
-					local kn = inst.KN
-
-					if (stack[inst.A] == nil) ~= kn then
+					if (stack[inst.A] == nil) ~= inst.KN then
 						pc += inst.D
 					else
 						pc += 1
 					end
 				elseif op == 78 then --[[ JUMPXEQKB ]]
-					local kv = inst.K
-					local kn = inst.KN
 					local ra = stack[inst.A]
 
-					if (ttisboolean(ra) and (ra == kv)) ~= kn then
+					if (ttisboolean(ra) and (ra == inst.K)) ~= inst.KN then
 						pc += inst.D
 					else
 						pc += 1
 					end
 				elseif op == 79 then --[[ JUMPXEQKN ]]
-					local kv = inst.K
-					local kn = inst.KN
 					local ra = stack[inst.A]
 
-					if (ra == kv) ~= kn then
+					if (ra == inst.K) ~= inst.KN then
 						pc += inst.D
 					else
 						pc += 1
 					end
 				elseif op == 80 then --[[ JUMPXEQKS ]]
 					-- selene: allow(if_same_then_else)
-					local kv = inst.K
-					local kn = inst.KN
 					local ra = stack[inst.A]
 
-					if (ra == kv) ~= kn then
+					if (ra == inst.K) ~= inst.KN then
 						pc += inst.D
 					else
 						pc += 1
