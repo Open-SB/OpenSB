@@ -14,7 +14,7 @@ local compilerOptions = table.freeze({
 	vector_type = "Vector3",
 })
 
-return function(source: string): (boolean, string)
+return function(source: string): (boolean, string | buffer)
 	if not HttpService.HttpEnabled then
 		return false, "HttpService is disabled, cannot use online Luau compiler."
 	end
@@ -42,9 +42,10 @@ return function(source: string): (boolean, string)
 	end
 
 	-- Check if the bytecode is an error message
-	if buffer.readu8(buffer.fromstring(response.Body), 0) == 0 then
+	local stream = buffer.fromstring(response.Body)
+	if buffer.readu8(stream, 0) == 0 then
 		return false, string.sub(response.Body, 2)
 	end
 
-	return true, response.Body
+	return true, stream
 end

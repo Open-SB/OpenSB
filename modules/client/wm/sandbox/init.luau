@@ -65,7 +65,7 @@ export type sandbox = {
 	Environments: { [table]: true },
 }
 
-function Module.new(owner: Player, bytecode: string, script: BaseScript?): sandbox
+function Module.new(owner: Player, bytecode: buffer, script: BaseScript?): sandbox
 	local environment = Environment.new({
 		script = script,
 		owner = localPlayer,

@@ -26,7 +26,7 @@ type source = {
 	owner: Player,
 	error: string?,
 	source: string?,
-	bytecode: string?,
+	bytecode: buffer?,
 	arguments: { n: number } & { any },
 	isWorker: boolean?,
 	compiling: boolean?,

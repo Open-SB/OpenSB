@@ -30,7 +30,7 @@ local vmEnd = VM.vmEnd
 type source = {
 	owner: Player,
 	error: string?,
-	bytecode: string?,
+	bytecode: buffer?,
 	arguments: { n: number } & { any },
 	isClientSide: boolean?,
 	isWorker: boolean?,
