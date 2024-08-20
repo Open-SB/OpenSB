@@ -65,7 +65,8 @@ function Module:CreateScript(owner, scriptType, name, source, arguments: (table 
 	local sourceId = WorkerManagers.main:Invoke("CreateSourceId", owner, scriptType, source, arguments)
 	local host = scriptHosts[scriptType]:Clone()
 	host.Name = name
-	host:SetAttribute("source", sourceId) -- TODO: Protect attribute, or find another way of setting it that is copyable via :Clone()
+	host:SetAttribute("__sb_source", sourceId) -- TODO: Protect attribute
+	host:AddTag("__sb_script") -- TODO: Protect tag
 
 	return host
 end

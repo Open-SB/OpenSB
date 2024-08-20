@@ -138,6 +138,13 @@ function Module.getSandboxFromFunction(func: () -> ()): sandbox?
 	return envLookup[getfenv(func)]
 end
 
+function Module.kill(script: BaseScript)
+	pcall(function()
+		script:Destroy()
+		script.Enabled = false
+	end)
+end
+
 function Module.terminate(sandbox: sandbox, keepScript: boolean?)
 	sandbox.Terminated = true
 
@@ -175,14 +182,9 @@ function Module.terminate(sandbox: sandbox, keepScript: boolean?)
 
 	scriptLookup[script] = nil
 
-	if keepScript then
-		return
+	if not keepScript then
+		Module.kill(script)
 	end
-
-	pcall(function()
-		script:Destroy()
-		script.Enabled = false
-	end)
 end
 
 function Module:Init()

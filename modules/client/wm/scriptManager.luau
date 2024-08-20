@@ -189,7 +189,11 @@ function Module:Init()
 				return error("invalid script", 2)
 			end
 
-			local sourceId = hostScript:GetAttribute("source")
+			if not hostScript:HasTag("__sb_script") then
+				return error("invalid script", 2)
+			end
+
+			local sourceId = hostScript:GetAttribute("__sb_source")
 			if not sourceId then
 				return error("invalid script", 2)
 			end

@@ -22,6 +22,8 @@ local compile = require("server/compile")
 local Functions = require("shared/functions")
 local ScriptTypes = require("shared/scriptManager/scriptTypes")
 
+local CollectionService = game:GetService("CollectionService")
+
 type source = {
 	owner: Player,
 	error: string?,
@@ -144,8 +146,30 @@ function Module:Init()
 		end
 	)
 
-	-- TODO: Maybe tag all sb scripts with a tag to then use CollectionService:GetTagged() (to destroy any disabled script, or localscripts directly from the server without having to keep track of cloned scripts manually).
 	ManagerCommunication:on("stopScripts", function(player: Player, stopServerScripts: boolean, removeType)
+		local kill = {}
+		for _, script in ipairs(CollectionService:GetTagged("__sb_script")) do
+			local sourceId = script:GetAttribute("__sb_source")
+			if not sourceId then
+				continue
+			end
+
+			local className = script.ClassName
+			local scriptType = if className == "Script"
+				then ScriptTypes.Script
+				elseif className == "LocalScript" then ScriptTypes.LocalScript
+				else ScriptTypes.ModuleScript
+
+			local source = sources[scriptType][sourceId]
+			if not source or source.owner.UserId ~= player.UserId then
+				continue
+			end
+
+			if not removeType or removeType == scriptType then
+				table.insert(kill, script)
+			end
+		end
+
 		for type, list in sources do
 			if removeType and removeType ~= type then
 				continue
@@ -162,9 +186,13 @@ function Module:Init()
 
 		if stopServerScripts then
 			for script, data in scripts do
-				Sandbox.terminate(data.sandbox, not (not removeType or removeType == data.type))
+				Sandbox.terminate(data.sandbox, true)
 			end
 			table.clear(scripts)
+		end
+
+		for _, script in ipairs(kill) do
+			Sandbox.kill(script)
 		end
 	end)
 
@@ -195,7 +223,11 @@ function Module:Init()
 				return error("invalid script", 2)
 			end
 
-			local sourceId = hostScript:GetAttribute("source")
+			if not hostScript:HasTag("__sb_script") then
+				return error("invalid script", 2)
+			end
+
+			local sourceId = hostScript:GetAttribute("__sb_source")
 			if not sourceId then
 				return error("invalid script", 2)
 			end
