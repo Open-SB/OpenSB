@@ -12,6 +12,7 @@ local debug = debug
 local string = string
 local task = task
 local table = table
+local ipairs = ipairs
 
 local Sandbox = require("server/wm/sandbox")
 local Wrapper = require("server/wm/sandbox/wrapper")
@@ -31,10 +32,10 @@ type source = {
 	compiling: boolean?,
 }
 
-local sources = {
-	[ScriptTypes.Script] = {} :: { [string]: source },
-	[ScriptTypes.LocalScript] = {} :: { [string]: source },
-	[ScriptTypes.ModuleScript] = {} :: { [string]: source },
+local sources: { [any]: { [string]: source } } = {
+	[ScriptTypes.Script] = {},
+	[ScriptTypes.LocalScript] = {},
+	[ScriptTypes.ModuleScript] = {},
 }
 local scripts = {}
 
@@ -143,6 +144,30 @@ function Module:Init()
 		end
 	)
 
+	-- TODO: Maybe tag all sb scripts with a tag to then use CollectionService:GetTagged() (to destroy any disabled script, or localscripts directly from the server without having to keep track of cloned scripts manually).
+	ManagerCommunication:on("stopScripts", function(player: Player, stopServerScripts: boolean, removeType)
+		for type, list in sources do
+			if removeType and removeType ~= type then
+				continue
+			end
+
+			for id, source in ipairs(list) do
+				if source.owner.UserId ~= player.UserId then
+					continue
+				end
+
+				list[id] = nil
+			end
+		end
+
+		if stopServerScripts then
+			for script, data in scripts do
+				Sandbox.terminate(data.sandbox, not (not removeType or removeType == data.type))
+			end
+			table.clear(scripts)
+		end
+	end)
+
 	setmetatable(_G, { __metatable = "The metatable is locked" })
 	setmetatable(shared, {
 		__metatable = "The metatable is locked",
@@ -175,9 +200,8 @@ function Module:Init()
 				return error("invalid script", 2)
 			end
 
-			local sourceData = if className == "Script"
-				then sources[ScriptTypes.Script][sourceId]
-				else sources[ScriptTypes.ModuleScript][sourceId]
+			local scriptType = if className == "Script" then ScriptTypes.Script else ScriptTypes.ModuleScript
+			local sourceData = sources[scriptType][sourceId]
 			if not sourceData then
 				return error("invalid script", 2)
 			end
@@ -190,7 +214,7 @@ function Module:Init()
 
 			local sandbox, sandboxedFunc =
 				Sandbox.new(sourceData.owner, func, if not sourceData.isWorker then hostScript else nil)
-			scripts[hostScript] = sandbox
+			scripts[hostScript] = table.freeze({ sandbox = sandbox, source = sourceData, type = scriptType })
 
 			-- Track the calling thread (this thread)
 			sandbox.Threads[coroutine.running()] = true
@@ -212,12 +236,12 @@ function Module:Init()
 
 	-- Listen for script errors
 	game:GetService("ScriptContext").Error:Connect(function(message, stackTrace, script)
-		local sandbox = scripts[script]
-		if not sandbox then
+		local scriptData = scripts[script]
+		if not scriptData then
 			return
 		end
 
-		local player = sandbox.Owner
+		local player = scriptData.sandbox.Owner
 		ManagerCommunication:Send("error", player, message)
 		ManagerCommunication:Send("info", player, "Stack Begin")
 

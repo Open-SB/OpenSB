@@ -82,4 +82,11 @@ function WorkerManagers:onInvoke(topic: string, callback: (any...) -> any...)
 	end
 end
 
+function WorkerManagers:Send(topic: string, ...)
+	WorkerManagers.main:Send(topic, ...)
+	for _, Manager in ipairs(WorkerManagers) do
+		Manager:Send(topic, ...)
+	end
+end
+
 return WorkerManagers

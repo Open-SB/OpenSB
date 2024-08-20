@@ -1,4 +1,5 @@
 local World = require("server/world")
+local ScriptManager = require("server/scriptManager")
 
 local Players = game:GetService("Players")
 
@@ -115,5 +116,23 @@ return function(Commands)
 	--:rig15
 	define("rig15", function(context)
 		return setCharacterRigType(context.Player, Enum.HumanoidRigType.R15)
+	end)
+
+	--:noScripts
+	define("noScripts", function(context)
+		ScriptManager:StopScripts(context.Player)
+		return "Got no scripts."
+	end)
+
+	--:noServerScripts
+	define("noServerScripts", function(context)
+		ScriptManager:StopServerScripts(context.Player)
+		return "Got no server scripts."
+	end)
+
+	--:noLocalScripts
+	define("noLocalScripts", function(context)
+		ScriptManager:StopLocalScripts(context.Player)
+		return "Got no local scripts."
 	end)
 end

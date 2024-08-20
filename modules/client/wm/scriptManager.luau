@@ -32,14 +32,17 @@ type source = {
 	error: string?,
 	bytecode: string?,
 	arguments: { n: number } & { any },
+	isClientSide: boolean?,
+	isWorker: boolean?,
+	compiling: boolean?,
 
 	allowed: boolean?,
 	promptBindable: RBXScriptSignal?,
 }
 
-local sources = {
-	[ScriptTypes.LocalScript] = {} :: { [string]: source },
-	[ScriptTypes.ModuleScript] = {} :: { [string]: source },
+local sources: { [any]: { [string]: source } } = {
+	[ScriptTypes.LocalScript] = {},
+	[ScriptTypes.ModuleScript] = {},
 }
 local scripts = {}
 local toPrompt = {}
@@ -93,6 +96,7 @@ function Module:Init()
 			local data = {
 				owner = owner,
 				arguments = table.freeze(if arguments then table.pack(arguments:Invoke()) else table.pack()),
+				isClientSide = true,
 				compiling = true,
 			}
 
@@ -145,6 +149,18 @@ function Module:Init()
 			task.defer(require, host)
 		end
 	)
+
+	-- TODO: Hook Instance.fromExisting and :Clone() to replace cloned scripts with a version that has the source isClientSide set to true
+	ManagerCommunication:on("stopScripts", function(removeServerScripts)
+		table.clear(sources[ScriptTypes.LocalScript])
+		table.clear(sources[ScriptTypes.ModuleScript])
+
+		for script, data in scripts do
+			local source: source = data.source
+			Sandbox.terminate(data.sandbox, not (source.isWorker or source.isClientSide))
+		end
+		table.clear(scripts)
+	end)
 
 	setmetatable(_G, { __metatable = "The metatable is locked" })
 	setmetatable(shared, {
@@ -208,7 +224,7 @@ function Module:Init()
 			local sandbox, sandboxedFunc =
 				Sandbox.new(sourceData.owner, sourceData.bytecode, if not sourceData.isWorker then hostScript else nil)
 			sandbox.StackSource = hostScript:GetFullName()
-			scripts[hostScript] = sandbox
+			scripts[hostScript] = table.freeze({ sandbox = sandbox, source = sourceData, type = scriptType })
 
 			-- Track the calling thread (this thread)
 			sandbox.Threads[coroutine.running()] = true

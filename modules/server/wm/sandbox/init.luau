@@ -64,7 +64,7 @@ export type sandbox = {
 	Environment: table,
 	Connections: { [RBXScriptConnection]: true },
 	Threads: { [thread]: true },
-	Environments: { table },
+	Environments: { [table]: true },
 }
 
 function Module.new(owner: Player, mainFunc: () -> (), script: BaseScript?): sandbox
@@ -84,7 +84,7 @@ function Module.new(owner: Player, mainFunc: () -> (), script: BaseScript?): san
 	sandbox.Environment = environment
 	sandbox.Connections = {}
 	sandbox.Threads = {}
-	sandbox.Environments = { environment }
+	sandbox.Environments = { [environment] = true }
 
 	envLookup[environment] = sandbox
 	if script then
@@ -111,7 +111,7 @@ end
 function Module.assertTerminated(sandbox: sandbox?)
 	if (sandbox or Module.getSandbox()).Terminated then
 		-- We use task.delay to schedule termination instead of task.defer because defer may throw an error if it exceeds the limit of 80
-		task.delay(0, Module.Terminate, Module, sandbox)
+		task.delay(0, Module.terminate, sandbox)
 		error("sandbox terminated", 0)
 	end
 end
@@ -138,7 +138,7 @@ function Module.getSandboxFromFunction(func: () -> ()): sandbox?
 	return envLookup[getfenv(func)]
 end
 
-function Module:Terminate(sandbox: sandbox)
+function Module.terminate(sandbox: sandbox, keepScript: boolean?)
 	sandbox.Terminated = true
 
 	local connections = sandbox.Connections
@@ -174,6 +174,10 @@ function Module:Terminate(sandbox: sandbox)
 	end
 
 	scriptLookup[script] = nil
+
+	if keepScript then
+		return
+	end
 
 	pcall(function()
 		script:Destroy()

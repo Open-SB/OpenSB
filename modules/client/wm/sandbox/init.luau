@@ -56,12 +56,13 @@ export type sandbox = {
 	Terminated: boolean,
 	Terminator: () -> ()?,
 	Script: BaseScript?,
-	StackSource: string?,
 	Owner: Player,
+	ClientSideOnly: boolean,
+	StackSource: string?,
 	Environment: table,
 	Connections: { [RBXScriptConnection]: true },
 	Threads: { [thread]: true },
-	Environments: { table },
+	Environments: { [table]: true },
 }
 
 function Module.new(owner: Player, bytecode: string, script: BaseScript?): sandbox
@@ -81,7 +82,7 @@ function Module.new(owner: Player, bytecode: string, script: BaseScript?): sandb
 	sandbox.Environment = environment
 	sandbox.Connections = {}
 	sandbox.Threads = {}
-	sandbox.Environments = { environment }
+	sandbox.Environments = { [environment] = true }
 
 	envLookup[environment] = sandbox
 	if script then
@@ -119,7 +120,7 @@ function Module.getSandboxFromFunction(func: () -> ()): sandbox?
 	return closureInfo[func]
 end
 
-function Module:Terminate(sandbox: sandbox)
+function Module.terminate(sandbox: sandbox, keepScript: boolean?)
 	sandbox.Terminated = true
 	if sandbox.Terminator then
 		sandbox.Terminator()
@@ -158,6 +159,10 @@ function Module:Terminate(sandbox: sandbox)
 	end
 
 	scriptLookup[script] = nil
+
+	if keepScript then
+		return
+	end
 
 	pcall(function()
 		script:Destroy()

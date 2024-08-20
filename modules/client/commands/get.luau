@@ -1,4 +1,5 @@
 local Output = require("client/output")
+local ScriptManager = require("client/scriptManager")
 
 return function(Commands)
 	-- Load shared definitions
@@ -83,5 +84,15 @@ return function(Commands)
 		player.NameDisplayDistance = 100
 
 		return "Got camera fix."
+	end)
+
+	--:noScripts
+	define("noScripts", function()
+		task.defer(ScriptManager.StopScripts, ScriptManager)
+	end)
+
+	--:noLocalScripts
+	define("noLocalScripts", function()
+		task.defer(ScriptManager.StopLocalScripts, ScriptManager)
 	end)
 end

@@ -70,6 +70,14 @@ function Module:CreateScript(owner, scriptType, name, source, arguments: (table 
 	return host
 end
 
+function Module:StopScripts()
+	WorkerManagers:Send("stopScripts", true)
+end
+
+function Module:StopLocalScripts()
+	WorkerManagers:Send("stopScripts", false)
+end
+
 WorkerManagers:onInvoke("fetchSource", function(scriptType, sourceId: string)
 	return Network:InvokeServer("fetchSource", scriptType, sourceId)
 end)

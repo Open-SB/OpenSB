@@ -71,6 +71,18 @@ function Module:CreateScript(owner, scriptType, name, source, arguments: (table 
 	return host
 end
 
+function Module:StopScripts(player: Player)
+	WorkerManagers:Send("stopScripts", player, true)
+end
+
+function Module:StopServerScripts(player: Player)
+	WorkerManagers:Send("stopScripts", player, true, ScriptTypes.Script)
+end
+
+function Module:StopLocalScripts(player: Player)
+	WorkerManagers:Send("stopScripts", player, false, ScriptTypes.LocalScript)
+end
+
 Network:RegisterFunction("fetchSource", function(player: Player, scriptType, sourceId: string)
 	if not scriptType or type(sourceId) ~= "string" then
 		return
