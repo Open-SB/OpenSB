@@ -157,7 +157,7 @@ function Module:Init()
 
 		for script, data in scripts do
 			local source: source = data.source
-			Sandbox.terminate(data.sandbox, not (source.isWorker or source.isClientSide))
+			Sandbox.terminate(data.sandbox, not removeServerScripts and not (source.isWorker or source.isClientSide))
 		end
 		table.clear(scripts)
 	end)
