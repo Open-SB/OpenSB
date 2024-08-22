@@ -146,7 +146,7 @@ function Module:Init()
 		end
 	)
 
-	ManagerCommunication:on("stopScripts", function(player: Player, stopServerScripts: boolean, removeType)
+	ManagerCommunication:on("stopScripts", function(player: Player?, stopServerScripts: boolean, removeType)
 		local kill = {}
 		for _, script in ipairs(CollectionService:GetTagged("__sb_script")) do
 			local sourceId = script:GetAttribute("__sb_source")
@@ -161,7 +161,11 @@ function Module:Init()
 				else ScriptTypes.ModuleScript
 
 			local source = sources[scriptType][sourceId]
-			if not source or source.owner.UserId ~= player.UserId then
+			if not source then
+				continue
+			end
+
+			if player and source.owner.UserId ~= player.UserId then
 				continue
 			end
 
@@ -176,7 +180,7 @@ function Module:Init()
 			end
 
 			for id, source in ipairs(list) do
-				if source.owner.UserId ~= player.UserId then
+				if player and source.owner.UserId ~= player.UserId then
 					continue
 				end
 

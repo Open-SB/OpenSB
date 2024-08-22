@@ -72,15 +72,15 @@ function Module:CreateScript(owner, scriptType, name, source, arguments: (table 
 	return host
 end
 
-function Module:StopScripts(player: Player)
+function Module:StopScripts(player: Player?)
 	WorkerManagers:Send("stopScripts", player, true)
 end
 
-function Module:StopServerScripts(player: Player)
+function Module:StopServerScripts(player: Player?)
 	WorkerManagers:Send("stopScripts", player, true, ScriptTypes.Script)
 end
 
-function Module:StopLocalScripts(player: Player)
+function Module:StopLocalScripts(player: Player?)
 	WorkerManagers:Send("stopScripts", player, false, ScriptTypes.LocalScript)
 end
 

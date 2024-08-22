@@ -48,4 +48,12 @@ do
 	Functions.newindexInstance = debug.info(newindexThread, 0, "f")
 end
 
+function Functions.formatPlayerName(player: Player)
+	if player.DisplayName == player.Name then
+		return player.DisplayName
+	end
+
+	return `{player.DisplayName} (@{player.Name})`
+end
+
 return table.freeze(Functions)

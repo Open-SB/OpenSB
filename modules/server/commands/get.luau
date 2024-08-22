@@ -1,5 +1,7 @@
 local World = require("server/world")
 local ScriptManager = require("server/scriptManager")
+local Output = require("server/output")
+local Functions = require("shared/functions")
 
 local Players = game:GetService("Players")
 
@@ -119,15 +121,28 @@ return function(Commands)
 	end)
 
 	--:noScripts
-	define("noScripts", function(context)
-		ScriptManager:StopScripts(context.Player)
-		return "Got no scripts."
+	define("noScripts", function(context, arguments)
+		if not arguments[1] or string.lower(arguments[1]) ~= "all" then
+			ScriptManager:StopScripts(context.Player)
+			return "Got no scripts."
+		end
+
+		ScriptManager:StopScripts()
+		Output:appendToAll(Output.MessageType.Success, `{Functions.formatPlayerName(context.Player)} got no scripts.`)
 	end)
 
 	--:noServerScripts
-	define("noServerScripts", function(context)
-		ScriptManager:StopServerScripts(context.Player)
-		return "Got no server scripts."
+	define("noServerScripts", function(context, arguments)
+		if not arguments[1] or string.lower(arguments[1]) ~= "all" then
+			ScriptManager:StopServerScripts(context.Player)
+			return "Got no server scripts."
+		end
+
+		ScriptManager:StopServerScripts()
+		Output:appendToAll(
+			Output.MessageType.Success,
+			`{Functions.formatPlayerName(context.Player)} got no server scripts.`
+		)
 	end)
 
 	--:noLocalScripts
