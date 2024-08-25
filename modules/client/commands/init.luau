@@ -70,12 +70,16 @@ function Commands:Run(command, context, arguments)
 		return true
 	end
 
-	local success, message = pcall(command.callback, context, arguments)
+	local success, result, message = pcall(command.callback, context, arguments)
 	if not success then
-		return false, `Command runtime error: {message}`
+		return false, `Command runtime error: {result}`
 	end
 
-	return true, message
+	if type(result) == "boolean" then
+		return result, message
+	end
+
+	return true, result
 end
 
 function Commands:ProcessServer(data, input, inputContext)
