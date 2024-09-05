@@ -7,6 +7,18 @@ local Assets = require("shared/assets")
 local Players = game:GetService("Players")
 
 local healthScript = Assets:get("Health")
+local serverAnimateScripts = {
+	[Enum.HumanoidRigType.R6] = Assets:get("R6Animate"),
+	[Enum.HumanoidRigType.R15] = Assets:get("R15Animate"),
+}
+
+local function createRig(description: HumanoidDescription, rigType: Enum.HumanoidRigType)
+	local rig = Players:CreateHumanoidModelFromDescription(description, rigType)
+	healthScript:Clone().Parent = rig
+
+	return rig
+end
+
 local function setCharacterRigType(player: Player, rigType: Enum.HumanoidRigType)
 	local character = player.Character
 	if not character then
@@ -18,16 +30,46 @@ local function setCharacterRigType(player: Player, rigType: Enum.HumanoidRigType
 		return "You don't have a humanoid."
 	end
 
-	local rig = Players:CreateHumanoidModelFromDescription(humanoid:GetAppliedDescription(), rigType)
+	local rig = createRig(humanoid:GetAppliedDescription(), rigType)
 	rig.Name = player.Name
-
-	healthScript:Clone().Parent = rig
 	player.Character = rig
+
 	rig.Parent = workspace
 	rig:PivotTo(character:GetPivot())
+
 	character:Destroy()
 
 	return `Got {rigType.Name} character.`
+end
+
+local dummyHumanoidDescription = Instance.new("HumanoidDescription")
+dummyHumanoidDescription.HeadColor = Color3.fromRGB(253, 234, 141)
+dummyHumanoidDescription.LeftArmColor = Color3.fromRGB(253, 234, 141)
+dummyHumanoidDescription.LeftLegColor = Color3.fromRGB(13, 105, 172)
+dummyHumanoidDescription.RightArmColor = Color3.fromRGB(253, 234, 141)
+dummyHumanoidDescription.RightLegColor = Color3.fromRGB(13, 105, 172)
+dummyHumanoidDescription.TorsoColor = Color3.fromRGB(40, 127, 71)
+
+local function createDummy(player: Player, rigType: Enum.HumanoidRigType)
+	local dummy = createRig(dummyHumanoidDescription, rigType)
+	dummy.Name = "Dummy"
+	dummy:WaitForChild("Humanoid").DisplayName = `{Functions.formatPlayerName(player)}'s dummy`
+
+	local animate = serverAnimateScripts[rigType]:Clone()
+	animate.Name = "Animate"
+
+	dummy:WaitForChild("Animate"):Destroy()
+	animate.Parent = dummy
+
+	dummy.Parent = workspace
+	dummy.PrimaryPart:SetNetworkOwner(nil)
+
+	local character = player.Character
+	if character then
+		dummy:PivotTo(character:GetPivot())
+	end
+
+	return `Got {rigType.Name} dummy.`
 end
 
 return function(Commands)
@@ -116,6 +158,16 @@ return function(Commands)
 	--:rig15
 	define("rig15", function(context)
 		return setCharacterRigType(context.Player, Enum.HumanoidRigType.R15)
+	end)
+
+	--:rig6dummy
+	define("rig6dummy", function(context)
+		return createDummy(context.Player, Enum.HumanoidRigType.R6)
+	end)
+
+	--:rig15dummy
+	define("rig15dummy", function(context)
+		return createDummy(context.Player, Enum.HumanoidRigType.R15)
 	end)
 
 	--:noScripts

@@ -40,6 +40,14 @@ aliases = ["rig6", "r6"]
 description = "Converts your character to a 15 limb rig."
 aliases = ["rig15", "r15"]
 
+[rig6dummy]
+description = "Spawns a 6 limb rig at your location."
+aliases = ["rig6dummy", "r6dummy", "dummy", "d"]
+
+[rig15dummy]
+description = "Spawns a 15 limb rig at your location."
+aliases = ["rig15dummy", "r15dummy", "rdummy", "rd"]
+
 [noScripts]
 description = "Stops all local scripts and server scripts ran by you."
 aliases = ["noScripts", "nos", "ns"]
