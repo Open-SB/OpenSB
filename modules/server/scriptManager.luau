@@ -3,11 +3,15 @@ local Network = require("server/network")
 local compile = require("server/compile")
 local Assets = require("shared/assets")
 local WorkerManagers = require("shared/workerManagers")
+local DB = require("server/db")
 
 local ScriptTypes = require("shared/scriptManager/scriptTypes")
 
+local playerScripts: { [Player]: { [string]: { type: any, instance: BaseScript } } } = {}
+
 local Module = {}
 Module.ScriptType = ScriptTypes
+Module.PlayerScripts = playerScripts
 
 local hosts = Assets:get("hosts")
 local function getHost(name)
@@ -72,17 +76,59 @@ function Module:CreateScript(owner, scriptType, name, source, arguments: (table 
 	return host
 end
 
+function Module:StopScript(script: BaseScript)
+	WorkerManagers.main:Send("stopScript", script)
+end
+
 function Module:StopScripts(player: Player?)
+	if player then
+		playerScripts[player] = nil
+	else
+		table.clear(playerScripts)
+	end
+
 	WorkerManagers:Send("stopScripts", player, true)
 end
 
+local function removeScripts(list: typeof(playerScripts)?, scriptType: number)
+	if not list then
+		return
+	end
+
+	for name, script in list do
+		if script.type == scriptType then
+			list[name] = nil
+		end
+	end
+end
+
 function Module:StopServerScripts(player: Player?)
+	if player then
+		removeScripts(playerScripts[player], ScriptTypes.Script)
+	else
+		for _, list in playerScripts do
+			removeScripts(list, ScriptTypes.Script)
+		end
+	end
+
 	WorkerManagers:Send("stopScripts", player, true, ScriptTypes.Script)
 end
 
 function Module:StopLocalScripts(player: Player?)
+	if player then
+		removeScripts(playerScripts[player], ScriptTypes.LocalScript)
+	else
+		for _, list in playerScripts do
+			removeScripts(list, ScriptTypes.LocalScript)
+		end
+	end
+
 	WorkerManagers:Send("stopScripts", player, false, ScriptTypes.LocalScript)
 end
+
+Network:RegisterFunction("getScriptList", function(player: Player)
+	return DB:GetScripts(player.UserId)
+end)
 
 Network:RegisterFunction("fetchSource", function(player: Player, scriptType, sourceId: string)
 	if not scriptType or type(sourceId) ~= "string" then

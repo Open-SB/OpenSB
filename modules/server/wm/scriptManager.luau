@@ -146,6 +146,17 @@ function Module:Init()
 		end
 	)
 
+	-- TODO: Tell client to stop LocalScript (maybe?).
+	ManagerCommunication:on("stopScript", function(script: BaseScript)
+		local scriptData = scripts[script]
+		if scriptData then
+			scripts[script] = nil
+			Sandbox.terminate(scriptData.sandbox, true)
+		end
+
+		Sandbox.kill(script)
+	end)
+
 	ManagerCommunication:on("stopScripts", function(player: Player?, stopServerScripts: boolean, removeType)
 		local kill = {}
 		for _, script in ipairs(CollectionService:GetTagged("__sb_script")) do

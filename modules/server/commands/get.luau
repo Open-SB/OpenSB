@@ -138,6 +138,7 @@ return function(Commands)
 			return "Got no server scripts."
 		end
 
+		table.clear(playerScripts)
 		ScriptManager:StopServerScripts()
 		Output:appendToAll(
 			Output.MessageType.Success,

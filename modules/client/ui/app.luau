@@ -3,6 +3,7 @@ local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
 
 local Commands = require("client/commands")
+local Network = require("client/network")
 local CommandInputContext = require("shared/commands/inputContexts")
 local Maid = require("shared/maid")
 local MessageType = require("shared/output/messageTypes")
@@ -41,6 +42,10 @@ local OUTPUT_MESSAGE_COLORS = {
 	[MessageType.System] = Color3.fromRGB(209, 93, 255),
 }
 
+local SCRIPT_LIST_TEXT_FONT = APP_TEXT_FONT
+local SCRIPT_LIST_TEXT_SIZE = 16
+local SCRIPT_LIST_TEXT_COLOR = APP_CONTENT_COLOR
+
 local COMMAND_BAR_TRANSPARENCY = 0
 local COMMAND_BAR_INPUT_KEY = Enum.KeyCode.Quote
 
@@ -60,10 +65,18 @@ local output
 local outputScale
 local outputList
 
-local function updateOutputScale()
+local scriptListScale
+local scriptListScroll
+
+local function updateScale()
 	local scale = root.AbsoluteSize.Y / APP_MAX_SIZE
+	local size = UDim2.fromScale(1 / scale, 1 / scale)
+
 	outputScale.Scale = scale
-	outputList.Size = UDim2.fromScale(1 / scale, 1 / scale)
+	outputList.Size = size
+
+	scriptListScale.Scale = scale
+	scriptListScroll.Size = size
 end
 
 local function setOutputOpen(open)
@@ -74,6 +87,12 @@ local function setOutputOpen(open)
 	output.Visible = open
 end
 
+local function processCommandBarInput()
+	local input = commandBarInput.Text
+	commandBarInput.Text = ""
+	Commands:Process(input, CommandInputContext.CommandBar)
+end
+
 local outputLabels = {}
 local function clearOutput()
 	for _, label in ipairs(outputLabels) do
@@ -81,14 +100,7 @@ local function clearOutput()
 	end
 	table.clear(outputLabels)
 
-	outputList.CanvasSize = UDim2.new()
 	outputList.CanvasPosition = Vector2.zero
-end
-
-local function processCommandBarInput()
-	local input = commandBarInput.Text
-	commandBarInput.Text = ""
-	Commands:Process(input, CommandInputContext.CommandBar)
 end
 
 function App.onMessageOut(id, dateTime, message, messageType)
@@ -160,6 +172,45 @@ function App.scriptPrompt(bindable: BindableEvent, owner: Player, script: BaseSc
 		task.defer(task.cancel, thread)
 	end)
 end
+
+local scriptList = {}
+local function addScript(name: string)
+	local script = scriptList[name]
+	if script then
+		script:Destroy()
+	end
+
+	scriptList[name] = create "TextLabel" {
+		Name = name,
+		Parent = scriptListScroll,
+		AutomaticSize = Enum.AutomaticSize.XY,
+		BackgroundTransparency = 1,
+		FontFace = SCRIPT_LIST_TEXT_FONT,
+		Text = name,
+		TextColor3 = SCRIPT_LIST_TEXT_COLOR,
+		TextSize = SCRIPT_LIST_TEXT_SIZE,
+		TextWrapped = false,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextYAlignment = Enum.TextYAlignment.Center,
+	}
+end
+Network:RegisterEvent("addScript", addScript)
+
+local function removeScript(name: string)
+	local script = scriptList[name]
+	if script then
+		script:Destroy()
+	end
+
+	scriptList[name] = nil
+end
+Network:RegisterEvent("removeScript", removeScript)
+
+task.defer(function()
+	for _, name in ipairs(Network:InvokeServer("getScriptList")) do
+		addScript(name)
+	end
+end)
 
 function App.mount(screenGui)
 	AppMaid:DoCleaning()
@@ -276,6 +327,7 @@ function App.mount(screenGui)
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		AutomaticCanvasSize = Enum.AutomaticSize.XY,
+		CanvasSize = UDim2.new(),
 		ScrollBarImageColor3 = APP_CONTENT_COLOR,
 		ScrollBarImageTransparency = APP_SCROLL_TRANSPARENCY,
 		ScrollBarThickness = APP_SCROLL_THICKNESS,
@@ -290,6 +342,30 @@ function App.mount(screenGui)
 		},
 
 		create "UIListLayout" {},
+	}
+
+	scriptListScale = create "UIScale" {}
+	scriptListScroll = create "ScrollingFrame" {
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		AutomaticCanvasSize = Enum.AutomaticSize.XY,
+		CanvasSize = UDim2.new(),
+		ScrollBarImageColor3 = APP_CONTENT_COLOR,
+		ScrollBarImageTransparency = APP_SCROLL_TRANSPARENCY,
+		ScrollBarThickness = APP_SCROLL_THICKNESS,
+
+		scriptListScale,
+
+		create "UIPadding" {
+			PaddingBottom = APP_TEXT_PADDING.PaddingBottom - UDim.new(0, APP_SCROLL_PADDING),
+			PaddingLeft = APP_TEXT_PADDING.PaddingLeft - UDim.new(0, APP_SCROLL_PADDING),
+			PaddingRight = APP_TEXT_PADDING.PaddingRight - UDim.new(0, APP_SCROLL_PADDING),
+			PaddingTop = APP_TEXT_PADDING.PaddingTop - UDim.new(0, APP_SCROLL_PADDING),
+		},
+
+		create "UIListLayout" {
+			SortOrder = Enum.SortOrder.Name,
+		},
 	}
 
 	output = create "Frame" {
@@ -394,22 +470,7 @@ function App.mount(screenGui)
 					PaddingTop = UDim.new(0, APP_SCROLL_PADDING),
 				},
 
-				create "ScrollingFrame" {
-					BackgroundTransparency = 1,
-					BorderSizePixel = 0,
-					Size = UDim2.fromScale(1, 1),
-					AutomaticCanvasSize = Enum.AutomaticSize.XY,
-					ScrollBarImageColor3 = APP_CONTENT_COLOR,
-					ScrollBarImageTransparency = APP_SCROLL_TRANSPARENCY,
-					ScrollBarThickness = APP_SCROLL_THICKNESS,
-
-					create "UIPadding" {
-						PaddingBottom = UDim.new(0, 0),
-						PaddingLeft = UDim.new(0, 0),
-						PaddingRight = UDim.new(0, APP_SCROLL_PADDING),
-						PaddingTop = UDim.new(0, 0),
-					},
-				},
+				scriptListScroll,
 			},
 
 			create "Frame" {
@@ -458,11 +519,16 @@ function App.mount(screenGui)
 		output,
 	}
 
-	updateOutputScale()
-	AppMaid:GiveTask(root:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateOutputScale))
+	updateScale()
+	AppMaid:GiveTask(root:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateScale))
 
 	clearOutput()
 	setOutputOpen(App.OutputOpen)
+
+	-- Recreate scriptList
+	for name, _ in scriptList do
+		addScript(name)
+	end
 end
 
 return App

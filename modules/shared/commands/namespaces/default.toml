@@ -17,3 +17,38 @@ useCases = [["code"]]
 description = "Executes client sided code from a link."
 aliases = ["httpLocalExecute", "xl", "hx"]
 useCases = [["link"]]
+
+[createSourceScript]
+description = "Creates / updates a script with a given source."
+aliases = ["createSourceScript", "createSource", "cs"]
+useCases = [["name", "source"]]
+
+[createHttpScript]
+description = "Creates / updates a script with a given link as the source."
+aliases = ["createHttpScript", "createHttp", "ch"]
+useCases = [["name", "link"]]
+
+[removeScript]
+description = "Removes a specified script."
+aliases = ["removeScript", "remove"]
+useCases = [["script name"]]
+
+[renameScript]
+description = "Renames a specified script to something else."
+aliases = ["renameScript", "rename"]
+useCases = [["name", "new name"]]
+
+[runScript]
+description = "Runs the given script as server sided code."
+aliases = ["runScript", "run", "r"]
+useCases = [["script name"]]
+
+[runLocalScript]
+description = "Runs the given script as client sided code."
+aliases = ["runLocalScript", "runLocal", "rl"]
+useCases = [["script name"]]
+
+[stopScript]
+description = "Stops the specified script (if it's running)."
+aliases = ["stopScript", "stop"]
+useCases = [["script name"]]
