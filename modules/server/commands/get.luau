@@ -2,9 +2,11 @@ local World = require("server/world")
 local ScriptManager = require("server/scriptManager")
 local Output = require("server/output")
 local Functions = require("shared/functions")
+local Assets = require("shared/assets")
 
 local Players = game:GetService("Players")
 
+local healthScript = Assets:get("Health")
 local function setCharacterRigType(player: Player, rigType: Enum.HumanoidRigType)
 	local character = player.Character
 	if not character then
@@ -19,11 +21,7 @@ local function setCharacterRigType(player: Player, rigType: Enum.HumanoidRigType
 	local rig = Players:CreateHumanoidModelFromDescription(humanoid:GetAppliedDescription(), rigType)
 	rig.Name = player.Name
 
-	local healthScript = character:FindFirstChild("Health")
-	if healthScript and healthScript:IsA("Script") then
-		Instance.fromExisting(healthScript).Parent = rig
-	end
-
+	healthScript:Clone().Parent = rig
 	player.Character = rig
 	rig.Parent = workspace
 	rig:PivotTo(character:GetPivot())
