@@ -279,6 +279,8 @@ function Module:Init()
 				else
 					ManagerCommunication:Send("info", `Script '{source}', Line {line}`)
 				end
+
+				continue
 			end
 
 			line = tonumber(line)
