@@ -145,7 +145,7 @@ function Module:Init()
 			-- We use a modulescript because it allows us to start the script under our actor while the actor is destroyed
 			-- Only downside to this is that it will cost a little extra memory for each worker (due to them having their own ModuleScript)
 			host.Parent = Instance.new("Actor")
-			host:SetAttribute("source", id)
+			host:SetAttribute("__sb_source", id)
 			task.defer(require, host)
 		end
 	)
