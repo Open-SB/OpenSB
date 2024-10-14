@@ -142,6 +142,8 @@ function Module:Init()
 			-- Only downside to this is that it will cost a little extra memory for each worker (due to them having their own ModuleScript)
 			host.Parent = Instance.new("Actor")
 			host:SetAttribute("__sb_source", id)
+			host:AddTag("__sb_script")
+
 			task.defer(require, host)
 		end
 	)
