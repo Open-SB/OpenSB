@@ -214,7 +214,7 @@ function Module.Init(_, Sandbox, Wrapper)
 
 		-- https://create.roblox.com/docs/reference/engine/classes/Players#UnbanAsync
 		wmap[Players.UnbanAsync] = function()
-			return error("BanAsync() is disabled", 2)
+			return error("UnbanAsync() is disabled", 2)
 		end
 	end
 
