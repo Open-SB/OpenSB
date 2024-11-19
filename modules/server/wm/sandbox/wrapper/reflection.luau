@@ -82,6 +82,7 @@ table.freeze(default)
 local function modify(mutator: (table) -> never)
 	local clone = table.clone(default)
 	mutator(clone)
+
 	return table.freeze(clone)
 end
 local toCString = Functions.toCString
@@ -157,15 +158,14 @@ function Module.Init(_, Sandbox, wrapper)
 		end
 	end)
 
-	setmetatable(Module, {
-		__metatable = "The metatable is locked",
-		__index = function()
-			return default
-		end,
-		__newindex = function()
-			error("attempt to modify a readonly table", 2)
-		end,
-	})
+	table.freeze(setmetatable(
+		Module,
+		table.freeze({
+			__index = function()
+				return default
+			end,
+		})
+	))
 end
 
 return Module
