@@ -60,12 +60,42 @@ Module.UnwrapMap = unwrapMap
 export type sandbox = {
 	Terminated: boolean,
 	Script: BaseScript?,
-	Owner: Player,
+	Owner: Player?,
 	Environment: table,
+
 	Connections: { [RBXScriptConnection]: true },
 	Threads: { [thread]: true },
 	Environments: { [table]: true },
 }
+
+-- This is a fake sandbox instance, refrences to sandboxes can be replaced with this to allow the actual sandbox to be cleaned up by gc
+Module.terminated = table.freeze({
+	Terminated = true,
+	Script = nil,
+	Owner = nil,
+	Environment = table.freeze({}),
+
+	Connections = setmetatable({}, {
+		__metatable = "The metatable is locked",
+		__newindex = function(_, connection)
+			if connection then
+				pcall(connection.Disconnect, connection)
+			end
+		end,
+	}),
+	Threads = setmetatable({}, {
+		__metatable = "The metatable is locked",
+		__newindex = function(_, thread)
+			if thread then
+				pcall(task.cancel, thread)
+			end
+		end,
+	}),
+	Environments = setmetatable({}, {
+		__metatable = "The metatable is locked",
+		__newindex = function() end,
+	}),
+}) :: sandbox
 
 function Module.new(owner: Player, mainFunc: () -> (), script: BaseScript?): sandbox
 	local environment = Environment.new({

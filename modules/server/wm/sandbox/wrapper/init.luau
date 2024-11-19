@@ -11,11 +11,15 @@ local type = type
 local string = string
 local select = select
 local unpack = unpack
+local error = error
 
 local Rules = require("./rules")
 local Reflection = require("./reflection")
 local Sandbox
 local wrapMap, unwrapMap
+
+local callbackCreatorTerminatedString =
+	"Script that implemented this callback has been destroyed while calling async callback"
 
 local wrap, unwrap
 local wrapMany, unwrapMany
@@ -351,13 +355,27 @@ unwrap = function(value: any, unwrappedTables: table?): any
 		local numArgs, variadic = debug.info(value, "a")
 		if variadic then -- Unknown maximum number of arguments (has ...)
 			unwrappedValue = function(...)
+				if sandbox.Terminated then
+					value = nil -- Remove reference to callback (no longer relevant if the creator is terminated)
+					sandbox = Sandbox.terminated -- The same applies to the actual sandbox
+
+					return error(callbackCreatorTerminatedString, 2)
+				end
+
 				return unwrapMany(value(wrapMany(...)))
 			end
 		elseif numArgs > 0 then -- Known maximum number of arguments
 			unwrappedValue = function(...)
+				if sandbox.Terminated then
+					value = nil -- Remove reference to callback (no longer relevant if the creator is terminated)
+					sandbox = Sandbox.terminated -- The same applies to the actual sandbox
+
+					return error(callbackCreatorTerminatedString, 2)
+				end
+
 				local args, length = { ... }, select("#", ...)
 				if numArgs < length then
-					-- Clamp the amount of values to unwrap to the amount of arguments the function can take
+					-- Clamp the amount of values to wrap to the amount of arguments the function can take
 					length = numArgs
 				end
 
@@ -369,6 +387,13 @@ unwrap = function(value: any, unwrappedTables: table?): any
 			end
 		else -- No arguments
 			unwrappedValue = function()
+				if sandbox.Terminated then
+					value = nil -- Remove reference to callback (no longer relevant if the creator is terminated)
+					sandbox = Sandbox.terminated -- The same applies to the actual sandbox
+
+					return error(callbackCreatorTerminatedString, 2)
+				end
+
 				return unwrapMany(value())
 			end
 		end
