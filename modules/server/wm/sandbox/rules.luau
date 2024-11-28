@@ -80,24 +80,29 @@ function Module.Init(_, Sandbox)
 
 			self = unwrap(self)
 
-			local thread
+			local parentThread = coroutine.running()
+			local warnThread
 			if not timeOut and typeof(self) == "Instance" then
-				thread = task.delay(
-					5,
-					ManagerCommunication.Send,
-					ManagerCommunication,
-					"warn",
-					sandbox.Owner,
-					`Infinite yield possible on '{GetFullName(self)}:WaitForChild("{childName}")'`
-				)
-				sandbox.Threads[thread] = true
+				warnThread = task.delay(5, function()
+					-- Incase the WaitForChild thread stopped yielding (could be because the function threw an error), then don't emit the warning
+					if coroutine.status(parentThread) ~= "suspended" then
+						return
+					end
+
+					ManagerCommunication:Send(
+						"warn",
+						sandbox.Owner,
+						`Infinite yield possible on '{GetFullName(self)}:WaitForChild("{childName}")'`
+					)
+				end)
+				sandbox.Threads[warnThread] = true
 			end
 
-			sandbox.Threads[coroutine.running()] = true
+			sandbox.Threads[parentThread] = true
 			local child = WaitForChild(self, childName, timeOut)
-			if thread then
-				task.cancel(thread)
-				sandbox.Threads[thread] = nil
+			if warnThread then
+				task.cancel(warnThread)
+				sandbox.Threads[warnThread] = nil
 			end
 
 			assertTerminated(sandbox)
