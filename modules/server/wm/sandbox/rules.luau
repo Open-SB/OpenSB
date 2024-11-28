@@ -8,6 +8,7 @@ local coroutine = coroutine
 local debug = debug
 
 local ManagerCommunication = require("shared/wm/communication")
+local Wrapper = require("./wrapper")
 
 local renv = getfenv()
 local removeProtectedClasses = table.freeze({
@@ -19,7 +20,7 @@ local removeProtectedClasses = table.freeze({
 local Module = {}
 Module.RemoveProtectedClasses = removeProtectedClasses
 
-function Module.Init(_, Sandbox, Wrapper)
+function Module.Init(_, Sandbox)
 	local wmap = Sandbox.WrapMap
 	local getSandbox = Sandbox.getSandbox
 	local assertTerminated = Sandbox.assertTerminated

@@ -6,7 +6,7 @@ local typeof = typeof
 local type = type
 
 local Wrapper
-local Rules = require("./rules")
+local Rules
 local Functions = require("shared/functions")
 
 local wrap, unwrap
@@ -87,7 +87,7 @@ local function modify(mutator: (table) -> never)
 end
 local toCString = Functions.toCString
 
-function Module.Init(_, Sandbox, wrapper)
+function Module.Init(_, Sandbox, wrapper, rules)
 	if Wrapper then
 		return error("Wrapper is already set.", 2)
 	end
@@ -96,6 +96,8 @@ function Module.Init(_, Sandbox, wrapper)
 	Wrapper = wrapper
 	wrap, unwrap = Wrapper.wrap, Wrapper.unwrap
 	wrapMany, unwrapMany = Wrapper.wrapMany, Wrapper.unwrapMany
+
+	Rules = rules
 
 	Module.Instance = modify(function(meta)
 		local removeProtectedClasses = Rules.RemoveProtectedClasses

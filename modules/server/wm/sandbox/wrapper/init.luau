@@ -13,7 +13,6 @@ local select = select
 local unpack = unpack
 local error = error
 
-local Rules = require("./rules")
 local Reflection = require("./reflection")
 local Sandbox
 local wrapMap, unwrapMap
@@ -80,9 +79,6 @@ function Module.setSandbox(sandbox)
 
 	Sandbox = sandbox
 	wrapMap, unwrapMap = Sandbox.WrapMap, Sandbox.UnwrapMap
-
-	Rules:Init(Sandbox, Module)
-	Reflection:Init(Sandbox, Module)
 end
 
 wrap = function(value: any, wrappedTables: table?): any

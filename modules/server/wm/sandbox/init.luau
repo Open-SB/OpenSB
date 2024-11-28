@@ -12,6 +12,7 @@ local shared = shared
 local Log = require("shared/log")
 local Environment = require("./environment")
 local Wrapper = require("./wrapper")
+local Rules = require("./rules")
 
 local envLookup = {}
 local scriptLookup = {}
@@ -221,6 +222,10 @@ function Module:Init()
 	Log.debug("Initializing sandbox...")
 
 	Wrapper.setSandbox(Module)
+
+	Rules:Init(Module)
+	require("./wrapper/reflection"):Init(Module, Wrapper, Rules)
+
 	Environment.setSandbox(Module)
 	Environment:Init()
 end
