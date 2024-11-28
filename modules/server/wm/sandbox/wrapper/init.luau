@@ -354,6 +354,7 @@ unwrap = function(value: any, unwrappedTables: table?): any
 
 		local numArgs, variadic = debug.info(value, "a")
 		if variadic then -- Unknown maximum number of arguments (has ...)
+			-- This unwrapped function won't respect the amount of args that is shown by debug.info
 			unwrappedValue = function(...)
 				if sandbox.Terminated then
 					value = nil -- Remove reference to callback (no longer relevant if the creator is terminated)
@@ -365,6 +366,7 @@ unwrap = function(value: any, unwrappedTables: table?): any
 				return unwrapMany(value(wrapMany(...)))
 			end
 		elseif numArgs > 0 then -- Known maximum number of arguments
+			-- This unwrapped function won't respect the amount of args that is shown by debug.info (and will instead show as variadic)
 			unwrappedValue = function(...)
 				if sandbox.Terminated then
 					value = nil -- Remove reference to callback (no longer relevant if the creator is terminated)
