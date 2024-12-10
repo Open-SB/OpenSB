@@ -30,6 +30,7 @@ function Module.Init(_, Sandbox)
 			local parentThread = coroutine.running()
 			local warnThread
 			if not timeOut and typeof(self) == "Instance" then
+				local fullName = GetFullName(self)
 				warnThread = task.delay(5, function()
 					-- Incase the WaitForChild thread stopped yielding (could be because the function threw an error), then don't emit the warning
 					if coroutine.status(parentThread) ~= "suspended" then
@@ -39,7 +40,7 @@ function Module.Init(_, Sandbox)
 					-- TODO: Add stacktraces to warnings
 					ManagerCommunication:Send(
 						"warn",
-						`Infinite yield possible on '{GetFullName(self)}:WaitForChild("{childName}")'`
+						`Infinite yield possible on '{fullName}:WaitForChild("{childName}")'`
 					)
 				end)
 				sandbox.Threads[warnThread] = true
