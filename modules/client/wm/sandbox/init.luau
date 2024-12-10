@@ -4,6 +4,7 @@ local setmetatable = setmetatable
 local Log = require("shared/log")
 local Environment = require("./environment")
 local VM = require("./vm")
+local Rules = require("./rules")
 
 local Players = game:GetService("Players")
 
@@ -176,6 +177,9 @@ function Module:Init()
 	Log.debug("Initializing sandbox...")
 
 	VM.setSandbox(Module)
+
+	Rules:Init(Module)
+
 	Environment.setSandbox(Module)
 	Environment:Init()
 end
