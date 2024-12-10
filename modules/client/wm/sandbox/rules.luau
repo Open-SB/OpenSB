@@ -36,6 +36,7 @@ function Module.Init(_, Sandbox)
 						return
 					end
 
+					-- TODO: Add stacktraces to warnings
 					ManagerCommunication:Send(
 						"warn",
 						`Infinite yield possible on '{GetFullName(self)}:WaitForChild("{childName}")'`

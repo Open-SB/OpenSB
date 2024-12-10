@@ -89,6 +89,7 @@ function Module.Init(_, Sandbox)
 						return
 					end
 
+					-- TODO: Add stacktraces to warnings
 					ManagerCommunication:Send(
 						"warn",
 						sandbox.Owner,
