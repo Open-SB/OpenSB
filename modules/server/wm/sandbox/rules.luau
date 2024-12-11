@@ -229,6 +229,9 @@ function Module.Init(_, Sandbox)
 
 		-- https://create.roblox.com/docs/reference/engine/classes/Players#UnbanAsync
 		disable(Players.UnbanAsync)
+
+		-- https://create.roblox.com/docs/reference/engine/classes/Players#GetBanHistoryAsync
+		disable(Players.GetBanHistoryAsync)
 	end
 
 	task.spawn(function() -- https://create.roblox.com/docs/reference/engine/classes/Player
