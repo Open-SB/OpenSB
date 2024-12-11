@@ -28,6 +28,15 @@ function Module.Init(_, Sandbox)
 	local wrap, unwrap = Wrapper.wrap, Wrapper.unwrap
 	local wrapMany, unwrapMany = Wrapper.wrapMany, Wrapper.unwrapMany
 
+	local function disable(func: () -> (), name: string?)
+		local funcName = name or debug.info(func, "n") or ""
+		local message = funcName .. "() is disabled"
+
+		wmap[func] = function()
+			return error(message, 2)
+		end
+	end
+
 	do -- https://create.roblox.com/docs/reference/engine/classes/Instance
 		local ClearAllChildren = game.ClearAllChildren
 		local Destroy = game.Destroy
@@ -216,14 +225,10 @@ function Module.Init(_, Sandbox)
 		local Players = renv.game:GetService("Players")
 
 		-- https://create.roblox.com/docs/reference/engine/classes/Players#BanAsync
-		wmap[Players.BanAsync] = function()
-			return error("BanAsync() is disabled", 2)
-		end
+		disable(Players.BanAsync)
 
 		-- https://create.roblox.com/docs/reference/engine/classes/Players#UnbanAsync
-		wmap[Players.UnbanAsync] = function()
-			return error("UnbanAsync() is disabled", 2)
-		end
+		disable(Players.UnbanAsync)
 	end
 
 	task.spawn(function() -- https://create.roblox.com/docs/reference/engine/classes/Player
@@ -231,9 +236,7 @@ function Module.Init(_, Sandbox)
 			or renv.game:GetService("Players").PlayerAdded:Wait()
 
 		-- https://create.roblox.com/docs/reference/engine/classes/Player#Kick
-		wmap[Player.Kick] = function()
-			return error("Kick() is disabled", 2)
-		end
+		disable(Player.Kick)
 	end)
 
 	do -- https://create.roblox.com/docs/reference/engine/classes/Debris

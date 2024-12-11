@@ -14,6 +14,15 @@ function Module.Init(_, Sandbox)
 	local fmap = Sandbox.FunctionMap
 	local getSandbox = Sandbox.getSandbox
 
+	local function disable(func: () -> (), name: string?)
+		local funcName = name or debug.info(func, "n") or ""
+		local message = funcName .. "() is disabled"
+
+		fmap[func] = function()
+			return error(message, 2)
+		end
+	end
+
 	do -- https://create.roblox.com/docs/reference/engine/classes/Instance
 		local GetFullName = game.GetFullName
 		local WaitForChild = game.WaitForChild
