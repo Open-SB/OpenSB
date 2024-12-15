@@ -7,6 +7,7 @@ local chatFolder = script.Parent.Parent
 
 local Chat = game:GetService("Chat")
 local RunService = game:GetService("RunService")
+local TextChatService = game:GetService("TextChatService")
 local ReplicatedModules = chatFolder:WaitForChild("ClientChatModules")
 local ChatModules = chatFolder:WaitForChild("ChatModules")
 local ChatConstants = require(ReplicatedModules:WaitForChild("ChatConstants"))
@@ -30,6 +31,16 @@ end
 local errorTextColor = ChatSettings.ErrorMessageTextColor or Color3.fromRGB(245, 50, 50)
 local errorExtraData = { ChatColor = errorTextColor }
 
+local FFlagUseNewDirectChatAPI = false
+do
+	local ok, value = pcall(function()
+		return UserSettings():IsUserFeatureEnabled("UserUseNewDirectChatAPI")
+	end)
+	if ok then
+		FFlagUseNewDirectChatAPI = value
+	end
+end
+
 local function GetWhisperChannelPrefix()
 	if ChatConstants.WhisperChannelPrefix then
 		return ChatConstants.WhisperChannelPrefix
@@ -49,10 +60,17 @@ local function Run(ChatService)
 		local fromPlayer = fromSpeaker:GetPlayer()
 		local toPlayer = toSpeaker:GetPlayer()
 		if fromPlayer and toPlayer then
-			local success, canChat = pcall(function()
-				return Chat:CanUsersChatAsync(fromPlayer.UserId, toPlayer.UserId)
-			end)
-			return success and canChat
+			if FFlagUseNewDirectChatAPI then
+				local success, usersCanChat = pcall(function()
+					return TextChatService:CanUsersDirectChatAsync(fromPlayer.UserId, { toPlayer.UserId })
+				end)
+				return success and #usersCanChat > 0
+			else
+				local success, canChat = pcall(function()
+					return Chat:CanUsersChatAsync(fromPlayer.UserId, toPlayer.UserId)
+				end)
+				return success and canChat
+			end
 		end
 		return false
 	end
