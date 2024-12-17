@@ -115,7 +115,7 @@ function App.onMessageOut(id, dateTime, message, messageType)
 	if id and outputLabels[id] then
 		label = outputLabels[id]
 	else
-		label = create "TextLabel" {
+		label = create("TextLabel")({
 			Parent = outputList,
 			AutomaticSize = Enum.AutomaticSize.XY,
 			BackgroundTransparency = 1,
@@ -124,7 +124,7 @@ function App.onMessageOut(id, dateTime, message, messageType)
 			TextWrapped = true,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			TextYAlignment = Enum.TextYAlignment.Center,
-		}
+		})
 
 		table.insert(outputLabels, label)
 		if id then
@@ -180,7 +180,7 @@ local function addScript(name: string)
 		script:Destroy()
 	end
 
-	scriptList[name] = create "TextLabel" {
+	scriptList[name] = create("TextLabel")({
 		Name = name,
 		Parent = scriptListScroll,
 		AutomaticSize = Enum.AutomaticSize.XY,
@@ -192,7 +192,7 @@ local function addScript(name: string)
 		TextWrapped = false,
 		TextXAlignment = Enum.TextXAlignment.Center,
 		TextYAlignment = Enum.TextYAlignment.Center,
-	}
+	})
 end
 Network:RegisterEvent("addScript", addScript)
 
@@ -215,7 +215,7 @@ end)
 function App.mount(screenGui)
 	AppMaid:DoCleaning()
 
-	commandBarBackground = create "Frame" {
+	commandBarBackground = create("Frame")({
 		AnchorPoint = Vector2.new(0, 1),
 		BackgroundColor3 = APP_BACKGROUND_COLOR,
 		BackgroundTransparency = COMMAND_BAR_TRANSPARENCY,
@@ -223,12 +223,12 @@ function App.mount(screenGui)
 		Position = UDim2.fromScale(0, 1),
 		ZIndex = 0,
 
-		create "UICorner" {
+		create("UICorner")({
 			CornerRadius = UDim.new(0, APP_CORNER_SIZE),
-		},
-	}
+		}),
+	})
 
-	commandBarInput = create "TextBox" {
+	commandBarInput = create("TextBox")({
 		BackgroundTransparency = 1,
 		ClearTextOnFocus = false,
 		Size = UDim2.fromScale(1, 1),
@@ -254,10 +254,10 @@ function App.mount(screenGui)
 
 			processCommandBarInput()
 		end,
-	}
+	})
 
 	AppMaid:GiveTask(UserInputService.InputBegan:Connect(function(input)
-		if input.UserInputType ~= Enum.UserInputType.Keyboard then
+		if UserInputService:GetFocusedTextBox() ~= nil or input.UserInputType ~= Enum.UserInputType.Keyboard then
 			return
 		end
 
@@ -268,15 +268,15 @@ function App.mount(screenGui)
 		end
 	end))
 
-	outputToggleLabel = create "TextLabel" {
+	outputToggleLabel = create("TextLabel")({
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1),
 		FontFace = APP_TEXT_FONT,
 		TextColor3 = APP_CONTENT_COLOR,
 		TextScaled = true,
-	}
+	})
 
-	commandBar = create "Frame" {
+	commandBar = create("Frame")({
 		AnchorPoint = Vector2.new(0, 1),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
@@ -287,7 +287,7 @@ function App.mount(screenGui)
 
 		commandBarBackground,
 
-		create "TextButton" {
+		create("TextButton")({
 			BackgroundTransparency = 1,
 			Size = UDim2.fromScale(APP_COLUMN_WIDTH, 1),
 			Text = "",
@@ -296,34 +296,34 @@ function App.mount(screenGui)
 				setOutputOpen(not App.OutputOpen)
 			end,
 
-			create "UIPadding" { APP_TEXT_PADDING },
+			create("UIPadding")({ APP_TEXT_PADDING }),
 
 			outputToggleLabel,
-		},
+		}),
 
-		create "Frame" {
+		create("Frame")({
 			BackgroundColor3 = Color3.new(1, 1, 1),
 			BackgroundTransparency = 0.5 * (1 + COMMAND_BAR_TRANSPARENCY),
 			BorderSizePixel = 0,
 			Position = UDim2.fromScale(APP_COLUMN_WIDTH, 0),
 			Size = UDim2.new(0, 1, 1, 0),
 			ZIndex = 2,
-		},
+		}),
 
-		create "Frame" {
+		create("Frame")({
 			AnchorPoint = Vector2.new(1, 0),
 			BackgroundTransparency = 1,
 			Position = UDim2.fromScale(1, 0),
 			Size = UDim2.fromScale(1 - APP_COLUMN_WIDTH, 1),
 
-			create "UIPadding" { APP_TEXT_PADDING },
+			create("UIPadding")({ APP_TEXT_PADDING }),
 
 			commandBarInput,
-		},
-	}
+		}),
+	})
 
-	outputScale = create "UIScale" {}
-	outputList = create "ScrollingFrame" {
+	outputScale = create("UIScale")({})
+	outputList = create("ScrollingFrame")({
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		AutomaticCanvasSize = Enum.AutomaticSize.XY,
@@ -334,18 +334,18 @@ function App.mount(screenGui)
 
 		outputScale,
 
-		create "UIPadding" {
+		create("UIPadding")({
 			PaddingBottom = APP_TEXT_PADDING.PaddingBottom - UDim.new(0, APP_SCROLL_PADDING),
 			PaddingLeft = APP_TEXT_PADDING.PaddingLeft - UDim.new(0, APP_SCROLL_PADDING),
 			PaddingRight = APP_TEXT_PADDING.PaddingRight - UDim.new(0, APP_SCROLL_PADDING),
 			PaddingTop = APP_TEXT_PADDING.PaddingTop - UDim.new(0, APP_SCROLL_PADDING),
-		},
+		}),
 
-		create "UIListLayout" {},
-	}
+		create("UIListLayout")({}),
+	})
 
-	scriptListScale = create "UIScale" {}
-	scriptListScroll = create "ScrollingFrame" {
+	scriptListScale = create("UIScale")({})
+	scriptListScroll = create("ScrollingFrame")({
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		AutomaticCanvasSize = Enum.AutomaticSize.XY,
@@ -356,77 +356,77 @@ function App.mount(screenGui)
 
 		scriptListScale,
 
-		create "UIPadding" {
+		create("UIPadding")({
 			PaddingBottom = APP_TEXT_PADDING.PaddingBottom - UDim.new(0, APP_SCROLL_PADDING),
 			PaddingLeft = APP_TEXT_PADDING.PaddingLeft - UDim.new(0, APP_SCROLL_PADDING),
 			PaddingRight = APP_TEXT_PADDING.PaddingRight - UDim.new(0, APP_SCROLL_PADDING),
 			PaddingTop = APP_TEXT_PADDING.PaddingTop - UDim.new(0, APP_SCROLL_PADDING),
-		},
+		}),
 
-		create "UIListLayout" {
+		create("UIListLayout")({
 			SortOrder = Enum.SortOrder.Name,
-		},
-	}
+		}),
+	})
 
-	output = create "Frame" {
+	output = create("Frame")({
 		BackgroundTransparency = 1,
 		Size = UDim2.fromScale(1, 1 - APP_ROW_HEIGHT),
 		ClipsDescendants = true,
 
-		create "Frame" {
+		create("Frame")({
 			BackgroundColor3 = APP_BACKGROUND_COLOR,
 			BackgroundTransparency = OUTPUT_TRANSPARENCY,
 			BorderSizePixel = 0,
 			Size = UDim2.fromScale(1, 1 / (1 - APP_ROW_HEIGHT)),
 
-			create "UICorner" {
+			create("UICorner")({
 				CornerRadius = UDim.new(0, APP_CORNER_SIZE),
-			},
+			}),
 
-			create "Frame" {
+			create("Frame")({
 				BackgroundTransparency = 1,
 				Size = UDim2.fromScale(APP_COLUMN_WIDTH, APP_ROW_HEIGHT),
 
-				create "UIPadding" { APP_TEXT_PADDING },
+				create("UIPadding")({ APP_TEXT_PADDING }),
 
-				create "TextLabel" {
+				create("TextLabel")({
 					BackgroundTransparency = 1,
 					Size = UDim2.fromScale(1, 1),
 					FontFace = APP_TEXT_FONT,
 					TextColor3 = APP_CONTENT_COLOR,
 					Text = "Scripts",
 					TextScaled = true,
-				},
-			},
+				}),
+			}),
 
-			create "Frame" {
+			create("Frame")({
 				BackgroundColor3 = Color3.new(1, 1, 1),
 				BackgroundTransparency = 0.5 * (1 + OUTPUT_TRANSPARENCY),
 				BorderSizePixel = 0,
 				Position = UDim2.fromScale(0, APP_ROW_HEIGHT),
 				Size = UDim2.new(1, 0, 0, 1),
 				ZIndex = 2,
-			},
+			}),
 
-			create "Frame" {
+			create("Frame")({
 				AnchorPoint = Vector2.new(1, 0),
 				BackgroundTransparency = 1,
 				Position = UDim2.fromScale(1, 0),
 				Size = UDim2.fromScale(1 - APP_COLUMN_WIDTH, APP_ROW_HEIGHT),
 
-				create "UIPadding" { APP_TEXT_PADDING },
+				create("UIPadding")({ APP_TEXT_PADDING }),
 
-				create "TextLabel" {
+				create("TextLabel")({
 					BackgroundTransparency = 1,
 					Size = UDim2.fromScale(1, 1),
 					FontFace = APP_TEXT_FONT,
 					TextColor3 = APP_CONTENT_COLOR,
 					Text = "Output",
 					TextScaled = true,
-				},
-			},
+				}),
+			}),
 
-			create "TextButton" {
+			create("TextButton")({
 				AnchorPoint = Vector2.new(1, 0),
 				AutomaticSize = Enum.AutomaticSize.X,
 				BackgroundTransparency = 1,
@@ -436,9 +436,9 @@ function App.mount(screenGui)
 
 				MouseButton1Click = clearOutput,
 
-				create "UIPadding" { APP_TEXT_PADDING },
+				create("UIPadding")({ APP_TEXT_PADDING }),
 
-				create "TextLabel" {
+				create("TextLabel")({
 					AutomaticSize = Enum.AutomaticSize.X,
 					BackgroundTransparency = 1,
 					Size = UDim2.fromScale(0, 1),
@@ -446,78 +446,78 @@ function App.mount(screenGui)
 					Text = "Clear",
 					TextColor3 = APP_CONTENT_COLOR,
 					TextScaled = true,
-				},
-			},
+				}),
+			}),
 
-			create "Frame" {
+			create("Frame")({
 				BackgroundColor3 = Color3.new(1, 1, 1),
 				BackgroundTransparency = 0.5 * (1 + OUTPUT_TRANSPARENCY),
 				BorderSizePixel = 0,
 				Position = UDim2.fromScale(APP_COLUMN_WIDTH, 0),
 				Size = UDim2.new(0, 1, 1, 0),
 				ZIndex = 2,
-			},
+			}),
 
-			create "Frame" {
+			create("Frame")({
 				BackgroundTransparency = 1,
 				Position = UDim2.fromScale(0, APP_ROW_HEIGHT),
 				Size = UDim2.fromScale(APP_COLUMN_WIDTH, 1 - APP_ROW_HEIGHT * 2),
 
-				create "UIPadding" {
+				create("UIPadding")({
 					PaddingBottom = UDim.new(0, APP_SCROLL_PADDING),
 					PaddingLeft = UDim.new(0, APP_SCROLL_PADDING),
 					PaddingRight = UDim.new(0, APP_SCROLL_PADDING),
 					PaddingTop = UDim.new(0, APP_SCROLL_PADDING),
-				},
+				}),
 
 				scriptListScroll,
-			},
+			}),
 
-			create "Frame" {
+			create("Frame")({
 				AnchorPoint = Vector2.new(1, 0),
 				BackgroundTransparency = 1,
 				Position = UDim2.fromScale(1, APP_ROW_HEIGHT),
 				Size = UDim2.fromScale(1 - APP_COLUMN_WIDTH, 1 - APP_ROW_HEIGHT * 2),
 
-				create "UIPadding" {
+				create("UIPadding")({
 					PaddingBottom = UDim.new(0, APP_SCROLL_PADDING),
 					PaddingLeft = UDim.new(0, APP_SCROLL_PADDING),
 					PaddingRight = UDim.new(0, APP_SCROLL_PADDING),
 					PaddingTop = UDim.new(0, APP_SCROLL_PADDING),
-				},
+				}),
 
 				outputList,
-			},
-		},
-	}
+			}),
+		}),
+	})
 
-	create "UIPadding" {
+	create("UIPadding")({
 		Parent = screenGui,
 		PaddingBottom = UDim.new(0, APP_PADDING),
 		PaddingLeft = UDim.new(0, APP_PADDING),
 		PaddingRight = UDim.new(0, APP_PADDING),
 		PaddingTop = UDim.new(0, APP_PADDING),
-	}
+	})
 
-	root = create "Frame" {
+	root = create("Frame")({
 		Parent = screenGui,
 		AnchorPoint = Vector2.new(0, 1),
 		BackgroundTransparency = 1,
 		Position = UDim2.fromScale(0, 1),
 		Size = UDim2.fromScale(0.5, 1),
 
-		create "UIAspectRatioConstraint" {
+		create("UIAspectRatioConstraint")({
 			AspectRatio = APP_ASPECT_RATIO,
-		},
+		}),
 
-		create "UISizeConstraint" {
+		create("UISizeConstraint")({
 			MaxSize = Vector2.new(APP_MAX_SIZE * APP_ASPECT_RATIO, APP_MAX_SIZE),
 			MinSize = Vector2.new(APP_MIN_SIZE * APP_ASPECT_RATIO, APP_MIN_SIZE),
-		},
+		}),
 
 		commandBar,
 		output,
-	}
+	})
 
 	updateScale()
 	AppMaid:GiveTask(root:GetPropertyChangedSignal("AbsoluteSize"):Connect(updateScale))
