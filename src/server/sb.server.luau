@@ -90,7 +90,7 @@ do
 			Output:appendToOthers(
 				player,
 				Output.MessageType.Success,
-				`{player.Name} was kicked due to their account not being older than one week.`
+				`{Functions.formatPlayerName(player)} was kicked due to their account not being older than one week.`
 			)
 
 			return
