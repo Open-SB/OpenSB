@@ -10,8 +10,8 @@ local MessageType = require("shared/output/messageTypes")
 
 local create = require("./create")
 
-local APP_ASPECT_RATIO = 2 / 1
-local APP_MAX_SIZE, APP_MIN_SIZE = 275, 200
+local APP_ASPECT_RATIO = 9 / 4 -- How many times wider it is than taller (width / height)
+local APP_MAX_SIZE, APP_MIN_SIZE = 325, 200
 local APP_PADDING = 16
 local APP_CORNER_SIZE = 6
 local APP_COLUMN_WIDTH, APP_ROW_HEIGHT = 0.25, 0.1
@@ -32,7 +32,7 @@ local APP_SCROLL_TRANSPARENCY = 0
 
 local OUTPUT_TRANSPARENCY = 0.6
 local OUTPUT_TEXT_FONT = APP_TEXT_FONT
-local OUTPUT_TEXT_SIZE = 14 -- If the UI is att max size
+local OUTPUT_TEXT_SIZE = 16 -- If the UI is att max size
 local OUTPUT_MESSAGE_COLORS = {
 	[MessageType.Log] = Color3.fromRGB(204, 204, 204),
 	[MessageType.Warning] = Color3.fromRGB(255, 142, 60),
