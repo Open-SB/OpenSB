@@ -72,7 +72,13 @@ Log.debug("Loading systems...") -- Maybe we should move these into their own mod
 
 -- Player system
 do
-	local function disconnectPlayer() end
+	local function disconnectPlayer(player: Player)
+		Output:appendToOthers(
+			player,
+			Output.MessageType.Success,
+			`{Functions.formatPlayerName(player)} left the server.`
+		)
+	end
 
 	local function connectPlayer(player: Player)
 		Log.debug(`Checking if {player.Name} can join...`)
@@ -90,10 +96,11 @@ do
 			return
 		end
 
-		Log.debug(`Checking ban on {player.Name}...`)
-		-- TODO: Ban check
-
-		Output:appendToOthers(player, Output.MessageType.Success, `{player.Name} has joined the server.`)
+		Output:appendToOthers(
+			player,
+			Output.MessageType.Success,
+			`{Functions.formatPlayerName(player)} has joined the server.`
+		)
 
 		do
 			Log.debug(`Loading SB client on {player.Name}...`)
