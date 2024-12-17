@@ -203,7 +203,12 @@ function Module:Init()
 
 		if stopServerScripts then
 			for script, data in scripts do
+				if player and data.sandbox.Owner.UserId ~= player.UserId then
+					continue
+				end
+
 				Sandbox.terminate(data.sandbox, true)
+				scripts[script] = nil
 			end
 			table.clear(scripts)
 		end

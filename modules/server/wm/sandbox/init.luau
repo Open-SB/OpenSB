@@ -73,7 +73,7 @@ export type sandbox = {
 Module.terminated = table.freeze({
 	Terminated = true,
 	Script = nil,
-	Owner = nil,
+	Owner = table.freeze({ UserId = 0 }),
 	Environment = table.freeze({}),
 
 	Connections = setmetatable({}, {
