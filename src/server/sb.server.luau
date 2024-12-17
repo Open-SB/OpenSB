@@ -76,7 +76,7 @@ do
 		Output:appendToOthers(
 			player,
 			Output.MessageType.Success,
-			`{Functions.formatPlayerName(player)} left the server.`
+			`{Functions.formatPlayerName(player)} has left the server.`
 		)
 	end
 
