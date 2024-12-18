@@ -20,6 +20,10 @@ aliases = ["respawn", "r"]
 description = "Respawns your character at your current location."
 aliases = ["refresh", "re", "spotRespawn", "spotReset", "sr"]
 
+[rejoin]
+description = "Makes you rejoin the current server."
+aliases = ["rejoin", "rj"]
+
 [nil]
 description = "Removes your character."
 aliases = ["nil"]

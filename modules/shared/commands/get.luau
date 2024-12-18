@@ -1,3 +1,5 @@
+local Functions = require("shared/functions")
+
 return function(Commands)
 	local definitions = require("shared/commands/namespaces/get.toml")
 	local _namespace = "get"
@@ -9,4 +11,9 @@ return function(Commands)
 	local function define(...)
 		Commands:Define(_namespace, ...)
 	end
+
+	--:rejoin
+	defineValidator("rejoin", function()
+		return Functions.getServerType() ~= "VIPServer", "You can't use rejoin command in VIP servers."
+	end)
 end

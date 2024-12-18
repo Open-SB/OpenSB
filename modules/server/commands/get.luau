@@ -5,6 +5,7 @@ local Functions = require("shared/functions")
 local Assets = require("shared/assets")
 
 local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
 
 local healthScript = Assets:get("Health")
 local serverAnimateScripts = {
@@ -130,6 +131,15 @@ return function(Commands)
 		player:LoadCharacter()
 
 		return "Got refresh."
+	end)
+
+	--:rejoin
+	define("rejoin", function(context)
+		local teleportOptions = Instance.new("TeleportOptions")
+		teleportOptions.ServerInstanceId = game.JobId
+
+		Output:appendTo(context.Player, Output.MessageType.Success, "Rejoining...")
+		TeleportService:TeleportAsync(game.PlaceId, { context.Player }, teleportOptions)
 	end)
 
 	--:nil
