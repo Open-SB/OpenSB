@@ -257,6 +257,41 @@ function Module.Init(_, Sandbox)
 		end
 	end
 
+	do -- https://create.roblox.com/docs/reference/engine/classes/TeleportService
+		local TeleportService = renv.game:GetService("TeleportService")
+
+		-- https://create.roblox.com/docs/reference/engine/classes/TeleportService#Teleport
+		disable(TeleportService.Teleport)
+
+		-- https://create.roblox.com/docs/reference/engine/classes/TeleportService#TeleportToPlaceInstance
+		disable(TeleportService.TeleportToPlaceInstance)
+
+		-- https://create.roblox.com/docs/reference/engine/classes/TeleportService#TeleportToPrivateServer
+		disable(TeleportService.TeleportToPrivateServer)
+
+		-- https://create.roblox.com/docs/reference/engine/classes/TeleportService#TeleportToSpawnByName
+		disable(TeleportService.TeleportToSpawnByName)
+
+		-- https://create.roblox.com/docs/reference/engine/classes/TeleportService#ReserveServer
+		disable(TeleportService.ReserveServer)
+
+		-- https://create.roblox.com/docs/reference/engine/classes/TeleportService#TeleportAsync
+		disable(TeleportService.TeleportAsync)
+
+		-- https://create.roblox.com/docs/reference/engine/classes/TeleportService#TeleportPartyAsync
+		disable(TeleportService.TeleportPartyAsync)
+	end
+
+	do -- https://create.roblox.com/docs/reference/engine/classes/InsertService
+		local InsertService = renv.game:GetService("InsertService")
+
+		-- https://create.roblox.com/docs/reference/engine/classes/InsertService#LoadAsset
+		disable(InsertService.LoadAsset)
+
+		-- https://create.roblox.com/docs/reference/engine/classes/InsertService#LoadAssetVersion
+		disable(InsertService.LoadAssetVersion)
+	end
+
 	table.freeze(Module)
 end
 
