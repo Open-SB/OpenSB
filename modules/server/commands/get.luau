@@ -150,6 +150,16 @@ return function(Commands)
 		return "Got clear."
 	end)
 
+	--:noGui
+	define("noGui", function(context)
+		local playerGui = context.Player:FindFirstChildOfClass("PlayerGui")
+		if not playerGui then
+			return
+		end
+
+		playerGui:ClearAllChildren()
+	end)
+
 	--:rig6
 	define("rig6", function(context)
 		return setCharacterRigType(context.Player, Enum.HumanoidRigType.R6)

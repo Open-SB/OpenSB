@@ -32,6 +32,10 @@ aliases = ["clear", "c"]
 description = "Fixes your camera."
 aliases = ["fixCamera", "fixCam", "fc"]
 
+[noGui]
+description = "Removes all guis."
+aliases = ["noGui", "nog", "ng"]
+
 [rig6]
 description = "Converts your character to a 6 limb rig."
 aliases = ["rig6", "r6"]

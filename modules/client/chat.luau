@@ -6,6 +6,8 @@ local Signal = require("shared/signal")
 local Assets = require("shared/assets")
 
 local Chat = {
+	ScreenGui = nil :: ScreenGui?,
+
 	hooks = {},
 }
 
@@ -56,6 +58,9 @@ function Chat:Init()
 			if hook then
 				hook:Fire(...)
 			end
+		elseif requestType == 2 then -- Set ScreenGui (hacky but works)
+			local screenGui = ...
+			Chat.ScreenGui = screenGui
 		end
 	end)
 

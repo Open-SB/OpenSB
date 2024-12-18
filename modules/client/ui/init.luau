@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 
 local Output = require("client/output")
+local Chat = require("client/chat")
 local Log = require("shared/log")
 local Maid = require("shared/maid")
 local Signal = require("shared/signal")
@@ -11,6 +12,7 @@ local create = require("./create")
 
 local UI = {}
 UI.PlayerGui = nil
+UI.ScreenGui = nil
 UI.IsLoaded = false
 UI.Loaded = Signal.new()
 
@@ -19,14 +21,14 @@ function UI:Create()
 	Log.debug("Creating UI...")
 	UIMaid:DoCleaning()
 
-	local screenGui = create "ScreenGui" {
+	local screenGui = create("ScreenGui")({
 		Name = Functions.randomInstanceName(),
 		Archivable = false,
 		ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets,
 		DisplayOrder = 2147483647,
 		ResetOnSpawn = false,
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-	}
+	})
 
 	UIMaid.screenGui = screenGui
 	UIMaid.screenGuiChanged = screenGui.Changed:Connect(function(property)
@@ -41,6 +43,8 @@ function UI:Create()
 		UI:Create()
 	end)
 
+	UI.ScreenGui = screenGui
+
 	App.mount(screenGui)
 	screenGui.Parent = UI.PlayerGui
 end
@@ -53,6 +57,14 @@ end
 
 function UI:MakeScriptPrompt(bindable: BindableEvent, owner: Player, script: BaseScript)
 	App.scriptPrompt(bindable, owner, script)
+end
+
+function UI:IsScriptBuilderUI(screenGui: ScreenGui?)
+	if not screenGui then
+		return false
+	end
+
+	return screenGui == UI.ScreenGui or screenGui == Chat.ScreenGui
 end
 
 function UI:Init()

@@ -1,5 +1,6 @@
 local Output = require("client/output")
 local ScriptManager = require("client/scriptManager")
+local UI = require("client/ui")
 
 return function(Commands)
 	-- Load shared definitions
@@ -84,6 +85,24 @@ return function(Commands)
 		player.NameDisplayDistance = 100
 
 		return "Got camera fix."
+	end)
+
+	--:noGui
+	define("noGui", function(context)
+		local playerGui = context.Player:FindFirstChildOfClass("PlayerGui")
+		if not playerGui then
+			return
+		end
+
+		for _, gui in ipairs(playerGui:GetChildren()) do
+			if UI:IsScriptBuilderUI(gui) then
+				continue
+			end
+
+			gui:Destroy()
+		end
+
+		return "Got no gui."
 	end)
 
 	--:noScripts

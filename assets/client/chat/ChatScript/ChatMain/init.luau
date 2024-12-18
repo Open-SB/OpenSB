@@ -49,7 +49,7 @@ local FILTER_MESSAGE_TIMEOUT = 60
 
 local chatFolder = script.Parent.Parent
 
-local networkProxy
+local networkProxy: BindableEvent
 do
 	local objectValue = chatFolder:WaitForChild("networkProxy")
 	networkProxy = objectValue.Value
@@ -57,7 +57,7 @@ do
 	objectValue:Destroy()
 end
 
-local networkInvokeProxy
+local networkInvokeProxy: BindableFunction
 do
 	local objectValue = chatFolder:WaitForChild("networkInvokeProxy")
 	networkInvokeProxy = objectValue.Value
@@ -216,6 +216,8 @@ local GuiParent = Instance.new("ScreenGui")
 GuiParent.Name = math.random()
 GuiParent.ResetOnSpawn = false
 GuiParent.DisplayOrder = ChatDisplayOrder
+
+networkProxy:Fire(2, nil, GuiParent) -- Hacky but works (we want to set it before parenting to prevent any unexpected behavior that could happen before the chat has fully loaded)
 GuiParent.Parent = PlayerGui
 
 local DidFirstChannelsLoads = false
