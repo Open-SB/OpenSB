@@ -210,7 +210,6 @@ function Module:Init()
 				Sandbox.terminate(data.sandbox, true)
 				scripts[script] = nil
 			end
-			table.clear(scripts)
 		end
 
 		for _, script in ipairs(kill) do
