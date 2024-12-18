@@ -134,6 +134,10 @@ return function(Commands)
 	end)
 
 	--:rejoin
+	defineValidator("rejoin", function()
+		return Functions.getServerType() ~= "VIPServer", "You can't use rejoin command in VIP servers."
+	end)
+
 	define("rejoin", function(context)
 		local teleportOptions = Instance.new("TeleportOptions")
 		teleportOptions.ServerInstanceId = game.JobId
