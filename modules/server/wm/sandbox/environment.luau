@@ -561,7 +561,7 @@ function Module:Init()
 			return error("require(assetId) is disabled", seekSafeLevel())
 		end
 
-		return wrap(renv.require(unwrap(target)))
+		return wrapMany(renv.require(unwrapMany(target)))
 	end
 
 	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#settings
