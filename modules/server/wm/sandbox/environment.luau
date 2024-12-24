@@ -114,7 +114,7 @@ end
 -- Level is the how many levels to seek, skip is purely for optimization (automatically skips that many levels as if they were already unsafe, defaults to 1)
 local function seekSafeLevel(
 	level: number?,
-	options: { skip: number?, thread: thread?, allowCFunctions: boolean?, beginsAt0: boolean? }
+	options: { skip: number?, thread: thread?, allowCFunctions: boolean?, beginsAt0: boolean? }?
 ): number
 	options = options or {}
 	level = math.floor(level or 1)
