@@ -16,6 +16,8 @@ local rawset = rawset
 local math = math
 local tonumber = tonumber
 local Instance = Instance
+local task = task
+local debug = debug
 
 local ManagerCommunication = require("shared/wm/communication")
 local Functions = require("shared/functions")
@@ -965,8 +967,7 @@ function Module:Init()
 
 		-- https://create.roblox.com/docs/reference/engine/datatypes/Instance#fromExisting
 		r.fromExisting = function(...)
-			local instance = unwrap(checkArg("fromExisting", "Instance", 1, ...))
-			return wrap(fromExisting(instance))
+			return wrap(fromExisting(unwrap(...)))
 		end
 	end)
 

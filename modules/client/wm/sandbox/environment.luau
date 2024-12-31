@@ -20,6 +20,8 @@ local tostring = tostring
 local string = string
 local unpack = unpack
 local game = game
+local task = task
+local debug = debug
 
 local ManagerCommunication = require("shared/wm/communication")
 local Functions = require("shared/functions")
