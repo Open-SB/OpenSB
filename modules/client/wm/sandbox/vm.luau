@@ -534,6 +534,8 @@ local function luau_load(module, sandbox)
 	-- selene: allow(shadowing)
 	local function luau_wrapclosure(module, proto, upvals, _env)
 		local info = { proto = proto, sandbox = sandbox }
+
+		-- TODO: @native
 		local function luau_execute(...)
 			local runningInfo = { thread = coroutine_running(), pc = 0, closureInfo = info }
 			info.running = runningInfo
