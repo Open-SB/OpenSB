@@ -849,16 +849,22 @@ function Module:Init()
 	senv.task = replaceLibrary(renv.task, function(l, rl)
 		-- https://create.roblox.com/docs/reference/engine/libraries/task#spawn
 		l.spawn = function(...)
+			local sandbox = getSandbox()
+			assertTerminated(sandbox)
+
 			local thread = task.spawn(...)
-			getSandbox().Threads[thread] = true
+			sandbox.Threads[thread] = true
 
 			return thread
 		end
 
 		-- https://create.roblox.com/docs/reference/engine/libraries/task#defer
 		l.defer = function(...)
+			local sandbox = getSandbox()
+			assertTerminated(sandbox)
+
 			local thread = task.defer(...)
-			getSandbox().Threads[thread] = true
+			sandbox.Threads[thread] = true
 
 			return thread
 		end
@@ -868,18 +874,9 @@ function Module:Init()
 			local sandbox = getSandbox()
 			assertTerminated(sandbox)
 
-			local delayTime = checkOptionalArg("delay", "number", 1, ...) or 0
-			local functionOrThread = getArg(2, ...)
-
-			local thread
-			local datatype = type(functionOrThread)
-			if datatype == "function" or datatype == "thread" then
-				thread = task.delay(delayTime, functionOrThread, select(3, ...))
-			else
-				return invalidArg("delay", 2, "function or thread expected")
-			end
-
+			local thread = task.delay(...)
 			sandbox.Threads[thread] = true
+
 			return thread
 		end
 

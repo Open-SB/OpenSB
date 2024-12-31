@@ -817,8 +817,8 @@ function Module:Init()
 	senv.task = replaceLibrary(renv.task, function(l, rl)
 		-- https://create.roblox.com/docs/reference/engine/libraries/task#spawn
 		l.spawn = function(...)
-			local func = checkArg("spawn", "function", 1, ...)
-			local thread = task.spawn(fmap[func] or func, select(2, ...))
+			local func = getArg(1, ...)
+			local thread = task.spawn(if type(func) == "function" then (fmap[func] or func) else func, select(2, ...))
 			getSandbox().Threads[thread] = true
 
 			return thread
@@ -826,8 +826,8 @@ function Module:Init()
 
 		-- https://create.roblox.com/docs/reference/engine/libraries/task#defer
 		l.defer = function(...)
-			local func = checkArg("defer", "function", 1, ...)
-			local thread = task.defer(fmap[func] or func, select(2, ...))
+			local func = getArg(1, ...)
+			local thread = task.defer(if type(func) == "function" then (fmap[func] or func) else func, select(2, ...))
 			getSandbox().Threads[thread] = true
 
 			return thread
@@ -835,20 +835,14 @@ function Module:Init()
 
 		-- https://create.roblox.com/docs/reference/engine/libraries/task#delay
 		l.delay = function(...)
-			local delayTime = checkOptionalArg("delay", "number", 1, ...) or 0
-			local functionOrThread = getArg(2, ...)
-
-			local thread
-			local datatype = type(functionOrThread)
-			if datatype == "function" then
-				thread = task.delay(delayTime, fmap[functionOrThread] or functionOrThread, select(3, ...))
-			elseif datatype == "thread" then
-				thread = task.delay(delayTime, functionOrThread, select(3, ...))
-			else
-				return invalidArg("delay", 2, "function or thread expected")
-			end
-
+			local func = getArg(2, ...)
+			local thread = task.delay(
+				getArg(1, ...),
+				if type(func) == "function" then (fmap[func] or func) else func,
+				select(3, ...)
+			)
 			getSandbox().Threads[thread] = true
+
 			return thread
 		end
 
