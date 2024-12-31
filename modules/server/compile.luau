@@ -19,9 +19,8 @@ return function(source: string): (boolean, string | buffer)
 		return false, "HttpService is disabled, cannot use online Luau compiler."
 	end
 
-	-- https://github.com/Open-SB/luau-compile
 	local success, response = pcall(HttpService.RequestAsync, HttpService, {
-		Url = "https://luau-compile.shuttleapp.rs/compile",
+		Url = "https://luau-compile-mapk.shuttle.app/compile", -- Check: https://github.com/Open-SB/luau-compile (I recommend hosting your own version, it's free with shuttle)
 		Method = "POST",
 		Headers = {
 			["Content-Type"] = "application/json",
@@ -36,16 +35,10 @@ return function(source: string): (boolean, string | buffer)
 		return false, `Error while using online Luau compiler: {response}`
 	end
 
-	-- Check if response was an error
+	-- Check if response was an error (includes syntax errors)
 	if not response.Success then
 		return false, response.Body
 	end
 
-	-- Check if the bytecode is an error message
-	local stream = buffer.fromstring(response.Body)
-	if buffer.readu8(stream, 0) == 0 then
-		return false, string.sub(response.Body, 2)
-	end
-
-	return true, stream
+	return true, buffer.fromstring(response.Body)
 end
