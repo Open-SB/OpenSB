@@ -951,6 +951,7 @@ function Module:Init()
 	-- https://create.roblox.com/docs/reference/engine/datatypes/Instance
 	senv.Instance = replaceLibrary(renv.Instance, function(r, rl)
 		local new = rl.new
+		local fromExisting = rl.fromExisting
 
 		-- https://create.roblox.com/docs/reference/engine/datatypes/Instance#new
 		r.new = function(...)
@@ -963,7 +964,10 @@ function Module:Init()
 		end
 
 		-- https://create.roblox.com/docs/reference/engine/datatypes/Instance#fromExisting
-		r.fromExisting = rl.fromExisting
+		r.fromExisting = function(...)
+			local instance = unwrap(checkArg("fromExisting", "Instance", 1, ...))
+			return wrap(fromExisting(instance))
+		end
 	end)
 
 	-- https://create.roblox.com/docs/reference/engine/datatypes/NumberRange
