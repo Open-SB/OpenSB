@@ -8,7 +8,7 @@ return function(enumItems)
 		enum[index - 1] = name
 	end
 
-	if _G.DEV then
+	if _G.dev then
 		setmetatable(enum, {
 			__index = function(_, index)
 				return error(`"{index}" is not a valid enum item.`, 2)

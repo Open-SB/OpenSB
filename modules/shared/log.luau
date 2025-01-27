@@ -17,7 +17,7 @@ function Log:SetPrefix(_prefix)
 end
 
 function Log.debug(...: any)
-	if _G.DEV then
+	if _G.debugging then
 		TestService:Message(prefix .. " " .. table.concat({ ... }, " "))
 	end
 end

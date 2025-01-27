@@ -1,6 +1,6 @@
 -- A list of possible services that the network remotes can be parented to.
 
-if _G.DEV then
+if _G.dev then
 	-- While in development, it might be helpful to know where the remotes are located at.
 	return { game:GetService("ReplicatedStorage") }
 end

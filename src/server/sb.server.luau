@@ -4,19 +4,19 @@ local Log = require("shared/log")
 Log:SetPrefix("[SB]")
 Log.print("Loading...")
 
-if not _G.DEV and _G.scriptHostKey == "CHANGE_THIS_KEY" then
+if _G.prod and _G.scriptHostKey == "CHANGE_THIS_KEY" then
 	Log.warn(
 		"The 'scriptHostKey' global is set to the default value while in a production build! Consider changing it."
 	)
 end
 
-if not _G.DEV and _G.localScriptHostKey == "CHANGE_THIS_KEY" then
+if _G.prod and _G.localScriptHostKey == "CHANGE_THIS_KEY" then
 	Log.warn(
 		"The 'localScriptHostKey' global is set to the default value while in a production build! Consider changing it."
 	)
 end
 
-if not _G.DEV and _G.moduleScriptHostKey == "CHANGE_THIS_KEY" then
+if _G.prod and _G.moduleScriptHostKey == "CHANGE_THIS_KEY" then
 	Log.warn(
 		"The 'moduleScriptHostKey' global is set to the default value while in a production build! Consider changing it."
 	)
@@ -83,9 +83,9 @@ do
 	local function connectPlayer(player: Player)
 		Log.debug(`Checking if {player.Name} can join...`)
 
-		if not _G.DEV and player.AccountAge < 7 then
-			Log.debug(`{player.Name}'s account age is too young (<7).`)
-			player:Kick("Your account needs to be atleast one week old to play this game.")
+		if _G.accountAgeLimit > 0 and player.AccountAge < _G.accountAgeLimit then
+			Log.debug(`{player.Name}'s account age is too young (<{_G.accountAgeLimit} days).`)
+			player:Kick(`Your account needs to be atleast {_G.accountAgeLimit} days old to play this game.`)
 
 			Output:appendToOthers(
 				player,

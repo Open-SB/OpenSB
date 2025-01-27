@@ -1,0 +1,47 @@
+[global]
+
+[dev]
+debugging = true
+
+accountAgeLimit = 0
+
+workerThreads = 2
+scriptHostKey = "devKey"
+localScriptHostKey = "devKey"
+moduleScriptHostKey = "devKey"
+
+darkluaRules = [
+    "convert_local_function_to_assign", # Required because it actually changes script behaviour
+]
+
+[prod]
+debugging = false
+
+accountAgeLimit = 7
+
+workerThreads = 8
+scriptHostKey = "CHANGE_THIS_KEY"
+localScriptHostKey = "CHANGE_THIS_KEY"
+moduleScriptHostKey = "CHANGE_THIS_KEY"
+
+darkluaRules = [
+    "compute_expression",
+    "convert_index_to_field",
+    "convert_local_function_to_assign",
+    "remove_unused_variable",
+    "remove_nil_declaration",
+    "remove_unused_while",
+    "remove_unused_if_branch",
+    "filter_after_early_return",
+    "remove_empty_do",
+    "remove_unused_variable",
+    "remove_function_call_parens",
+    "group_local_assignment",
+
+    "remove_assertions",
+    "remove_debug_profiling",
+
+    "remove_types",
+    "remove_comments",
+    "remove_spaces",
+]

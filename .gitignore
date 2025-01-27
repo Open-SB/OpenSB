@@ -13,3 +13,6 @@
 
 # Darklua out directory
 /out
+
+# Custom config file
+.config.toml

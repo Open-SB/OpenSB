@@ -56,7 +56,7 @@ task.defer(function()
 	-- Make sure UI is loaded.
 	UI:WaitUntilLoaded()
 
-	local buildType = if _G.DEV then "development" else "production"
+	local buildType = if _G.dev then "development" else "production"
 	Output:append(Output.MessageType.System, `OpenSB {buildType} build. Ran in {loadTime}ms.`)
 end)
 
