@@ -206,14 +206,18 @@ WorkerManagers:onInvoke(
 
 do
 	local currentWorker = 1
-	WorkerManagers:on("newWorker", function(owner: Player, source: string, name: string, arguments: BindableFunction?)
+	WorkerManagers:on("newWorker", function(owner: Player, source: string, name: string, arguments: table?)
 		local host = scriptHosts.Worker:Clone()
 		host.Name = name
 
-		WorkerManagers[currentWorker]:Send("NewWorker", owner, source, host, arguments)
+		if _G.workerThreads < 1 then
+			WorkerManagers.main:Send("NewWorker", owner, source, host, arguments)
+		else
+			WorkerManagers[currentWorker]:Send("NewWorker", owner, source, host, arguments)
 
-		-- Round robin is used to split up workers
-		currentWorker = currentWorker % _G.workerThreads + 1
+			-- Round robin is used to split up workers
+			currentWorker = currentWorker % _G.workerThreads + 1
+		end
 	end)
 end
 

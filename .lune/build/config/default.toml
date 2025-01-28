@@ -1,4 +1,7 @@
 [global]
+debugging = true # Wether debugging messages (and related) are enabled.
+
+accountAgeLimit = 0 # Minimum account age to join (set to 0 to disable).
 
 # Accepts a POST request, with a json body containing a "source" and "options" field, returns 200 if OK, otherwise an http error on syntax errors (i.e compatible with https://github.com/Open-SB/luau-compile).
 # Set to false to disable.
@@ -11,16 +14,15 @@ wakeCompilerEndpoint = true # If set to true, the endpoint will be called out to
 compilerModuleId = 107945471093637 # This is using LuauCeption (https://github.com/RealEthanPlayzDev/LuauCeption)
 wakeCompilerModuleId = false # If set to true, this module will be initially required on startup to attempt to cache it (useful if you are only using this to compile).
 
+workerThreads = 2 # How many worker threads to allocate on start (set to at least 1 to support the NewWorker() function with Parallel Luau), higher values will increase the baseline memory usage (for both server and client).
+
+# These are communication keys that SB scripts use to fetch their information. It's recommended to change these, but even if you don't / someone gets a hand on them it shouldn't be a high risk
+# because the most they allow you to get is the scripts main function / error message and arguments (never the actual code). They are only usable outside of the sandbox anyways.
+scriptHostKey = "defaultKey"
+localScriptHostKey = "defaultKey"
+moduleScriptHostKey = "defaultKey"
+
 [dev]
-debugging = true
-
-accountAgeLimit = 0
-
-workerThreads = 2
-scriptHostKey = "devKey"
-localScriptHostKey = "devKey"
-moduleScriptHostKey = "devKey"
-
 darkluaRules = [
     "convert_local_function_to_assign", # Required because it actually changes script behaviour
 ]

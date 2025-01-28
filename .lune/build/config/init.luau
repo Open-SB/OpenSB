@@ -5,7 +5,7 @@ local process = require("@lune/process")
 local branch = require("../branch")
 local defaultConfig = serde.decode("toml", fs.readFile(".lune/build/config/default.toml")) -- ./default.toml would've been nice :sob:
 
-local config = {}
+local config = { branch = branch }
 local function writeToConfig(dictionary: { [string]: any }?)
 	for k, v in dictionary or {} do
 		config[k] = v
@@ -14,7 +14,6 @@ end
 
 writeToConfig(defaultConfig.global)
 writeToConfig(defaultConfig[branch])
-config.branch = branch
 
 for k, v in process.env do
 	-- Filter out any env variable not present in the default config

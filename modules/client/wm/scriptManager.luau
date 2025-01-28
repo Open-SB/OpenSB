@@ -117,40 +117,37 @@ function Module:Init()
 		end
 	)
 
-	ManagerCommunication:on(
-		"NewWorker",
-		function(owner: Player, source: string, host: ModuleScript, arguments: BindableFunction?)
-			local data = {
-				owner = owner,
-				arguments = table.freeze(if arguments then table.pack(arguments:Invoke()) else table.pack()),
-				isWorker = true,
-				compiling = true,
-			}
+	ManagerCommunication:on("NewWorker", function(owner: Player, source: string, host: ModuleScript, arguments: table?)
+		local data = {
+			owner = owner,
+			arguments = table.freeze(if arguments then arguments else table.pack()),
+			isWorker = true,
+			compiling = true,
+		}
 
-			task.spawn(function() -- compile() yields
-				local success, result = ManagerCommunication:Invoke("compile", source)
-				if not success then
-					data.error = result
-				else
-					data.bytecode = result
-				end
+		task.spawn(function() -- compile() yields
+			local success, result = ManagerCommunication:Invoke("compile", source)
+			if not success then
+				data.error = result
+			else
+				data.bytecode = result
+			end
 
-				data.compiling = false
-			end)
+			data.compiling = false
+		end)
 
-			local id = Functions.randomString(16)
-			sources[ScriptTypes.ModuleScript][id] = data
+		local id = Functions.randomString(16)
+		sources[ScriptTypes.ModuleScript][id] = data
 
-			-- We need an actual host for workers for error catching to work correctly and due to how we track sandboxes (getfenv(0))
-			-- We use a modulescript because it allows us to start the script under our actor while the actor is destroyed
-			-- Only downside to this is that it will cost a little extra memory for each worker (due to them having their own ModuleScript)
-			host.Parent = Instance.new("Actor")
-			host:SetAttribute("__sb_source", id)
-			host:AddTag("__sb_script")
+		-- We need an actual host for workers for error catching to work correctly and due to how we track sandboxes (getfenv(0))
+		-- We use a modulescript because it allows us to start the script under our actor while the actor is destroyed
+		-- Only downside to this is that it will cost a little extra memory for each worker (due to them having their own ModuleScript)
+		host.Parent = Instance.new("Actor")
+		host:SetAttribute("__sb_source", id)
+		host:AddTag("__sb_script")
 
-			task.defer(require, host)
-		end
-	)
+		task.defer(require, host)
+	end)
 
 	-- TODO: Hook Instance.fromExisting and :Clone() to replace cloned scripts with a version that has the source isClientSide set to true
 	ManagerCommunication:on("stopScripts", function(removeServerScripts)

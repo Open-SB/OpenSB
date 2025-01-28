@@ -1076,7 +1076,10 @@ function Module:Init()
 
 		local source = checkArg("NewWorker", "string", 1, ...)
 		local name = checkOptionalArg("NewWorker", "string", 2, ...)
-		ManagerCommunication:Send("newWorker", sandbox.Owner, source, name or "Worker", package(select(3, ...)))
+
+		-- Don't send the arguments with package(), as instead of playing roulette to guess if the arguments will be transformed or not (if the workerManager being used ends up being this one).
+		-- We just never package it in the first place guaranteeing that the arguments are always transformed (to not cause inconsistent behaviour / confusion).
+		ManagerCommunication:Send("newWorker", sandbox.Owner, source, name or "Worker", table.pack(select(3, ...)))
 	end
 	senv.NW = senv.NewWorker
 
