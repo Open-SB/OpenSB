@@ -5,6 +5,12 @@ local Log = require("shared/log")
 Log:SetPrefix("[SB Client]")
 Log.print("Loading...")
 
+do
+	local wm = require("shared/wm")
+	wm.isWorkerManager = false
+	table.freeze(wm)
+end
+
 -- Fetch assets and destroy script
 local sbActor = script.Parent
 local root = sbActor.Parent

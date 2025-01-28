@@ -1,5 +1,16 @@
 [global]
 
+# Accepts a POST request, with a json body containing a "source" and "options" field, returns 200 if OK, otherwise an http error on syntax errors (i.e compatible with https://github.com/Open-SB/luau-compile).
+# Set to false to disable.
+compilerEndpoint = "https://luau-compile-mapk.shuttle.app/compile" # This is using https://github.com/Open-SB/luau-compile
+wakeCompilerEndpoint = true # If set to true, the endpoint will be called out to once on startup to attempt to cache / wake it (useful if it has slow coldboots).
+
+# A published modulescript to the toolbox that can be required via require(id). Accepts input source code as a string in the 1st arg and a optional 2nd arg containing the same options as above in a dictionary.
+# Returns a boolean indicating either a success or failiure, and then either a string or buffer containing the bytecode / fail message. Can error for unexpected errors.
+# Set to false to disable.
+compilerModuleId = 107945471093637 # This is using LuauCeption (https://github.com/RealEthanPlayzDev/LuauCeption)
+wakeCompilerModuleId = false # If set to true, this module will be initially required on startup to attempt to cache it (useful if you are only using this to compile).
+
 [dev]
 debugging = true
 

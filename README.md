@@ -2,15 +2,19 @@
 
 An opensource scriptbuilder for Roblox.
 
-#### Notice
+### Notice
 
 By default this depends on https://luau-compile-mapk.shuttle.app.rs/ ([running this](https://github.com/Open-SB/luau-compile)).
 
 Which is being used to compile Luau sourcecode into bytecode (only for localscripts). As there is no good solution for compiling Luau in Luau at the moment (that is small & lightweight).
 <br>
-As a bonus using an full Luau compiler allows us to generate bytecode with optimizations turned on.
+As a bonus using an full Luau compiler allows us to generate bytecode with optimizations turned on without much performance overhead.
 
-This is being used in [compile.luau](https://github.com/Open-SB/OpenSB/blob/main/modules/server/compile.luau), and I encourage you to change it to using your own hosted version (it's free with shuttle).
+This is being used in [compile.luau](https://github.com/Open-SB/OpenSB/blob/main/modules/server/compile.luau), and I encourage you to change it (check [Configuration](https://github.com/Open-SB/OpenSB#Configuration)) to using your own hosted version (it's free with shuttle).
+
+As a fallback it will by default rely on a [toolbox modulescript](https://roblox.com/library/107945471093637) (owned by [ewd3v](https://github.com/ewd3v), and powered by [LuauCeption](https://github.com/RealEthanPlayzDev/LuauCeption)) to compile Luau instead in cases where HttpService is being ratelimited. The reason this is an external module and not built into OpenSB is because it's an optional feature and it's easier to change it to use another toolbox modulescript instead. It also means it's by default not loaded into the game until it gets used for the first time (LuauCeption is really large).
+
+The module being used can also be changed or have it's feature completely disabled by [adding custom configuration](https://github.com/Open-SB/OpenSB#Configuration).
 
 ## Getting Started
 
@@ -26,7 +30,7 @@ aftman install
 
 This uses a lune script to aid in building the project with provided configuration ([source available here](https://github.com/Open-SB/OpenSB/blob/main/.lune/build)).
 
-Custom configurations can be made in a ".config.toml" file (ignored in the .gitinore, and should be placed in the root folder), and uses the same format as the ["default.toml" in .lune/build/config](https://github.com/Open-SB/OpenSB/blob/main/.lune/build/config/default.toml) (also where you should look for all availble configurations).
+Custom configurations can be made in a ".config.toml" file (ignored in the .gitinore, and should be placed in the root folder), and uses the same format as the ["default.toml" in .lune/build/config](https://github.com/Open-SB/OpenSB/blob/main/.lune/build/config/default.toml) (also where you should look for all availble configurations and for small documentation).
 
 Any defined fields under the selected branch will replace the default value. To make configurations that apply to any branch use the "global" branch.
 

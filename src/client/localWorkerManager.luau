@@ -17,6 +17,12 @@ local Log = require("shared/log")
 Log:SetPrefix("[" .. string.match(script.Name, "^(.+)@") .. "]") -- Remove the random part of the name (check shared/workerManagers.luau)
 Log.print("Loading...")
 
+do
+	local wm = require("shared/wm")
+	wm.isWorkerManager = true
+	table.freeze(wm)
+end
+
 local communicationBindables = { script:FindFirstChildOfClass("BindableFunction"):Invoke() }
 
 -- Preload all darklua modules this script requires, so they can initialize all global variables they will use into local ones (because we clear the env).

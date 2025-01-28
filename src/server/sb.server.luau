@@ -4,6 +4,12 @@ local Log = require("shared/log")
 Log:SetPrefix("[SB]")
 Log.print("Loading...")
 
+do
+	local wm = require("shared/wm")
+	wm.isWorkerManager = false
+	table.freeze(wm)
+end
+
 if _G.prod and _G.scriptHostKey == "CHANGE_THIS_KEY" then
 	Log.warn(
 		"The 'scriptHostKey' global is set to the default value while in a production build! Consider changing it."
