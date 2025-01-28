@@ -11,8 +11,9 @@
 /*.rbxlx.lock
 /*.rbxl.lock
 
-# Darklua out directory
+# Build directories
 /out
+/build
 
 # Custom config file
 .config.toml
