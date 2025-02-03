@@ -1,0 +1,13 @@
+{
+  "languageMode": "nonstrict",
+  "lint": {
+    "*": true
+  },
+  "lintErrors": false,
+  "typeErrors": true,
+  "aliases": {
+    "client": "./modules/client",
+    "server": "./modules/server",
+    "shared": "./modules/shared"
+  }
+}
