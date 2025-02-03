@@ -67,6 +67,7 @@ local unwrappedDatatypes = table.freeze({
 	number = true,
 	string = true,
 	thread = true,
+	vector = true, -- typeof() never returns this, but adding it here anyways
 })
 
 local Module = {}

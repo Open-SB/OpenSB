@@ -909,6 +909,9 @@ function Module:Init()
 	-- https://create.roblox.com/docs/reference/engine/libraries/utf8
 	senv.utf8 = renv.utf8
 
+	-- https://create.roblox.com/docs/en-us/reference/engine/libraries/vector
+	senv.vector = renv.vector
+
 	--[[
 	    Datatypes
 		https://create.roblox.com/docs/reference/engine/datatypes
