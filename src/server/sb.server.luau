@@ -64,14 +64,12 @@ Log.debug("Loading modules...")
 local Network = require("server/network")
 local Commands = require("server/commands")
 local Output = require("server/output")
-local Chat = require("server/chat")
 local World = require("server/world")
 local WorkerManagers = require("shared/workerManagers")
 local Functions = require("shared/functions")
 
 WorkerManagers:Init(root, "workerManager")
 Network:Init()
-Chat:Init()
 Commands:Init({ require("server/commands/default"), require("server/commands/get") })
 
 Log.debug("Loading systems...") -- Maybe we should move these into their own modules?

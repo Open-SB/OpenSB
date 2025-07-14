@@ -145,23 +145,11 @@
         "RespectFilteringEnabled": true
       }
     },
-    "Chat": {
-      "ChatModules": {
-        "$className": "Folder"
-      },
-      "ClientChatModules": {
-        "$className": "Folder"
-      },
-      "ChatServiceRunner": {
-        "$className": "Script"
-      },
-      "BubbleChat": {
-        "$className": "LocalScript"
-      },
-      "ChatScript": {
-        "$className": "LocalScript"
-      }
-    },
+    "TextChatService": {
+			"$properties": {
+				"ChatVersion": "TextChatService"
+			}
+		},
     "HttpService": {
       "$properties": {
         "HttpEnabled": true

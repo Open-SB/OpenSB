@@ -1,6 +1,6 @@
 local Players = game:GetService("Players")
+local TextChatService = game:GetService("TextChatService")
 
-local Chat = require("client/chat")
 local Network = require("client/network")
 local Output = require("client/output")
 local ProcessResult = require("shared/commands/processResults")
@@ -167,8 +167,11 @@ end
 function Commands:Init(namespaces)
 	Log.debug("Loading commands...")
 
-	Chat:ConnectHook("SayMessageRequest", function(message)
-		Commands:Process(message, InputContext.Chat)
+	TextChatService.SendingMessage:Connect(function(message)
+		-- For some reason, SendAsync doesn't work in sandbox??? So this is perfectly safe.
+
+		-- At this stage, chat filter isn't actually invoked, so this works perfectly.
+		Commands:Process(message.Text, InputContext.Chat)
 	end)
 
 	-- Load Namespaces

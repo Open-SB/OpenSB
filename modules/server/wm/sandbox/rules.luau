@@ -17,8 +17,13 @@ local removeProtectedClasses = table.freeze({
 	-- Backpack shouldn't be put in this list as you can create them with Instance.new()
 })
 
+local ProtectedServicesModule = require("./protectedServices")
+local isProtected = ProtectedServicesModule.isProtected
+
 local Module = {}
 Module.RemoveProtectedClasses = removeProtectedClasses
+
+local blockedInstances = require("./blockedInstances")
 
 function Module.Init(_, Sandbox)
 	local wmap = Sandbox.WrapMap
@@ -44,6 +49,7 @@ function Module.Init(_, Sandbox)
 		-- selene: allow(deprecated)
 		local Remove = game.Remove
 		local WaitForChild = game.WaitForChild
+		local Clone = game.Clone
 
 		-- https://create.roblox.com/docs/reference/engine/classes/Instance#ClearAllChildren
 		wmap[ClearAllChildren] = function(self)
@@ -52,6 +58,12 @@ function Module.Init(_, Sandbox)
 				return error("Cannot ClearAllChildren() Players", 2)
 			elseif typeof(self) == "Instance" and self.ClassName == "Player" then -- Contains PlayerGui's
 				return error("Cannot ClearAllChildren() Player", 2)
+			elseif typeof(self) == "Instance" and isProtected(self) then
+				return error(
+					`Cannot ClearAllChildren() {self.ClassName} as it is under protected service {(
+						ProtectedServicesModule.getProtectedServiceFromInstance(self) or self
+					).ClassName}`
+				)
 			end
 
 			ClearAllChildren(self)
@@ -60,7 +72,7 @@ function Module.Init(_, Sandbox)
 		-- https://create.roblox.com/docs/reference/engine/classes/Instance#Destroy
 		wmap[Destroy] = function(self)
 			self = unwrap(self)
-			if typeof(self) == "Instance" and removeProtectedClasses[self.ClassName] then
+			if typeof(self) == "Instance" and (removeProtectedClasses[self.ClassName] or isProtected(self)) then
 				return error("Cannot Destroy() " .. self.ClassName, 2)
 			end
 
@@ -70,7 +82,7 @@ function Module.Init(_, Sandbox)
 		-- https://create.roblox.com/docs/reference/engine/classes/Instance#Remove
 		wmap[Remove] = function(self)
 			self = unwrap(self)
-			if typeof(self) == "Instance" and removeProtectedClasses[self.ClassName] then
+			if typeof(self) == "Instance" and (removeProtectedClasses[self.ClassName] or isProtected(self)) then
 				return error("Cannot Remove() " .. self.ClassName, 2)
 			end
 
@@ -117,7 +129,25 @@ function Module.Init(_, Sandbox)
 			end
 
 			assertTerminated(sandbox)
+
+			if isProtected(child) then
+				local service = ProtectedServicesModule.getProtectedServiceFromInstance(child)
+				return error(
+					`Cannot WaitForChild() because service {(service and service.ClassName) or "Unknown"} is protected.`,
+					2
+				)
+			end
+
 			return wrap(child)
+		end
+
+		wmap[Clone] = function(self: Instance)
+			self = unwrap(self)
+			if typeof(self) == "Instance" and blockedInstances[self.ClassName] then
+				return error("Cannot Clone() " .. self.ClassName, 2)
+			end
+
+			return Clone(self)
 		end
 	end
 
@@ -249,7 +279,7 @@ function Module.Init(_, Sandbox)
 		-- https://create.roblox.com/docs/reference/engine/classes/Debris#AddItem
 		wmap[AddItem] = function(self, item, ...)
 			item = unwrap(item)
-			if typeof(item) == "Instance" and removeProtectedClasses[item.ClassName] then
+			if typeof(item) == "Instance" and (removeProtectedClasses[item.ClassName] or isProtected(item)) then
 				return error("Cannot AddItem() " .. item.ClassName, 2)
 			end
 
