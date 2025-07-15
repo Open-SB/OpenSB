@@ -21,6 +21,7 @@ local debug = debug
 
 local ManagerCommunication = require("shared/wm/communication")
 local Functions = require("shared/functions")
+local Protection = require("shared/wm/protection")
 
 local Wrapper = require("./wrapper")
 local Sandbox
@@ -967,7 +968,16 @@ function Module:Init()
 
 		-- https://create.roblox.com/docs/reference/engine/datatypes/Instance#fromExisting
 		r.fromExisting = function(...)
-			return wrap(fromExisting(unwrap(...)))
+			local existingInstance = unwrap(checkArg("fromExisting", "Instance", 1, ...))
+
+			if
+				typeof(existingInstance) == "Instance"
+				and (BlockedInstances[existingInstance.ClassName] or Protection.isReadProtected(existingInstance))
+			then
+				return error(`Cannot fromExisting() {existingInstance.ClassName}`, 0) -- Roblox seems to be throwing Instance.fromExisting errors at level 0
+			end
+
+			return wrap(fromExisting(existingInstance, unwrap(getArg(2, ...))))
 		end
 	end)
 

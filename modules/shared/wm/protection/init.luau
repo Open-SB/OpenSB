@@ -89,16 +89,12 @@ local function getProtection(instance: Instance): Level?
 	end
 end
 
--- setup initial services
-for _, service in { game:GetService("TextChatService") } do
-	for _, descendant in service:GetDescendants() do
-		protectedInstances[descendant] = 0
-	end
+local function init()
+	-- listen for requests on the backend
+	local ManagerCommunication = require("shared/wm/communication")
+	ManagerCommunication:on("protect", protect)
+	ManagerCommunication:on("unprotect", unprotect)
 end
-
--- listen for requests on the backend
--- ManagerCommunication:on("protect", protect)
--- ManagerCommunication:on("unprotect", unprotect)
 
 return table.freeze({
 	isRemoveProtected = isRemoveProtected,
@@ -109,4 +105,5 @@ return table.freeze({
 	add = protect,
 	remove = unprotect,
 	get = getProtection,
+	init = init,
 })

@@ -70,7 +70,7 @@ function Module.Init(_, Sandbox)
 		-- https://create.roblox.com/docs/reference/engine/classes/Instance#Remove
 		wmap[Remove] = function(self)
 			self = unwrap(self)
-			if typeof(self) == "Instance" and (Protection.isRemoveProtected(self)) then
+			if typeof(self) == "Instance" and Protection.isRemoveProtected(self) then
 				return error("Cannot Remove() " .. self.ClassName, 2)
 			end
 

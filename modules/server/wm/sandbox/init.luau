@@ -223,6 +223,7 @@ function Module:Init()
 
 	Wrapper.setSandbox(Module)
 
+	require("shared/wm/protection").init()
 	Rules:Init(Module)
 	require("./wrapper/reflection"):Init(Module, Wrapper, Rules)
 
