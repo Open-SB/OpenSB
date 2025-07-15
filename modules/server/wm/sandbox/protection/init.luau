@@ -8,6 +8,8 @@ each further level implies the last
 2 - remove protection & write protection & read protection [ ghost ]
 ]]
 
+local ManagerCommunication = require("shared/wm/communication")
+
 local protectedInstances: { [Instance]: number } = {}
 local protectedClasses: { [string]: number } = {}
 
@@ -93,6 +95,10 @@ for _, service in { game:GetService("TextChatService") } do
 		protectedInstances[descendant] = 0
 	end
 end
+
+-- listen for requests on the backend
+ManagerCommunication:on("protect", protect)
+ManagerCommunication:on("unprotect", unprotect)
 
 return table.freeze({
 	isRemoveProtected = isRemoveProtected,
