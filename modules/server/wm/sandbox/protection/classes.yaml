@@ -1,0 +1,5 @@
+remove_protected:
+  - Player
+  - Players
+write_protected:
+read_protected:

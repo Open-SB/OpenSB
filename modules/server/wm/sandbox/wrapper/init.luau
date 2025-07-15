@@ -14,7 +14,7 @@ local unpack = unpack
 local error = error
 
 local Reflection = require("./reflection")
-local ProtectedServicesModule = require("../protectedServices")
+local Protection = require("../protection")
 local Sandbox
 local wrapMap, unwrapMap
 
@@ -222,7 +222,7 @@ wrap = function(value: any, wrappedTables: table?): any
 		-- Set the environment of the wrapped function to the wrapped version of the unwrapped functions environment
 		setfenv(wrappedValue, wrap(getfenv(value)))
 	else
-		if datatype == "Instance" and ProtectedServicesModule.isProtected(value) then
+		if datatype == "Instance" and Protection.isReadProtected(value) then
 			return error("Attempted to access protected instance", 2)
 		end
 

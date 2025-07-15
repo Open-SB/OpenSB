@@ -8,6 +8,7 @@ local type = type
 local Wrapper
 local Rules
 local Functions = require("shared/functions")
+local Protection = require("../protection")
 
 local wrap, unwrap
 local wrapMany, unwrapMany
@@ -100,7 +101,6 @@ function Module.Init(_, Sandbox, wrapper, rules)
 	Rules = rules
 
 	Module.Instance = modify(function(meta)
-		local removeProtectedClasses = Rules.RemoveProtectedClasses
 		local get = Functions.indexInstance
 		local set = Functions.newindexInstance
 
@@ -111,11 +111,13 @@ function Module.Init(_, Sandbox, wrapper, rules)
 
 		function meta:__newindex(index, value)
 			self = unwrap(self)
-			if type(index) == "string" and typeof(self) == "Instance" and removeProtectedClasses[self.ClassName] then
-				-- TODO: Add this in rules.luau
-				local cIndex = toCString(index)
-				if cIndex == "Parent" or cIndex == "parent" then
-					return error("Cannot parent " .. self.ClassName, 2)
+			if type(index) == "string" and typeof(self) == "Instance" then
+				if Protection.isRemoveProtected(self) then
+					-- TODO: Add this in rules.luau.
+					local cIndex = toCString(index)
+					if cIndex == "Parent" or cIndex == "parent" then
+						return error("Cannot parent " .. self.ClassName, 2)
+					end
 				end
 			end
 
