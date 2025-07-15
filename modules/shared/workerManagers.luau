@@ -4,6 +4,7 @@ local Functions = require("shared/functions")
 local ManagerCommunication = require("shared/wm/communication")
 
 local WorkerManagers = {}
+local ReadyWorkerManagers = {}
 
 function WorkerManagers:Init(root, managerName)
 	Log.debug("Creating WorkerManagers...")
@@ -52,6 +53,10 @@ function WorkerManagers:Init(root, managerName)
 		local Manager = ManagerCommunication.new(send, recieve, invoke, invoked)
 		WorkerManagers[index] = Manager
 
+		Manager:once("ready", function()
+			ReadyWorkerManagers[index] = true
+		end)
+
 		manager.Name ..= `{index}@{math.random()}` -- We give them a random name to help filter out sb stack traces from other code
 		manager.Parent = parent
 
@@ -82,9 +87,17 @@ function WorkerManagers:onInvoke(topic: string, callback: (any...) -> any...)
 	end
 end
 
+local function ensureWorkerIsReady(index: number)
+	repeat
+		task.wait()
+	until ReadyWorkerManagers[index] == true
+end
+
 function WorkerManagers:Send(topic: string, ...)
+	ensureWorkerIsReady(0)
 	WorkerManagers.main:Send(topic, ...)
-	for _, Manager in ipairs(WorkerManagers) do
+	for index, Manager in ipairs(WorkerManagers) do
+		ensureWorkerIsReady(index)
 		Manager:Send(topic, ...)
 	end
 end

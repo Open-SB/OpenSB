@@ -154,6 +154,48 @@ do
 	end
 end
 
+task.spawn(function()
+	Log.debug("Protecting TextChatService...")
+
+	local TextChatService = game:GetService("TextChatService")
+
+	local function protectWithExpectedStructure(instance: Instance, structure: { [string]: any })
+		for name, subStructure in structure do
+			local child = instance:WaitForChild(name)
+			WorkerManagers:Send("protect", child, "write")
+
+			if table.maxn(subStructure) > 0 then
+				protectWithExpectedStructure(child, subStructure)
+			end
+		end
+	end
+
+	WorkerManagers:Send("protect", TextChatService, "write")
+	protectWithExpectedStructure(TextChatService, {
+		ChatWindowConfiguration = {},
+		TextChannels = {
+			RBXGeneral = {},
+			RBXSystem = {},
+		},
+		TextChatCommands = {
+			RBXHelpCommand = {},
+			RBXUnmuteCommand = {},
+			RBXTeamCommand = {},
+			RBXClearCommand = {},
+			RBXEmoteCommand = {},
+			RBXWhisperCommand = {},
+			RBXMuteCommand = {},
+			RBXVersionCommand = {},
+			RBXConsoleCommand = {},
+		},
+		ChatInputBarConfiguration = {},
+		ChannelTabsConfiguration = {},
+		BubbleChatConfiguration = {},
+	})
+
+	Log.debug("TextChatService should be fully protected")
+end)
+
 -- Finalize
 Log.debug("Finalizing...")
 

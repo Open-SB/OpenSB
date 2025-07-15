@@ -3,6 +3,7 @@ local table = table
 local error = error
 
 local Signal = require("shared/signal")
+local Log = require("shared/log")
 
 local ManagerCommunication = {}
 ManagerCommunication.__index = ManagerCommunication
@@ -58,6 +59,26 @@ function ManagerCommunication:on(topic: string, callback: (any...) -> never)
 	end
 
 	return event:Connect(callback)
+end
+
+function ManagerCommunication:once(topic: string, callback: (any...) -> never)
+	local event = self.__events[topic]
+	if not event then
+		event = Signal.new()
+		self.__events[topic] = event
+	else
+		if _G.dev then
+			Log.warn(
+				"You are calling once on an event that already exists; this will destroy the event and delete the topic after the event is fired. This can and most likely WILL lead to unexpected behavior."
+			)
+		end
+	end
+
+	return event:Once(function(...)
+		event:Destroy()
+		self.__events[topic] = nil
+		callback(...)
+	end)
 end
 
 function ManagerCommunication:onInvoke(topic: string, callback: (any...) -> any...)
