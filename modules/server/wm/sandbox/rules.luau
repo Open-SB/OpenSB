@@ -141,13 +141,13 @@ function Module.Init(_, Sandbox)
 			return wrap(child)
 		end
 
-		wmap[Clone] = function(self: Instance)
+		wmap[Clone] = function(self)
 			self = unwrap(self)
 			if typeof(self) == "Instance" and blockedInstances[self.ClassName] then
 				return error("Cannot Clone() " .. self.ClassName, 2)
 			end
 
-			return Clone(self)
+			return wrap(Clone(self))
 		end
 	end
 
