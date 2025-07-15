@@ -8,44 +8,43 @@ each further level implies the last
 2 - remove protection & write protection & read protection [ ghost ]
 ]]
 
-local Functions = require("shared/functions")
+local protectedInstances: { [Instance]: number } = {}
+local protectedClasses: { [string]: number } = {}
 
-local protectedInstances: { [Instance]: number? } = {}
-
-local protectedClasses: { [string]: number? } = {}
 do
 	local yaml = table.freeze(require("./classes.yaml"))
-
-	for _, class in ipairs(yaml.remove_protected) do
-		protectedClasses[class] = 0
+	local function read(arr: { string }, level: number)
+		for _, class in ipairs(arr) do
+			protectedClasses[class] = level
+		end
 	end
 
-	for _, class in ipairs(yaml.write_protected) do
-		protectedClasses[class] = 1
-	end
-	
-	for _, class in ipairs(yaml.read_protected) do
-		protectedClasses[class] = 2
-	end
+	read(yaml.remove_protected, 0)
+	read(yaml.write_protected, 1)
+	read(yaml.read_protected, 2)
+
+	table.freeze(protectedClasses)
 end
 
-table.freeze(protectedClasses)
+local function getLevel(instance: Instance)
+	return (protectedInstances[instance] or protectedClasses[instance.ClassName]) or -1
+end
 
 local function isRemoveProtected(instance: Instance)
-	return ((protectedInstances[instance] or protectedClasses[instance.ClassName]) or -1) >= 0
+	return getLevel(instance) >= 0
 end
 
 local function isWriteProtected(instance: Instance)
-	return ((protectedInstances[instance] or protectedClasses[instance.ClassName]) or -1) >= 1
+	return getLevel(instance) >= 1
 end
 
 local function isReadProtected(instance: Instance)
-	return ((protectedInstances[instance] or protectedClasses[instance.ClassName]) or -1) == 2
+	return getLevel(instance) == 2
 end
 
-type OutsideLevel = "remove" | "write" | "read"
+type Level = "remove" | "write" | "read"
 
-local function isProtected(instance: Instance, level: OutsideLevel)
+local function isProtected(instance: Instance, level: Level)
 	if level == "remove" then
 		return isRemoveProtected(instance)
 	elseif level == "write" then
@@ -57,7 +56,7 @@ local function isProtected(instance: Instance, level: OutsideLevel)
 	end
 end
 
-local function protect(instance: Instance, level: OutsideLevel)
+local function protect(instance: Instance, level: Level)
 	if level == "remove" then
 		protectedInstances[instance] = 0
 	elseif level == "write" then
@@ -73,6 +72,21 @@ local function unprotect(instance: Instance)
 	protectedInstances[instance] = nil
 end
 
+local function getProtection(instance: Instance): Level?
+	local level = getLevel(instance)
+	if level == -1 then
+		return nil
+	elseif level == 0 then
+		return "remove"
+	elseif level == 1 then
+		return "write"
+	elseif level == 2 then
+		return "read"
+	else
+		error(`got unknown level: {level}`)
+	end
+end
+
 -- setup initial services
 for _, service in { game:GetService("TextChatService") } do
 	for _, descendant in service:GetDescendants() do
@@ -85,8 +99,8 @@ return table.freeze({
 	isWriteProtected = isWriteProtected,
 	isReadProtected = isReadProtected,
 	isProtected = isProtected,
+
 	add = protect,
 	remove = unprotect,
-	protectedInstances = protectedInstances,
-	protectedClasses = protectedClasses,
+	get = getProtection,
 })
