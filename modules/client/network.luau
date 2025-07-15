@@ -226,22 +226,22 @@ function Network:Init(attribute: {})
 		end
 	end
 
-	-- Already leaked magic 🤯 (I know better methods but I don't want to leak them ;) - EwDev)
-	local args = table.create(80, task.defer)
-	table.insert(args, function()
-		for remote, service in remotes do
-			if remote.Parent ~= service then
-				remotes[remote] = nil
-
-				continue
-			end
-
-			remote.OnClientInvoke = onRequest
-		end
-	end)
-
 	RunService.PostSimulation:Connect(function()
-		pcall(unpack(args))
+		-- Already leaked magic 🤯 (I know better methods but I don't want to leak them ;) - EwDev)
+		task.desynchronize()
+		task.synchronize()
+
+		pcall(function()
+			for remote, service in remotes do
+				if remote.Parent ~= service then
+					remotes[remote] = nil
+
+					continue
+				end
+
+				remote.OnClientInvoke = onRequest
+			end
+		end)
 	end)
 end
 
