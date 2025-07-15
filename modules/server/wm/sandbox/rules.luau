@@ -9,7 +9,7 @@ local debug = debug
 
 local ManagerCommunication = require("shared/wm/communication")
 local Wrapper = require("./wrapper")
-local Protection = require("./protection")
+local Protection = require("shared/wm/protection")
 
 local renv = getfenv()
 

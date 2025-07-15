@@ -8,22 +8,22 @@ each further level implies the last
 2 - remove protection & write protection & read protection [ ghost ]
 ]]
 
-local ManagerCommunication = require("shared/wm/communication")
+-- local ManagerCommunication = require("shared/wm/communication")
 
 local protectedInstances: { [Instance]: number } = {}
 local protectedClasses: { [string]: number } = {}
 
 do
 	local yaml = table.freeze(require("./classes.yaml"))
-	local function read(arr: { string }, level: number)
-		for _, class in ipairs(arr) do
+	local function registerClassesAtLevel(classes: { string }, level: number)
+		for _, class in ipairs(classes or {}) do
 			protectedClasses[class] = level
 		end
 	end
 
-	read(yaml.remove_protected, 0)
-	read(yaml.write_protected, 1)
-	read(yaml.read_protected, 2)
+	registerClassesAtLevel(yaml.remove_protected, 0)
+	registerClassesAtLevel(yaml.write_protected, 1)
+	registerClassesAtLevel(yaml.read_protected, 2)
 
 	table.freeze(protectedClasses)
 end
@@ -97,8 +97,8 @@ for _, service in { game:GetService("TextChatService") } do
 end
 
 -- listen for requests on the backend
-ManagerCommunication:on("protect", protect)
-ManagerCommunication:on("unprotect", unprotect)
+-- ManagerCommunication:on("protect", protect)
+-- ManagerCommunication:on("unprotect", unprotect)
 
 return table.freeze({
 	isRemoveProtected = isRemoveProtected,
