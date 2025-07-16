@@ -1,7 +1,6 @@
 local Players = game:GetService("Players")
 
 local Output = require("client/output")
-local Chat = require("client/chat")
 local Log = require("shared/log")
 local Maid = require("shared/maid")
 local Signal = require("shared/signal")
@@ -64,7 +63,7 @@ function UI:IsScriptBuilderUI(screenGui: ScreenGui?)
 		return false
 	end
 
-	return screenGui == UI.ScreenGui or screenGui == Chat.ScreenGui
+	return screenGui == UI.ScreenGui
 end
 
 function UI:Init()

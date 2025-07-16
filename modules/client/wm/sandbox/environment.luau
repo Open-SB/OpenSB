@@ -911,19 +911,28 @@ function Module:Init()
 	-- https://create.roblox.com/docs/reference/engine/datatypes/Instance
 	senv.Instance = replaceLibrary(renv.Instance, function(r, rl)
 		local new = rl.new
+		local fromExisting = rl.fromExisting
 
 		-- https://create.roblox.com/docs/reference/engine/datatypes/Instance#new
 		r.new = function(...)
 			local className = toCString(checkArg("new", "string", 1, ...))
 			if BlockedInstances[className] then
-				return error(`Instance class "{className}" is blocked`, 0) -- Roblox seems to be throwing Instance.new errors at level 0
+				return error(`Unable to create an Instance of type "{className}"`, 0) -- Roblox seems to be throwing Instance.new errors at level 0
 			end
 
 			return new(className, getArg(2, ...))
 		end
 
 		-- https://create.roblox.com/docs/reference/engine/datatypes/Instance#fromExisting
-		r.fromExisting = rl.fromExisting
+		r.fromExisting = function(...)
+			local existingInstance = checkArg("fromExisting", "Instance", 1, ...)
+
+			if typeof(existingInstance) == "Instance" and BlockedInstances[existingInstance.ClassName] then
+				return error(`Cannot fromExisting() {existingInstance.ClassName}`, 0) -- Roblox seems to be throwing Instance.fromExisting errors at level 0
+			end
+
+			return fromExisting(existingInstance, getArg(2, ...))
+		end
 	end)
 
 	-- https://create.roblox.com/docs/reference/engine/datatypes/NumberRange

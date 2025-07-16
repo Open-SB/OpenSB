@@ -1,3 +1,13 @@
 # Server blocked instances
-- FloorWire # Can be used to crash people
-- SkateboardPlatform # Can be used to crash people
+
+# Instances which can be used to crash people
+- FloorWire
+- SkateboardPlatform
+
+# TextChatService should not configurable by players
+- ChatWindowConfiguration
+- ChatInputBarConfiguration
+- BubbleChatConfiguration
+- ChannelTabsConfiguration
+- TextChatCommand
+- TextChannel

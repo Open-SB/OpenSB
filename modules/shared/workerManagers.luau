@@ -68,6 +68,16 @@ function WorkerManagers:Init(root, managerName)
 	table.freeze(WorkerManagers)
 end
 
+function WorkerManagers:ready()
+	-- Sends with awaitReceiver set to true, meaning it will use the normal :Send() function (which waits for the receiving end to be fully ready).
+	-- The other side does not send with this set to true, as our side will always be ready to receive the "ready" event.
+
+	WorkerManagers.main:ready(true)
+	for _, Manager in ipairs(WorkerManagers) do
+		Manager:ready(true)
+	end
+end
+
 function WorkerManagers:on(topic: string, callback: (any...) -> never)
 	WorkerManagers.main:on(topic, callback)
 	for _, Manager in ipairs(WorkerManagers) do

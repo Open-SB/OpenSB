@@ -64,14 +64,12 @@ Log.debug("Loading modules...")
 local Network = require("server/network")
 local Commands = require("server/commands")
 local Output = require("server/output")
-local Chat = require("server/chat")
 local World = require("server/world")
 local WorkerManagers = require("shared/workerManagers")
 local Functions = require("shared/functions")
 
 WorkerManagers:Init(root, "workerManager")
 Network:Init()
-Chat:Init()
 Commands:Init({ require("server/commands/default"), require("server/commands/get") })
 
 Log.debug("Loading systems...") -- Maybe we should move these into their own modules?
@@ -156,6 +154,46 @@ do
 	end
 end
 
+task.spawn(function()
+	Log.debug("Protecting TextChatService...")
+
+	local TextChatService = game:GetService("TextChatService")
+
+	local function protectWithExpectedStructure(instance: Instance, structure: { [string]: any })
+		for name, subStructure in structure do
+			local child = instance:WaitForChild(name)
+			WorkerManagers:Send("protect", child, "write")
+
+			protectWithExpectedStructure(child, subStructure)
+		end
+	end
+
+	WorkerManagers:Send("protect", TextChatService, "write")
+	protectWithExpectedStructure(TextChatService, {
+		ChatWindowConfiguration = {},
+		TextChannels = {
+			RBXGeneral = {},
+			RBXSystem = {},
+		},
+		TextChatCommands = {
+			RBXHelpCommand = {},
+			RBXUnmuteCommand = {},
+			RBXTeamCommand = {},
+			RBXClearCommand = {},
+			RBXEmoteCommand = {},
+			RBXWhisperCommand = {},
+			RBXMuteCommand = {},
+			RBXVersionCommand = {},
+			RBXConsoleCommand = {},
+		},
+		ChatInputBarConfiguration = {},
+		ChannelTabsConfiguration = {},
+		BubbleChatConfiguration = {},
+	})
+
+	Log.debug("TextChatService should be fully protected")
+end)
+
 -- Finalize
 Log.debug("Finalizing...")
 
@@ -165,6 +203,7 @@ for _, player: Player in ipairs(Players:GetPlayers()) do
 	task.defer(player.LoadCharacter, player)
 end
 
+WorkerManagers:ready()
 Log.print(`Loaded in {math.round((os.clock() - __start) * 1000)}ms.`)
 
 return nil

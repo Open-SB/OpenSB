@@ -39,7 +39,6 @@ Log.debug("Loading modules...")
 local Network = require("client/network")
 local Commands = require("client/commands")
 local UI = require("client/ui")
-local Chat = require("client/chat")
 local StarterScripts = require("client/starterScripts")
 local Output = require("client/output")
 local WorkerManagers = require("shared/workerManagers")
@@ -49,11 +48,12 @@ require("client/scriptManager")
 Network:Init(networkAttribute)
 Commands:Init({ require("client/commands/default"), require("client/commands/get") })
 UI:Init()
-Chat:Init()
 StarterScripts:Init()
 
 -- Finalize
 Log.debug("Finalizing...")
+
+WorkerManagers:ready()
 
 local loadTime = math.round((os.clock() - __start) * 1000)
 Log.print(`Loaded in {loadTime}ms.`)
