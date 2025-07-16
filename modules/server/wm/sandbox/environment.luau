@@ -22,6 +22,7 @@ local debug = debug
 local ManagerCommunication = require("@shared/wm/communication")
 local Functions = require("@shared/functions")
 local Protection = require("@shared/wm/protection")
+local Errors = require("@shared/errors")
 
 local Wrapper = require("./wrapper")
 local Sandbox
@@ -35,7 +36,7 @@ local wrap, unwrap = Wrapper.wrap, Wrapper.unwrap
 local wrapMany, unwrapMany = Wrapper.wrapMany, Wrapper.unwrapMany
 local typeofWrapped = Wrapper.typeofWrapped
 
-local toCString = Functions.toCString
+local nullTerminate = Functions.nullTerminate
 
 local isRemoveProtected = Protection.isRemoveProtected
 local isWriteProtected = Protection.isWriteProtected
@@ -965,15 +966,15 @@ function Module:Init()
 
 		-- https://create.roblox.com/docs/reference/engine/datatypes/Instance#new
 		r.new = function(...)
-			local className = toCString(checkArg("new", "string", 1, ...))
+			local className = nullTerminate(checkArg("new", "string", 1, ...))
 			local parent = unwrap(checkOptionalArg("new", "Instance", 2, ...))
 
 			if BlockedInstances[className] then
-				return error(`Unable to create an Instance of type "{className}"`, 0) -- Roblox seems to be throwing Instance.new errors at level 0
+				return error(Errors.createBlockedClass(className), 0) -- Roblox seems to be throwing Instance.new errors at level 0
 			end
 
 			if parent and isWriteProtected(parent) then
-				return error(`Cannot set parent to {parent.ClassName}`, 0)
+				return error(Errors.parentToWriteProtected(parent), 0)
 			end
 
 			return wrap(new(className, parent))
@@ -987,7 +988,7 @@ function Module:Init()
 				typeof(existingInstance) == "Instance"
 				and (BlockedInstances[existingInstance.ClassName] or isReadProtected(existingInstance))
 			then
-				return error(`Cannot fromExisting() {existingInstance.ClassName}`, 0) -- Roblox seems to be throwing Instance.fromExisting errors at level 0
+				return error(Errors.createBlockedClass(existingInstance.ClassName), 0) -- Roblox seems to be throwing Instance.fromExisting errors at level 0
 			end
 
 			return wrap(fromExisting(existingInstance))

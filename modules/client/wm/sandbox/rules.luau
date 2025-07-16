@@ -7,6 +7,7 @@ local coroutine = coroutine
 local renv = getfenv()
 
 local ManagerCommunication = require("@shared/wm/communication")
+local Errors = require("@shared/errors")
 
 local Module = {}
 
@@ -16,12 +17,10 @@ function Module.Init(_, Sandbox)
 	local fmap = Sandbox.FunctionMap
 	local getSandbox = Sandbox.getSandbox
 
-	local function disable(func: () -> (), name: string?)
-		local funcName = name or debug.info(func, "n") or ""
-		local message = funcName .. "() is disabled"
-
+	local function disable(func: () -> (), capability: string?, name: string?)
+		local message = Errors.cannotCall(name or func, capability)
 		fmap[func] = function()
-			return error(message, 2)
+			return error(message, 0)
 		end
 	end
 
@@ -34,7 +33,7 @@ function Module.Init(_, Sandbox)
 		fmap[WaitForChild] = function(self, childName, timeOut)
 			timeOut = tonumber(timeOut)
 			if timeOut and timeOut <= 0 then
-				return error("illegal argument #2 (timeOut must be greater than 0)", 2)
+				return error("illegal argument #2 (timeOut must be greater than 0)", 0)
 			end
 
 			local sandbox = getSandbox()
@@ -49,7 +48,7 @@ function Module.Init(_, Sandbox)
 						return
 					end
 
-					-- TODO: Add stacktraces to warnings
+					-- TODO: Add stacktrace
 					ManagerCommunication:Send(
 						"warn",
 						`Infinite yield possible on '{fullName}:WaitForChild("{childName}")'`
@@ -70,17 +69,21 @@ function Module.Init(_, Sandbox)
 
 		fmap[Clone] = function(self)
 			if typeof(self) == "Instance" and blockedInstances[self.ClassName] then
-				return error("Cannot Clone() " .. self.ClassName, 2)
+				return error(Errors.createBlockedClass(self.ClassName), 0)
 			end
 
 			return Clone(self)
 		end
 	end
 
+	-- https://create.roblox.com/docs/reference/engine/classes/TextChannel
 	do
-		-- SendAsync can be used to spoof commands
 		local SendAsync = Instance.new("TextChannel").SendAsync
-		disable(SendAsync, "SendAsync")
+
+		local capability = "Chat"
+
+		-- https://create.roblox.com/docs/reference/engine/classes/TextChannel#SendAsync
+		disable(SendAsync, capability) -- SendAsync can be used to spoof commands
 	end
 
 	table.freeze(Module)

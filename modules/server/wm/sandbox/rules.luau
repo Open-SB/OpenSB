@@ -10,6 +10,8 @@ local debug = debug
 local ManagerCommunication = require("@shared/wm/communication")
 local Wrapper = require("./wrapper")
 local Protection = require("@shared/wm/protection")
+local Functions = require("@shared/functions")
+local Errors = require("@shared/errors")
 
 local renv = getfenv()
 
@@ -29,12 +31,10 @@ function Module.Init(_, Sandbox)
 	local isWriteProtected = Protection.isWriteProtected
 	local isReadProtected = Protection.isReadProtected
 
-	local function disable(func: () -> (), name: string?)
-		local funcName = name or debug.info(func, "n") or ""
-		local message = funcName .. "() is disabled"
-
+	local function disable(func: () -> (), capability: string?, name: string?)
+		local message = Errors.cannotCall(name or func, capability)
 		wmap[func] = function()
-			return error(message, 2)
+			return error(message, 0)
 		end
 	end
 
@@ -53,7 +53,7 @@ function Module.Init(_, Sandbox)
 			if typeof(self) == "Instance" then
 				for _, child in ipairs(self:GetChildren()) do
 					if isRemoveProtected(child) then
-						return error(`Cannot ClearAllChildren() {self.ClassName}`, 2)
+						return error(Errors.lockedParent(child), 0)
 					end
 				end
 			end
@@ -65,7 +65,7 @@ function Module.Init(_, Sandbox)
 		wmap[Destroy] = function(self)
 			self = unwrap(self)
 			if typeof(self) == "Instance" and isRemoveProtected(self) then
-				return error("Cannot Destroy() " .. self.ClassName, 2)
+				return error(Errors.lockedParent(self), 0)
 			end
 
 			Destroy(self)
@@ -75,7 +75,7 @@ function Module.Init(_, Sandbox)
 		wmap[Remove] = function(self)
 			self = unwrap(self)
 			if typeof(self) == "Instance" and isRemoveProtected(self) then
-				return error("Cannot Remove() " .. self.ClassName, 2)
+				return error(Errors.lockedParentSet(self, nil), 0)
 			end
 
 			Remove(self)
@@ -85,7 +85,7 @@ function Module.Init(_, Sandbox)
 		wmap[WaitForChild] = function(self, childName, timeOut)
 			timeOut = tonumber(timeOut)
 			if timeOut and timeOut <= 0 then
-				return error("illegal argument #2 (timeOut must be greater than 0)", 2)
+				return error("illegal argument #2 (timeOut must be greater than 0)", 0)
 			end
 
 			local sandbox = getSandbox()
@@ -103,7 +103,7 @@ function Module.Init(_, Sandbox)
 						return
 					end
 
-					-- TODO: Add stacktraces to warnings
+					-- TODO: Add stacktrace
 					ManagerCommunication:Send(
 						"warn",
 						sandbox.Owner,
@@ -128,7 +128,7 @@ function Module.Init(_, Sandbox)
 		wmap[Clone] = function(self)
 			self = unwrap(self)
 			if typeof(self) == "Instance" and (blockedInstances[self.ClassName] or isReadProtected(self)) then
-				return error("Cannot Clone() " .. self.ClassName, 2)
+				return error(Errors.createBlockedClass(self.ClassName), 0)
 			end
 
 			return wrap(Clone(self))
@@ -146,12 +146,14 @@ function Module.Init(_, Sandbox)
 
 		-- https://create.roblox.com/docs/reference/engine/datatypes/RBXScriptSignal#Connect
 		methods.Connect = function(self, func)
-			if type(func) ~= "function" then
-				return error("Attempt to connect failed: Passed value is not a function", 2)
-			end
-
 			local sandbox = getSandbox()
 			assertTerminated(sandbox)
+
+			if type(func) ~= "function" then
+				-- TODO: Add stacktrace
+				ManagerCommunication:Send("error", sandbox.Owner, Errors.connectNonFunction())
+				return Connect(unwrap(self))
+			end
 
 			local connection = Connect(unwrap(self), function(...)
 				assertTerminated(sandbox)
@@ -165,12 +167,14 @@ function Module.Init(_, Sandbox)
 
 		-- https://create.roblox.com/docs/reference/engine/datatypes/RBXScriptSignal#ConnectParallel
 		methods.ConnectParallel = function(self, func)
-			if type(func) ~= "function" then
-				return error("Attempt to connect failed: Passed value is not a function", 2)
-			end
-
 			local sandbox = getSandbox()
 			assertTerminated(sandbox)
+
+			if type(func) ~= "function" then
+				-- TODO: Add stacktrace
+				ManagerCommunication:Send("error", sandbox.Owner, Errors.connectNonFunction())
+				return ConnectParallel(unwrap(self))
+			end
 
 			local connection = ConnectParallel(unwrap(self), function(...)
 				assertTerminated(sandbox)
@@ -184,12 +188,14 @@ function Module.Init(_, Sandbox)
 
 		-- https://create.roblox.com/docs/reference/engine/datatypes/RBXScriptSignal#Once
 		methods.Once = function(self, func)
-			if type(func) ~= "function" then
-				return error("Attempt to connect failed: Passed value is not a function", 2)
-			end
-
 			local sandbox = getSandbox()
 			assertTerminated(sandbox)
+
+			if type(func) ~= "function" then
+				-- TODO: Add stacktrace
+				ManagerCommunication:Send("error", sandbox.Owner, Errors.connectNonFunction())
+				return Once(unwrap(self))
+			end
 
 			local connection
 			connection = Once(unwrap(self), function(...)
@@ -261,13 +267,25 @@ function Module.Init(_, Sandbox)
 		local AddItem = Debris.AddItem
 
 		-- https://create.roblox.com/docs/reference/engine/classes/Debris#AddItem
-		wmap[AddItem] = function(self, item, ...)
+		wmap[AddItem] = function(self, item, lifetime)
 			item = unwrap(item)
+			lifetime = unwrap(lifetime)
+
 			if typeof(item) == "Instance" and isRemoveProtected(item) then
-				return error("Cannot AddItem() " .. item.ClassName, 2)
+				local cLifetime = Functions.toCDouble(lifetime)
+				if cLifetime then
+					local sandbox = getSandbox()
+					task.delay(cLifetime, function()
+						local msg = Errors.lockedParent(item)
+						ManagerCommunication:Send("warn", sandbox.Owner, msg)
+						warn(msg)
+					end)
+
+					return
+				end
 			end
 
-			AddItem(unwrap(self), item, unwrapMany(...))
+			AddItem(unwrap(self), item, lifetime)
 		end
 	end
 

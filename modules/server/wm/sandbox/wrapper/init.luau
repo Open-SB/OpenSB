@@ -15,6 +15,7 @@ local error = error
 
 local Reflection = require("./reflection")
 local Protection = require("@shared/wm/protection")
+local Errors = require("@shared/errors")
 local Sandbox
 local wrapMap, unwrapMap
 
@@ -224,7 +225,7 @@ wrap = function(value: any, wrappedTables: table?): any
 		setfenv(wrappedValue, wrap(getfenv(value)))
 	else
 		if datatype == "Instance" and Protection.isReadProtected(value) then
-			return error("Attempted to access protected instance", 2)
+			return error(Errors.cannotAccess(value), 0)
 		end
 
 		wrappedValue = newproxy(true)

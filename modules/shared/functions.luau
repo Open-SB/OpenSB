@@ -10,7 +10,7 @@ local Functions = {}
 
 function Functions.empty() end
 
-function Functions.randomString(length)
+function Functions.randomString(length: number): string
 	local str = ""
 
 	for _ = 1, length or 32 do
@@ -23,13 +23,37 @@ end
 Functions.randomInstanceName = math.random
 
 -- This function makes the string "null terminated" (stops before a null character)
-function Functions.toCString(str: string)
+function Functions.nullTerminate(str: string): string
 	local nullIndex = string.find(str, "\0", 1, true)
 	if nullIndex then
 		return string.sub(str, 1, nullIndex - 1)
 	end
 
 	return str
+end
+
+function Functions.toCString(value: any): string
+	return Functions.nullTerminate(tostring(value))
+end
+
+function Functions.toCDouble(value: any): number?
+	local datatype = type(value)
+	if datatype == "number" then
+		return value
+	elseif datatype == "boolean" then
+		return if value then 1 else 0
+	end
+
+	return tonumber(value)
+end
+
+function Functions.getInstanceName(instance: Instance?): string
+	return if instance ~= nil then instance.Name else "NULL"
+end
+
+function Functions.getFunctionName(func: () -> ()): string?
+	local name = debug.info(func, "n")
+	return if #name == 0 then nil else name
 end
 
 do
@@ -48,7 +72,7 @@ do
 	Functions.newindexInstance = debug.info(newindexThread, 0, "f")
 end
 
-function Functions.formatPlayerName(player: Player)
+function Functions.formatPlayerName(player: Player): string
 	if player.DisplayName == player.Name then
 		return player.DisplayName
 	end
@@ -56,7 +80,7 @@ function Functions.formatPlayerName(player: Player)
 	return `{player.DisplayName} (@{player.Name})`
 end
 
-function Functions.getServerType()
+function Functions.getServerType(): "StandardServer" | "ReservedServer" | "VIPServer"
 	if game.PrivateServerId ~= "" then
 		if game.PrivateServerOwnerId ~= 0 then
 			return "VIPServer"
