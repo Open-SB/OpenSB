@@ -133,7 +133,7 @@ function Module.Init(_, Sandbox, wrapper, rules)
 				if cIndex == "Parent" or cIndex == "parent" then
 					if isRemoveProtected(self) then
 						return error("Cannot parent " .. self.ClassName, 2)
-					elseif isWriteProtected(value) then
+					elseif typeof(value) == "Instance" and isWriteProtected(value) then
 						return error(`Cannot set parent to {value.ClassName}`, 2)
 					end
 				end
