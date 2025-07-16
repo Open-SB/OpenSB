@@ -9,6 +9,7 @@ local ClientRequestMethod = RequestMethods.Client
 local Log = require("@shared/log")
 local Functions = require("@shared/functions")
 local HashLib = require("@shared/hashLib")
+local Protection = require("@shared/protection")
 
 local Network = {}
 Network.attributeName, Network.attributeValue = string.sub(tostring(math.random()), 3), math.random()
@@ -176,7 +177,10 @@ function Network:Init()
 		lastRemoteFix = os.clock()
 
 		if remote then
-			task.delay(0, game.Destroy, remote)
+			task.delay(0, function(oldRemote)
+				Protection.remove(oldRemote)
+				oldRemote:Destroy()
+			end, remote)
 		end
 
 		table.clear(connectedPlayers)
@@ -185,6 +189,8 @@ function Network:Init()
 		remote.Name = Functions.randomInstanceName()
 		remote.Archivable = false
 		remote:SetAttribute(Network.attributeName, Network.attributeValue)
+
+		Protection.add(remote, "write")
 
 		remoteParent = services[math.random(1, #services)]
 		remote.Parent = remoteParent
