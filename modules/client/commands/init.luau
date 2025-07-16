@@ -145,9 +145,8 @@ function Commands:Process(input, inputContext)
 		return
 	end
 	commandName = commandName:split(' ')
-	
+
 	for i,commandName in pairs(commandName) do
-		print(commandName)
 		local clientResult, clientMessage, contextData = Commands:ProcessClient(namespace, commandName, arguments, input, inputContext)
 		if clientResult ~= ProcessResult.Success then
 			-- Only output fail messages if the inputContext wasn't the chat (because you can also send chat messages in chat, duh),
