@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
+local UserInputService = game:GetService("UserInputService")
 
 local Network = require("client/network")
 local Output = require("client/output")
@@ -169,8 +170,25 @@ function Commands:Init(namespaces)
 
 	TextChatService.SendingMessage:Connect(function(message)
 		-- For some reason, SendAsync doesn't work in sandbox??? So this is perfectly safe.
-
 		-- At this stage, chat filter isn't actually invoked, so this works perfectly.
+
+		local preferredInput = UserInputService.PreferredInput
+		if
+			(
+				preferredInput == Enum.PreferredInput.KeyboardAndMouse
+				and not UserInputService:IsKeyDown(Enum.KeyCode.Return)
+			)
+			or (
+				preferredInput == Enum.PreferredInput.Gamepad
+				and not UserInputService:IsGamepadButtonDown(
+					UserInputService:GetNavigationGamepads()[1],
+					Enum.KeyCode.ButtonStart
+				)
+			)
+		then
+			return
+		end
+
 		Commands:Process(message.Text, InputContext.Chat)
 	end)
 

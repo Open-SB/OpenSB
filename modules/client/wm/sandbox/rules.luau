@@ -66,6 +66,12 @@ function Module.Init(_, Sandbox)
 		end
 	end
 
+	do
+		-- SendAsync can be used to spoof commands
+		local SendAsync = Instance.new("TextChannel").SendAsync
+		disable(SendAsync, "SendAsync")
+	end
+
 	table.freeze(Module)
 end
 

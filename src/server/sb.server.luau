@@ -164,9 +164,7 @@ task.spawn(function()
 			local child = instance:WaitForChild(name)
 			WorkerManagers:Send("protect", child, "write")
 
-			if table.maxn(subStructure) > 0 then
-				protectWithExpectedStructure(child, subStructure)
-			end
+			protectWithExpectedStructure(child, subStructure)
 		end
 	end
 

@@ -69,9 +69,17 @@ elseif _G.compilerEndpoint then
 				return compileResult.Error, `Error while using Luau compiler endpoint: {response}`
 			end
 
-			-- Check if response was an error (includes syntax errors, and request errors shouldn't happen unless the api changes)
 			if not response.Success then
-				return compileResult.Fail, response.Body
+				-- https://github.com/Open-SB/luau-compile/blob/main/src/main.rs#L63
+				if response.StatusCode == 422 then
+					-- The response was an error (includes syntax errors, and request errors shouldn't happen unless the api changes)
+					return compileResult.Fail, response.Body
+				elseif response.StatusCode == 507 then
+					return compileResult.Error, `Luau compiler endpoint ran out of memory: {response.Body}`
+				else -- any other status codes should allow a fallback to another compilation method
+					return compileResult.Error,
+						`Error while using Luau compiler endpoint, got status code {response.StatusCode}`
+				end
 			end
 
 			return compileResult.Success, buffer.fromstring(response.Body)
