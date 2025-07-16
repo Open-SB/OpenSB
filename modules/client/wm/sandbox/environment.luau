@@ -917,7 +917,7 @@ function Module:Init()
 		r.new = function(...)
 			local className = toCString(checkArg("new", "string", 1, ...))
 			if BlockedInstances[className] then
-				return error(`Instance class "{className}" is blocked`, 0) -- Roblox seems to be throwing Instance.new errors at level 0
+				return error(`Unable to create an Instance of type "{className}"`, 0) -- Roblox seems to be throwing Instance.new errors at level 0
 			end
 
 			return new(className, getArg(2, ...))

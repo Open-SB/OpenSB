@@ -121,20 +121,25 @@ function Module.Init(_, Sandbox, wrapper, rules)
 
 		function meta:__newindex(index, value)
 			self = unwrap(self)
+			value = unwrap(value)
 
 			if isWriteProtected(self) then
 				return error("Property write failed: Instance is write protected", 2)
 			end
 
-			if type(index) == "string" and typeof(self) == "Instance" and isRemoveProtected(self) then
+			if type(index) == "string" and typeof(self) == "Instance" then
 				-- TODO: Add this in rules.luau.
 				local cIndex = toCString(index)
 				if cIndex == "Parent" or cIndex == "parent" then
-					return error("Cannot parent " .. self.ClassName, 2)
+					if isRemoveProtected(self) then
+						return error("Cannot parent " .. self.ClassName, 2)
+					elseif isWriteProtected(value) then
+						return error(`Cannot set parent to {value.ClassName}`, 2)
+					end
 				end
 			end
 
-			set(self, unwrap(index), unwrap(value))
+			set(self, unwrap(index), value)
 		end
 
 		-- Map the C implementation of __index and __newindex to their sandboxed versions

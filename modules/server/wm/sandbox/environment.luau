@@ -963,11 +963,17 @@ function Module:Init()
 		-- https://create.roblox.com/docs/reference/engine/datatypes/Instance#new
 		r.new = function(...)
 			local className = toCString(checkArg("new", "string", 1, ...))
+			local parent = unwrap(checkOptionalArg("new", "Instance", 2, ...))
+
 			if BlockedInstances[className] then
-				return error(`Instance class "{className}" is blocked`, 0) -- Roblox seems to be throwing Instance.new errors at level 0
+				return error(`Unable to create an Instance of type "{className}"`, 0) -- Roblox seems to be throwing Instance.new errors at level 0
 			end
 
-			return wrap(new(className, unwrap(getArg(2, ...))))
+			if parent and isWriteProtected(parent) then
+				return error(`Cannot set parent to {parent.ClassName}`, 0)
+			end
+
+			return wrap(new(className, parent))
 		end
 
 		-- https://create.roblox.com/docs/reference/engine/datatypes/Instance#fromExisting
@@ -981,7 +987,7 @@ function Module:Init()
 				return error(`Cannot fromExisting() {existingInstance.ClassName}`, 0) -- Roblox seems to be throwing Instance.fromExisting errors at level 0
 			end
 
-			return wrap(fromExisting(existingInstance, unwrap(getArg(2, ...))))
+			return wrap(fromExisting(existingInstance))
 		end
 	end)
 
@@ -1064,6 +1070,8 @@ function Module:Init()
 				"instance is RobloxLocked",
 				1
 			)
+
+			assertArg("NewScript", 2, not isWriteProtected(parent), "instance is write protected", 1)
 		end
 
 		local script =
@@ -1094,6 +1102,8 @@ function Module:Init()
 				"instance is RobloxLocked",
 				1
 			)
+
+			assertArg("NewLocalScript", 2, not isWriteProtected(parent), "instance is write protected", 1)
 		end
 
 		local script =
@@ -1122,6 +1132,8 @@ function Module:Init()
 				"instance is RobloxLocked",
 				1
 			)
+
+			assertArg("NewModuleScript", 2, not isWriteProtected(parent), "instance is write protected")
 		end
 
 		local script =
