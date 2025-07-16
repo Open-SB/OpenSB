@@ -83,41 +83,15 @@ function Commands:Run(command, context, arguments)
 	return true, result
 end
 
-function Commands:ProcessServer(data, input, inputContext)
-	return Network:InvokeServer("processCommand", data, input, inputContext)
+function Commands:ProcessServer(prefix, commandName, arguments, contextData, input, inputContext)
+	contextData.prefix=prefix
+	contextData.commandName=commandName
+	contextData.arguments=arguments
+	return Network:InvokeServer("processCommand", contextData, input, inputContext)
 end
 
-function Commands:ProcessClient(input, inputContext)
-	-- Check if the input matches a command string, if not then we can ignore it.
-	if not string.match(input, "^.+/") then
-		return ProcessResult.Fail, "Not a valid command string."
-	end
 
-	local arguments = string.split(input, "/")
-	local prefix = table.remove(arguments, 1)
-	if not prefix then
-		return ProcessResult.Fail, "No prefix was found."
-	end
-
-	-- Remove last argument if empty.
-	if #arguments[#arguments] == 0 then
-		table.remove(arguments, #arguments)
-	end
-
-	-- Find namespace, and get the command.
-	local commandName
-	local namespace = Commands.namespaceLookup[string.lower(prefix)]
-	if not namespace then
-		-- No namespace with prefix found, default namespace, command should be the 1st split string (command/arguments).
-		commandName = prefix
-		namespace = Commands.namespaces.default
-	elseif arguments[1] and #arguments[1] > 0 then -- Check if there is a 2nd split string, otherwise no command was given.
-		-- Not default namespace, command should be the 2nd split string (prefix/command/arguments).
-		commandName = table.remove(arguments, 1)
-	else
-		return ProcessResult.Fail, "No command was given."
-	end
-
+function Commands:ProcessClient(namespace, commandName, arguments, input, inputContext)
 	local command = namespace.commandLookup[string.lower(commandName)]
 	if not command then
 		return ProcessResult.Fail, `Command "{commandName}" was not found.`
@@ -138,30 +112,66 @@ function Commands:ProcessClient(input, inputContext)
 end
 
 function Commands:Process(input, inputContext)
-	local clientResult, clientMessage, contextData = Commands:ProcessClient(input, inputContext)
-	if clientResult ~= ProcessResult.Success then
-		-- Only output fail messages if the inputContext wasn't the chat (because you can also send chat messages in chat, duh),
-		-- Error messages should always be displayed.
-		if
-			clientResult == ProcessResult.Error
-			or (clientResult == ProcessResult.Fail and inputContext ~= InputContext.Chat)
-		then
-			Output:append(Output.MessageType.Error, clientMessage or "Unexpected error occured while running command.")
-		end
-
+	-- Check if the input matches a command string, if not then we can ignore it.
+	if not string.match(input, "^.+/") then
+		Output:append(Output.MessageType.Error, "Not a valid command string.")
 		return
-	elseif clientMessage then
-		Output:append(Output.MessageType.Success, clientMessage)
 	end
 
-	local serverResult, serverMessage = Commands:ProcessServer(contextData, input, inputContext)
-	if serverResult ~= ProcessResult.Success then
-		-- We don't check if the ProcessResult was a Fail or Error here, because it should always be an Error.
-		Output:append(Output.MessageType.Error, serverMessage or "Unexpected error occured while running command.")
-
+	local arguments = string.split(input, "/")
+	local prefix = table.remove(arguments, 1)
+	if not prefix then
+		Output:append(Output.MessageType.Error, "No prefix was found.")
 		return
-	elseif serverMessage then
-		Output:append(Output.MessageType.Success, serverMessage)
+	end
+
+	-- Remove last argument if empty.
+	if #arguments[#arguments] == 0 then
+		table.remove(arguments, #arguments)
+	end
+
+	-- Find namespace, and get the command.
+	local commandName
+	local namespace = Commands.namespaceLookup[string.lower(prefix)]
+	if not namespace then
+		-- No namespace with prefix found, default namespace, command should be the 1st split string (command/arguments).
+		commandName = prefix
+		namespace = Commands.namespaces.default
+	elseif arguments[1] and #arguments[1] > 0 then -- Check if there is a 2nd split string, otherwise no command was given.
+		-- Not default namespace, command should be the 2nd split string (prefix/command/arguments).
+		commandName = table.remove(arguments, 1)
+	else
+		Output:append(Output.MessageType.Error, "No command was given.")
+		return
+	end
+	commandName = commandName:split(' ')
+	
+	for i,commandName in pairs(commandName) do
+		print(commandName)
+		local clientResult, clientMessage, contextData = Commands:ProcessClient(namespace, commandName, arguments, input, inputContext)
+		if clientResult ~= ProcessResult.Success then
+			-- Only output fail messages if the inputContext wasn't the chat (because you can also send chat messages in chat, duh),
+			-- Error messages should always be displayed.
+			if
+				clientResult == ProcessResult.Error
+				or (clientResult == ProcessResult.Fail and inputContext ~= InputContext.Chat)
+			then
+				Output:append(Output.MessageType.Error, clientMessage or "Unexpected error occured while running command.")
+			end
+
+			continue
+		elseif clientMessage then
+			Output:append(Output.MessageType.Success, clientMessage)
+		end
+		
+		local serverResult, serverMessage = Commands:ProcessServer(prefix, commandName, arguments, contextData, input, inputContext)
+		if serverResult ~= ProcessResult.Success then
+			-- We don't check if the ProcessResult was a Fail or Error here, because it should always be an Error.
+			Output:append(Output.MessageType.Error, serverMessage or "Unexpected error occured while running command.")
+			continue
+		elseif serverMessage then
+			Output:append(Output.MessageType.Success, serverMessage)
+		end
 	end
 end
 
