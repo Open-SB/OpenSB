@@ -1,11 +1,11 @@
-local Output = require("server/output")
-local Network = require("server/network")
-local compile = require("server/compile")
-local Assets = require("shared/assets")
-local WorkerManagers = require("shared/workerManagers")
-local DB = require("server/db")
+local Output = require("@server/output")
+local Network = require("@server/network")
+local compile = require("@server/compile")
+local Assets = require("@shared/assets")
+local WorkerManagers = require("@shared/workerManagers")
+local DB = require("@server/db")
 
-local ScriptTypes = require("shared/scriptManager/scriptTypes")
+local ScriptTypes = require("@shared/scriptManager/scriptTypes")
 
 local playerScripts: { [Player]: { [string]: { type: any, instance: BaseScript } } } = {}
 

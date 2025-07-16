@@ -13,12 +13,12 @@ local math = math
 local tostring = tostring
 local os = os
 
-local Log = require("shared/log")
-Log:SetPrefix("[" .. string.match(script.Name, "^(.+)@") .. "]") -- Remove the random part of the name (check shared/workerManagers.luau)
+local Log = require("@shared/log")
+Log:SetPrefix("[" .. string.match(script.Name, "^(.+)@") .. "]") -- Remove the random part of the name (check @shared/workerManagers.luau)
 Log.print("Loading...")
 
 do
-	local wm = require("shared/wm")
+	local wm = require("@shared/wm")
 	wm.isWorkerManager = true
 	table.freeze(wm)
 end
@@ -59,11 +59,11 @@ do
 	coroutine.yield() -- Yield thread until script has been destroyed, so events dont get connected in the process (then disconnected by :Destroy())
 end
 
-local ManagerCommunication = require("shared/wm/communication")
+local ManagerCommunication = require("@shared/wm/communication")
 ManagerCommunication:init(unpack(communicationBindables))
 
-local Sandbox = require("client/wm/sandbox")
-local ScriptManager = require("client/wm/scriptManager")
+local Sandbox = require("@client/wm/sandbox")
+local ScriptManager = require("@client/wm/scriptManager")
 Sandbox:Init()
 ScriptManager:Init()
 

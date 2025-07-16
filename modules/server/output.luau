@@ -1,8 +1,8 @@
 local Players = game:GetService("Players")
 
-local Network = require("server/network")
-local MessageTypes = require("shared/output/messageTypes")
-local Functions = require("shared/functions")
+local Network = require("@server/network")
+local MessageTypes = require("@shared/output/messageTypes")
+local Functions = require("@shared/functions")
 
 local Output = {}
 Output.MessageType = MessageTypes

@@ -1,15 +1,15 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local services = require("shared/network/services")
-local RequestMethods = require("shared/network/requestMethods")
+local services = require("@shared/network/services")
+local RequestMethods = require("@shared/network/requestMethods")
 local ServerRequestMethod = RequestMethods.Server
 local ClientRequestMethod = RequestMethods.Client
 
-local Log = require("shared/log")
-local Functions = require("shared/functions")
-local HashLib = require("shared/hashLib")
-local Signal = require("shared/signal")
+local Log = require("@shared/log")
+local Functions = require("@shared/functions")
+local HashLib = require("@shared/hashLib")
+local Signal = require("@shared/signal")
 
 local localPlayer = Players.LocalPlayer
 local attributeName, attributeValue

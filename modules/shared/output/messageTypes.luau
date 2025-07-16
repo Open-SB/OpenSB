@@ -1,4 +1,4 @@
-return require("shared/enum")({
+return require("@shared/enum")({
 	"Log",
 	"Warning",
 	"Error",

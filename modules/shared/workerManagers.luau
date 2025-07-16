@@ -1,7 +1,7 @@
-local Log = require("shared/log")
-local Functions = require("shared/functions")
+local Log = require("@shared/log")
+local Functions = require("@shared/functions")
 
-local ManagerCommunication = require("shared/wm/communication")
+local ManagerCommunication = require("@shared/wm/communication")
 
 local WorkerManagers = {}
 

@@ -13,12 +13,12 @@ local tonumber = tonumber
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
-local Sandbox = require("client/wm/sandbox")
-local VM = require("client/wm/sandbox/vm")
-local ManagerCommunication = require("shared/wm/communication")
+local Sandbox = require("@client/wm/sandbox")
+local VM = require("@client/wm/sandbox/vm")
+local ManagerCommunication = require("@shared/wm/communication")
 
-local Functions = require("shared/functions")
-local ScriptTypes = require("shared/scriptManager/scriptTypes")
+local Functions = require("@shared/functions")
+local ScriptTypes = require("@shared/scriptManager/scriptTypes")
 
 local getRunning = VM.getRunning
 local getDebugInfo = VM.getDebugInfo

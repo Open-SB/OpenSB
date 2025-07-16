@@ -1,10 +1,10 @@
-local Output = require("client/output")
-local ScriptManager = require("client/scriptManager")
-local UI = require("client/ui")
+local Output = require("@client/output")
+local ScriptManager = require("@client/scriptManager")
+local UI = require("@client/ui")
 
 return function(Commands)
 	-- Load shared definitions
-	require("shared/commands/get")(Commands)
+	require("@shared/commands/get")(Commands)
 
 	local _namespace = "get"
 	local function defineValidator(...)

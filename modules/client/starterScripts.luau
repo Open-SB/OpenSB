@@ -1,5 +1,5 @@
-local Log = require("shared/log")
-local Assets = require("shared/assets")
+local Log = require("@shared/log")
+local Assets = require("@shared/assets")
 
 local scripts = Assets:get("starterScripts"):GetChildren()
 local starterScripts = {}

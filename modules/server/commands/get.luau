@@ -1,8 +1,8 @@
-local World = require("server/world")
-local ScriptManager = require("server/scriptManager")
-local Output = require("server/output")
-local Functions = require("shared/functions")
-local Assets = require("shared/assets")
+local World = require("@server/world")
+local ScriptManager = require("@server/scriptManager")
+local Output = require("@server/output")
+local Functions = require("@shared/functions")
+local Assets = require("@shared/assets")
 
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
@@ -75,7 +75,7 @@ end
 
 return function(Commands)
 	-- Load shared definitions
-	require("shared/commands/get")(Commands)
+	require("@shared/commands/get")(Commands)
 
 	local _namespace = "get"
 	local function defineValidator(...)

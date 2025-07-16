@@ -1,10 +1,10 @@
-local Output = require("client/output")
-local Network = require("client/network")
-local UI = require("client/ui")
-local Assets = require("shared/assets")
-local WorkerManagers = require("shared/workerManagers")
+local Output = require("@client/output")
+local Network = require("@client/network")
+local UI = require("@client/ui")
+local Assets = require("@shared/assets")
+local WorkerManagers = require("@shared/workerManagers")
 
-local ScriptTypes = require("shared/scriptManager/scriptTypes")
+local ScriptTypes = require("@shared/scriptManager/scriptTypes")
 
 local Module = {}
 Module.ScriptType = ScriptTypes
