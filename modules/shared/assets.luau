@@ -1,4 +1,4 @@
-local Log = require("shared/log")
+local Log = require("@shared/log")
 
 local Assets = {}
 Assets.assets = {}

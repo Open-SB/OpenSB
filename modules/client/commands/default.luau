@@ -1,6 +1,6 @@
 return function(Commands)
 	-- Load shared definitions
-	require("shared/commands/default")(Commands)
+	require("@shared/commands/default")(Commands)
 
 	local _namespace = "default"
 	local function defineValidator(...)

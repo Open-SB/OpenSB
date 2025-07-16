@@ -9,7 +9,7 @@ local rawset = rawset
 local _G = _G
 local shared = shared
 
-local Log = require("shared/log")
+local Log = require("@shared/log")
 local Environment = require("./environment")
 local Wrapper = require("./wrapper")
 local Rules = require("./rules")
@@ -223,7 +223,7 @@ function Module:Init()
 
 	Wrapper.setSandbox(Module)
 
-	require("shared/wm/protection").init()
+	require("@shared/wm/protection").init()
 	Rules:Init(Module)
 	require("./wrapper/reflection"):Init(Module, Wrapper, Rules)
 

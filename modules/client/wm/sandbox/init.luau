@@ -1,7 +1,7 @@
 local game = game
 local setmetatable = setmetatable
 
-local Log = require("shared/log")
+local Log = require("@shared/log")
 local Environment = require("./environment")
 local VM = require("./vm")
 local Rules = require("./rules")

@@ -1,4 +1,4 @@
-local Enum = require("shared/enum")
+local Enum = require("@shared/enum")
 
 return {
 	Server = Enum({

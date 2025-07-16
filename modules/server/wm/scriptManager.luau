@@ -14,13 +14,13 @@ local task = task
 local table = table
 local ipairs = ipairs
 
-local Sandbox = require("server/wm/sandbox")
-local Wrapper = require("server/wm/sandbox/wrapper")
-local ManagerCommunication = require("shared/wm/communication")
+local Sandbox = require("@server/wm/sandbox")
+local Wrapper = require("@server/wm/sandbox/wrapper")
+local ManagerCommunication = require("@shared/wm/communication")
 
-local compile = require("server/compile")
-local Functions = require("shared/functions")
-local ScriptTypes = require("shared/scriptManager/scriptTypes")
+local compile = require("@server/compile")
+local Functions = require("@shared/functions")
+local ScriptTypes = require("@shared/scriptManager/scriptTypes")
 
 local CollectionService = game:GetService("CollectionService")
 

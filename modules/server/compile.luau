@@ -6,7 +6,7 @@ local require = require
 
 local HttpService = game:GetService("HttpService")
 
-local Log = require("shared/log")
+local Log = require("@shared/log")
 
 local compilerOptions = table.freeze({
 	optimization_level = 1, -- baseline optimization level that doesn't prevent debuggability
@@ -18,7 +18,7 @@ local compilerOptions = table.freeze({
 	vector_type = "Vector3",
 })
 
-local compileResult = require("shared/enum")({
+local compileResult = require("@shared/enum")({
 	"Success", -- Successful compilation
 	"Fail", -- Failure while compiling (is expected to always throw this error due to it being an issue with the input, e.g syntax errors)
 	"Error", -- Error while compiling (unknown error)
@@ -28,7 +28,7 @@ type compilerFunction = (string) -> (typeof(compileResult), buffer | string)
 local compilerFunctions: { compilerFunction } = {} -- May error in
 
 if _G.compilerEndpoint and not HttpService.HttpEnabled then
-	if not require("shared/wm").isWorkerManager then
+	if not require("@shared/wm").isWorkerManager then
 		Log.warn(
 			'A Luau compiler endpoint was defined, but HttpService.HttpEnabled is not enabled (meaning it can\'t be used). Either enable HttpEnabled or set "compilerEndpoint" config to false to silence this warning.'
 		)
@@ -87,8 +87,8 @@ elseif _G.compilerEndpoint then
 	)
 end
 
-if _G.compilerModuleId and require("shared/wm").isWorkerManager then
-	local ManagerCommunication = require("shared/wm/communication")
+if _G.compilerModuleId and require("@shared/wm").isWorkerManager then
+	local ManagerCommunication = require("@shared/wm/communication")
 	table.insert(
 		compilerFunctions,
 		function(source: string)
@@ -119,7 +119,7 @@ elseif _G.compilerModuleId then
 	end
 	table.insert(compilerFunctions, func)
 
-	local WorkerManagers = require("shared/workerManagers")
+	local WorkerManagers = require("@shared/workerManagers")
 	WorkerManagers:onInvoke("compile::module", func)
 end
 

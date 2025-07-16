@@ -1,11 +1,11 @@
 local __start = os.clock()
 
-local Log = require("shared/log")
+local Log = require("@shared/log")
 Log:SetPrefix("[SB]")
 Log.print("Loading...")
 
 do
-	local wm = require("shared/wm")
+	local wm = require("@shared/wm")
 	wm.isWorkerManager = false
 	table.freeze(wm)
 end
@@ -47,7 +47,7 @@ do
 	coroutine.yield() -- Yield thread until script has been destroyed, so events dont get connected in the process (then disconnected by :Destroy())
 end
 
-local Assets = require("shared/assets")
+local Assets = require("@shared/assets")
 Assets:Init(root, "assets")
 
 local clientScripts = Assets:get("clientScripts")
@@ -61,16 +61,16 @@ local Players = game:GetService("Players")
 
 Log.debug("Loading modules...")
 
-local Network = require("server/network")
-local Commands = require("server/commands")
-local Output = require("server/output")
-local World = require("server/world")
-local WorkerManagers = require("shared/workerManagers")
-local Functions = require("shared/functions")
+local Network = require("@server/network")
+local Commands = require("@server/commands")
+local Output = require("@server/output")
+local World = require("@server/world")
+local WorkerManagers = require("@shared/workerManagers")
+local Functions = require("@shared/functions")
 
 WorkerManagers:Init(root, "workerManager")
 Network:Init()
-Commands:Init({ require("server/commands/default"), require("server/commands/get") })
+Commands:Init({ require("@server/commands/default"), require("@server/commands/get") })
 
 Log.debug("Loading systems...") -- Maybe we should move these into their own modules?
 

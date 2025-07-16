@@ -1,12 +1,12 @@
 local __start = os.clock()
 local networkAttribute = { next(script:GetAttributes()) }
 
-local Log = require("shared/log")
+local Log = require("@shared/log")
 Log:SetPrefix("[SB Client]")
 Log.print("Loading...")
 
 do
-	local wm = require("shared/wm")
+	local wm = require("@shared/wm")
 	wm.isWorkerManager = false
 	table.freeze(wm)
 end
@@ -30,23 +30,23 @@ do
 	coroutine.yield() -- Yield thread until script has been destroyed, so events dont get connected in the process (then disconnected by :Destroy())
 end
 
-local Assets = require("shared/assets")
+local Assets = require("@shared/assets")
 Assets:Init(root, "assets")
 
 -- Services and modules
 Log.debug("Loading modules...")
 
-local Network = require("client/network")
-local Commands = require("client/commands")
-local UI = require("client/ui")
-local StarterScripts = require("client/starterScripts")
-local Output = require("client/output")
-local WorkerManagers = require("shared/workerManagers")
+local Network = require("@client/network")
+local Commands = require("@client/commands")
+local UI = require("@client/ui")
+local StarterScripts = require("@client/starterScripts")
+local Output = require("@client/output")
+local WorkerManagers = require("@shared/workerManagers")
 
 WorkerManagers:Init(root, "localWorkerManager")
-require("client/scriptManager")
+require("@client/scriptManager")
 Network:Init(networkAttribute)
-Commands:Init({ require("client/commands/default"), require("client/commands/get") })
+Commands:Init({ require("@client/commands/default"), require("@client/commands/get") })
 UI:Init()
 StarterScripts:Init()
 

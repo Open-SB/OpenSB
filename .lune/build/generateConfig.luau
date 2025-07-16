@@ -20,9 +20,9 @@ return function(config)
 				name = "path",
 				sources = {
 					-- Use ../ to jump out of the "build" folder
-					client = "../modules/client",
-					server = "../modules/server",
-					shared = "../modules/shared",
+					["@client"] = "../modules/client",
+					["@server"] = "../modules/server",
+					["@shared"] = "../modules/shared",
 				},
 			},
 		},

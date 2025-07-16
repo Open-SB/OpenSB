@@ -23,8 +23,8 @@ local game = game
 local task = task
 local debug = debug
 
-local ManagerCommunication = require("shared/wm/communication")
-local Functions = require("shared/functions")
+local ManagerCommunication = require("@shared/wm/communication")
+local Functions = require("@shared/functions")
 
 local Sandbox
 local VM = require("./vm")

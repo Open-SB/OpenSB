@@ -1,7 +1,7 @@
-local Network = require("server/network")
-local ProcessResult = require("shared/commands/processResults")
-local InputContexts = require("shared/commands/inputContexts")
-local Log = require("shared/log")
+local Network = require("@server/network")
+local ProcessResult = require("@shared/commands/processResults")
+local InputContexts = require("@shared/commands/inputContexts")
+local Log = require("@shared/log")
 
 local Commands = {}
 Commands.namespaces = {}

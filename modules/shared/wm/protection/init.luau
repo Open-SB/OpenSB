@@ -8,7 +8,7 @@ each further level implies the last
 2 - remove protection & write protection & read protection [ ghost ]
 ]]
 
--- local ManagerCommunication = require("shared/wm/communication")
+-- local ManagerCommunication = require("@shared/wm/communication")
 
 local protectedInstances: { [Instance]: number } = {}
 local protectedClasses: { [string]: number } = {}
@@ -91,7 +91,7 @@ end
 
 local function init()
 	-- listen for requests on the backend
-	local ManagerCommunication = require("shared/wm/communication")
+	local ManagerCommunication = require("@shared/wm/communication")
 	ManagerCommunication:on("protect", protect)
 	ManagerCommunication:on("unprotect", unprotect)
 end

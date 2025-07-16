@@ -1,5 +1,5 @@
 return function(Commands)
-	local definitions = require("shared/commands/namespaces/default.toml")
+	local definitions = require("@shared/commands/namespaces/default.toml")
 	local _namespace = "default"
 	Commands:RegisterNamespace(_namespace, definitions)
 

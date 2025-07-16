@@ -1,7 +1,7 @@
-local Network = require("client/network")
-local MessageTypes = require("shared/output/messageTypes")
-local Signal = require("shared/signal")
-local Functions = require("shared/functions")
+local Network = require("@client/network")
+local MessageTypes = require("@shared/output/messageTypes")
+local Signal = require("@shared/signal")
+local Functions = require("@shared/functions")
 
 local Output = {}
 Output.MessageType = MessageTypes

@@ -14,7 +14,7 @@ local unpack = unpack
 local error = error
 
 local Reflection = require("./reflection")
-local Protection = require("shared/wm/protection")
+local Protection = require("@shared/wm/protection")
 local Sandbox
 local wrapMap, unwrapMap
 

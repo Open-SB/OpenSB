@@ -7,8 +7,8 @@ local type = type
 
 local Wrapper
 local Rules
-local Functions = require("shared/functions")
-local Protection = require("shared/wm/protection")
+local Functions = require("@shared/functions")
+local Protection = require("@shared/wm/protection")
 
 local wrap, unwrap
 local wrapMany, unwrapMany

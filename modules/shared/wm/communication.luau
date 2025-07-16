@@ -2,8 +2,8 @@ local setmetatable = setmetatable
 local table = table
 local error = error
 
-local Signal = require("shared/signal")
-local Log = require("shared/log")
+local Signal = require("@shared/signal")
+local Log = require("@shared/log")
 
 local ManagerCommunication = {}
 ManagerCommunication.__index = ManagerCommunication

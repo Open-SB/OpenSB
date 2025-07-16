@@ -1,10 +1,10 @@
 local Players = game:GetService("Players")
 
-local Output = require("client/output")
-local Log = require("shared/log")
-local Maid = require("shared/maid")
-local Signal = require("shared/signal")
-local Functions = require("shared/functions")
+local Output = require("@client/output")
+local Log = require("@shared/log")
+local Maid = require("@shared/maid")
+local Signal = require("@shared/signal")
+local Functions = require("@shared/functions")
 
 local App = require("./app")
 local create = require("./create")

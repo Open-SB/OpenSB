@@ -1,7 +1,7 @@
-local ScriptManager = require("server/scriptManager")
-local Output = require("server/output")
-local DB = require("server/db")
-local Network = require("server/network")
+local ScriptManager = require("@server/scriptManager")
+local Output = require("@server/output")
+local DB = require("@server/db")
+local Network = require("@server/network")
 
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
@@ -45,7 +45,7 @@ end
 
 return function(Commands)
 	-- Load shared definitions
-	require("shared/commands/default")(Commands)
+	require("@shared/commands/default")(Commands)
 
 	local _namespace = "default"
 	local function defineValidator(...)

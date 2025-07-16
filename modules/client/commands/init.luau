@@ -2,11 +2,11 @@ local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 local UserInputService = game:GetService("UserInputService")
 
-local Network = require("client/network")
-local Output = require("client/output")
-local ProcessResult = require("shared/commands/processResults")
-local InputContext = require("shared/commands/inputContexts")
-local Log = require("shared/log")
+local Network = require("@client/network")
+local Output = require("@client/output")
+local ProcessResult = require("@shared/commands/processResults")
+local InputContext = require("@shared/commands/inputContexts")
+local Log = require("@shared/log")
 
 local Commands = {}
 Commands.namespaces = {}

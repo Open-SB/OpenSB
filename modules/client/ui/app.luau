@@ -2,11 +2,11 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
 
-local Commands = require("client/commands")
-local Network = require("client/network")
-local CommandInputContext = require("shared/commands/inputContexts")
-local Maid = require("shared/maid")
-local MessageType = require("shared/output/messageTypes")
+local Commands = require("@client/commands")
+local Network = require("@client/network")
+local CommandInputContext = require("@shared/commands/inputContexts")
+local Maid = require("@shared/maid")
+local MessageType = require("@shared/output/messageTypes")
 
 local create = require("./create")
 

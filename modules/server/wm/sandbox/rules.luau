@@ -7,9 +7,9 @@ local tonumber = tonumber
 local coroutine = coroutine
 local debug = debug
 
-local ManagerCommunication = require("shared/wm/communication")
+local ManagerCommunication = require("@shared/wm/communication")
 local Wrapper = require("./wrapper")
-local Protection = require("shared/wm/protection")
+local Protection = require("@shared/wm/protection")
 
 local renv = getfenv()
 

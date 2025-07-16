@@ -6,7 +6,7 @@ local coroutine = coroutine
 
 local renv = getfenv()
 
-local ManagerCommunication = require("shared/wm/communication")
+local ManagerCommunication = require("@shared/wm/communication")
 
 local Module = {}
 
