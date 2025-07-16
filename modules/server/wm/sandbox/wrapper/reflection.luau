@@ -103,9 +103,10 @@ function Module.Init(_, Sandbox, wrapper, rules)
 	Module.Instance = modify(function(meta)
 		local get = Functions.indexInstance
 		local set = Functions.newindexInstance
+
 		local isRemoveProtected = Protection.isRemoveProtected
-		local isReadProtected = Protection.isReadProtected
 		local isWriteProtected = Protection.isWriteProtected
+		local isReadProtected = Protection.isReadProtected
 
 		-- Just wrapping the whole "get" function and setting __index to that would work here, but doing this is faster
 		function meta:__index(index)
@@ -125,13 +126,11 @@ function Module.Init(_, Sandbox, wrapper, rules)
 				return error("Property write failed: Instance is write protected", 2)
 			end
 
-			if type(index) == "string" and typeof(self) == "Instance" then
-				if isRemoveProtected(self) then
-					-- TODO: Add this in rules.luau.
-					local cIndex = toCString(index)
-					if cIndex == "Parent" or cIndex == "parent" then
-						return error("Cannot parent " .. self.ClassName, 2)
-					end
+			if type(index) == "string" and typeof(self) == "Instance" and isRemoveProtected(self) then
+				-- TODO: Add this in rules.luau.
+				local cIndex = toCString(index)
+				if cIndex == "Parent" or cIndex == "parent" then
+					return error("Cannot parent " .. self.ClassName, 2)
 				end
 			end
 

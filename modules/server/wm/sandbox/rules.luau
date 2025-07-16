@@ -25,6 +25,10 @@ function Module.Init(_, Sandbox)
 	local wrap, unwrap = Wrapper.wrap, Wrapper.unwrap
 	local wrapMany, unwrapMany = Wrapper.wrapMany, Wrapper.unwrapMany
 
+	local isRemoveProtected = Protection.isRemoveProtected
+	local isWriteProtected = Protection.isWriteProtected
+	local isReadProtected = Protection.isReadProtected
+
 	local function disable(func: () -> (), name: string?)
 		local funcName = name or debug.info(func, "n") or ""
 		local message = funcName .. "() is disabled"
@@ -46,12 +50,12 @@ function Module.Init(_, Sandbox)
 		-- https://create.roblox.com/docs/reference/engine/classes/Instance#ClearAllChildren
 		wmap[ClearAllChildren] = function(self)
 			self = unwrap(self)
-			if self == renv.game:GetService("Players") then -- Contains Player's
-				return error("Cannot ClearAllChildren() Players", 2)
-			elseif typeof(self) == "Instance" and self.ClassName == "Player" then -- Contains PlayerGui's
-				return error("Cannot ClearAllChildren() Player", 2)
-			elseif typeof(self) == "Instance" and Protection.isRemoveProtected(self) then
-				return error(`Cannot ClearAllChildren() {self.ClassName} as it is remove protected`)
+			if typeof(self) == "Instance" then
+				for _, child in ipairs(self:GetChildren()) do
+					if isRemoveProtected(child) then
+						return error(`Cannot ClearAllChildren() {self.ClassName}`, 2)
+					end
+				end
 			end
 
 			ClearAllChildren(self)
@@ -60,7 +64,7 @@ function Module.Init(_, Sandbox)
 		-- https://create.roblox.com/docs/reference/engine/classes/Instance#Destroy
 		wmap[Destroy] = function(self)
 			self = unwrap(self)
-			if typeof(self) == "Instance" and Protection.isRemoveProtected(self) then
+			if typeof(self) == "Instance" and isRemoveProtected(self) then
 				return error("Cannot Destroy() " .. self.ClassName, 2)
 			end
 
@@ -70,7 +74,7 @@ function Module.Init(_, Sandbox)
 		-- https://create.roblox.com/docs/reference/engine/classes/Instance#Remove
 		wmap[Remove] = function(self)
 			self = unwrap(self)
-			if typeof(self) == "Instance" and Protection.isRemoveProtected(self) then
+			if typeof(self) == "Instance" and isRemoveProtected(self) then
 				return error("Cannot Remove() " .. self.ClassName, 2)
 			end
 
@@ -123,9 +127,7 @@ function Module.Init(_, Sandbox)
 
 		wmap[Clone] = function(self)
 			self = unwrap(self)
-			if
-				typeof(self) == "Instance" and (blockedInstances[self.ClassName] or Protection.isReadProtected(self))
-			then
+			if typeof(self) == "Instance" and (blockedInstances[self.ClassName] or isReadProtected(self)) then
 				return error("Cannot Clone() " .. self.ClassName, 2)
 			end
 

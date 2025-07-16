@@ -10,6 +10,8 @@ local ManagerCommunication = require("shared/wm/communication")
 
 local Module = {}
 
+local blockedInstances = require("./blockedInstances")
+
 function Module.Init(_, Sandbox)
 	local fmap = Sandbox.FunctionMap
 	local getSandbox = Sandbox.getSandbox
@@ -26,6 +28,7 @@ function Module.Init(_, Sandbox)
 	do -- https://create.roblox.com/docs/reference/engine/classes/Instance
 		local GetFullName = game.GetFullName
 		local WaitForChild = game.WaitForChild
+		local Clone = game.Clone
 
 		-- https://create.roblox.com/docs/reference/engine/classes/Instance#WaitForChild
 		fmap[WaitForChild] = function(self, childName, timeOut)
@@ -63,6 +66,14 @@ function Module.Init(_, Sandbox)
 			end
 
 			return child
+		end
+
+		fmap[Clone] = function(self)
+			if typeof(self) == "Instance" and blockedInstances[self.ClassName] then
+				return error("Cannot Clone() " .. self.ClassName, 2)
+			end
+
+			return Clone(self)
 		end
 	end
 

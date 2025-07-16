@@ -1,6 +1,6 @@
 remove_protected:
   - Player
-  - Players
+  - PlayerGui
 
 write_protected:
 

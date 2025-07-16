@@ -37,6 +37,10 @@ local typeofWrapped = Wrapper.typeofWrapped
 
 local toCString = Functions.toCString
 
+local isRemoveProtected = Protection.isRemoveProtected
+local isWriteProtected = Protection.isWriteProtected
+local isReadProtected = Protection.isReadProtected
+
 local renv = getfenv() -- Raw environment
 local senv = {} -- Sandboxed environment
 local wmap, uwmap -- Wrap map and Unwrap map
@@ -972,7 +976,7 @@ function Module:Init()
 
 			if
 				typeof(existingInstance) == "Instance"
-				and (BlockedInstances[existingInstance.ClassName] or Protection.isReadProtected(existingInstance))
+				and (BlockedInstances[existingInstance.ClassName] or isReadProtected(existingInstance))
 			then
 				return error(`Cannot fromExisting() {existingInstance.ClassName}`, 0) -- Roblox seems to be throwing Instance.fromExisting errors at level 0
 			end
