@@ -1,0 +1,7 @@
+remove_protected:
+  - Player
+  - PlayerGui
+
+write_protected:
+
+read_protected:

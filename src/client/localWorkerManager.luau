@@ -67,6 +67,7 @@ local ScriptManager = require("client/wm/scriptManager")
 Sandbox:Init()
 ScriptManager:Init()
 
+ManagerCommunication:ready()
 Log.print(`Loaded in {math.round((os.clock() - __start) * 1000)}ms.`)
 
 return nil -- ModuleScripts require atleast 1 return value

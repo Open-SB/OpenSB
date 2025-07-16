@@ -194,7 +194,7 @@ function Network:Init()
 	remote.OnServerInvoke = onRequest
 
 	-- Already leaked magic 🤯 (I know better methods but I don't want to leak them ;) - EwDev)
-	local args = table.create(80, task.defer)
+	local args: any = table.create(80, task.defer)
 	table.insert(args, function()
 		if
 			not remote

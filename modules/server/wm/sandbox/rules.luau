@@ -9,16 +9,13 @@ local debug = debug
 
 local ManagerCommunication = require("shared/wm/communication")
 local Wrapper = require("./wrapper")
+local Protection = require("shared/wm/protection")
 
 local renv = getfenv()
-local removeProtectedClasses = table.freeze({
-	Player = true,
-	PlayerGui = true,
-	-- Backpack shouldn't be put in this list as you can create them with Instance.new()
-})
 
 local Module = {}
-Module.RemoveProtectedClasses = removeProtectedClasses
+
+local blockedInstances = require("./blockedInstances")
 
 function Module.Init(_, Sandbox)
 	local wmap = Sandbox.WrapMap
@@ -27,6 +24,10 @@ function Module.Init(_, Sandbox)
 
 	local wrap, unwrap = Wrapper.wrap, Wrapper.unwrap
 	local wrapMany, unwrapMany = Wrapper.wrapMany, Wrapper.unwrapMany
+
+	local isRemoveProtected = Protection.isRemoveProtected
+	local isWriteProtected = Protection.isWriteProtected
+	local isReadProtected = Protection.isReadProtected
 
 	local function disable(func: () -> (), name: string?)
 		local funcName = name or debug.info(func, "n") or ""
@@ -44,14 +45,17 @@ function Module.Init(_, Sandbox)
 		-- selene: allow(deprecated)
 		local Remove = game.Remove
 		local WaitForChild = game.WaitForChild
+		local Clone = game.Clone
 
 		-- https://create.roblox.com/docs/reference/engine/classes/Instance#ClearAllChildren
 		wmap[ClearAllChildren] = function(self)
 			self = unwrap(self)
-			if self == renv.game:GetService("Players") then -- Contains Player's
-				return error("Cannot ClearAllChildren() Players", 2)
-			elseif typeof(self) == "Instance" and self.ClassName == "Player" then -- Contains PlayerGui's
-				return error("Cannot ClearAllChildren() Player", 2)
+			if typeof(self) == "Instance" then
+				for _, child in ipairs(self:GetChildren()) do
+					if isRemoveProtected(child) then
+						return error(`Cannot ClearAllChildren() {self.ClassName}`, 2)
+					end
+				end
 			end
 
 			ClearAllChildren(self)
@@ -60,7 +64,7 @@ function Module.Init(_, Sandbox)
 		-- https://create.roblox.com/docs/reference/engine/classes/Instance#Destroy
 		wmap[Destroy] = function(self)
 			self = unwrap(self)
-			if typeof(self) == "Instance" and removeProtectedClasses[self.ClassName] then
+			if typeof(self) == "Instance" and isRemoveProtected(self) then
 				return error("Cannot Destroy() " .. self.ClassName, 2)
 			end
 
@@ -70,7 +74,7 @@ function Module.Init(_, Sandbox)
 		-- https://create.roblox.com/docs/reference/engine/classes/Instance#Remove
 		wmap[Remove] = function(self)
 			self = unwrap(self)
-			if typeof(self) == "Instance" and removeProtectedClasses[self.ClassName] then
+			if typeof(self) == "Instance" and isRemoveProtected(self) then
 				return error("Cannot Remove() " .. self.ClassName, 2)
 			end
 
@@ -117,7 +121,17 @@ function Module.Init(_, Sandbox)
 			end
 
 			assertTerminated(sandbox)
+
 			return wrap(child)
+		end
+
+		wmap[Clone] = function(self)
+			self = unwrap(self)
+			if typeof(self) == "Instance" and (blockedInstances[self.ClassName] or isReadProtected(self)) then
+				return error("Cannot Clone() " .. self.ClassName, 2)
+			end
+
+			return wrap(Clone(self))
 		end
 	end
 
@@ -249,7 +263,7 @@ function Module.Init(_, Sandbox)
 		-- https://create.roblox.com/docs/reference/engine/classes/Debris#AddItem
 		wmap[AddItem] = function(self, item, ...)
 			item = unwrap(item)
-			if typeof(item) == "Instance" and removeProtectedClasses[item.ClassName] then
+			if typeof(item) == "Instance" and isRemoveProtected(item) then
 				return error("Cannot AddItem() " .. item.ClassName, 2)
 			end
 
