@@ -205,6 +205,7 @@ for _, player: Player in ipairs(Players:GetPlayers()) do
 	task.defer(player.LoadCharacter, player)
 end
 
+WorkerManagers:ready()
 Log.print(`Loaded in {math.round((os.clock() - __start) * 1000)}ms.`)
 
 return nil

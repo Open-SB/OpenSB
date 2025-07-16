@@ -17,7 +17,7 @@ end
 
 function ManagerCommunication:init(
 	send: BindableEvent,
-	recieve: BindableEvent,
+	receive: BindableEvent,
 	invoke: BindableFunction,
 	invoked: BindableFunction
 )
@@ -27,7 +27,10 @@ function ManagerCommunication:init(
 	self.__events = {}
 	self.__invokes = {}
 
-	recieve.Event:Connect(function(topic: string, ...)
+	self.__sendOnReady = {}
+	self.__resumeOnReady = {}
+
+	receive.Event:Connect(function(topic: string, ...)
 		local event = self.__events[topic]
 		if not event then
 			return
@@ -45,7 +48,51 @@ function ManagerCommunication:init(
 		return callback(...)
 	end
 
+	self:once("ready", function()
+		local toSend = table.clone(self.__sendOnReady)
+		table.clear(self.__sendOnReady)
+		table.freeze(self.__sendOnReady) -- Marks that we're ready
+
+		local toResume = table.clone(self.__resumeOnReady)
+		table.clear(self.__resumeOnReady)
+		table.freeze(self.__resumeOnReady)
+
+		Log.debug(`Receiver ready! Sending {#toSend} events and resuming {#toResume} threads.`)
+
+		for _, data in ipairs(toSend) do
+			self.__send:Fire(unpack(data, 1, data.n))
+		end
+
+		for _, thread in ipairs(toResume) do
+			pcall(coroutine.resume, thread)
+		end
+	end)
+
 	table.freeze(self)
+end
+
+function ManagerCommunication:isReceiverReady()
+	return table.isfrozen(self.__sendOnReady)
+end
+
+function ManagerCommunication:awaitReceiverReady()
+	if self:isReceiverReady() then
+		return
+	end
+
+	table.insert(self.__resumeOnReady, coroutine.running())
+	coroutine.yield()
+end
+
+function ManagerCommunication:ready(awaitReceiver: boolean)
+	Log.debug("Communication ready!")
+
+	if awaitReceiver then
+		self:Send("ready")
+		return
+	end
+
+	self.__send:Fire("ready")
 end
 
 function ManagerCommunication:on(topic: string, callback: (any...) -> never)
@@ -66,12 +113,12 @@ function ManagerCommunication:once(topic: string, callback: (any...) -> never)
 	if not event then
 		event = Signal.new()
 		self.__events[topic] = event
-	else
-		if _G.dev then
-			Log.warn(
+	elseif _G.dev then
+		Log.warn(
+			debug.traceback(
 				"You are calling once on an event that already exists; this will destroy the event and delete the topic after the event is fired. This can and most likely WILL lead to unexpected behavior."
 			)
-		end
+		)
 	end
 
 	return event:Once(function(...)
@@ -86,10 +133,15 @@ function ManagerCommunication:onInvoke(topic: string, callback: (any...) -> any.
 end
 
 function ManagerCommunication:Send(topic: string, ...)
-	self.__send:Fire(topic, ...)
+	if self:isReceiverReady() then
+		self.__send:Fire(topic, ...)
+	else
+		table.insert(self.__sendOnReady, table.pack(topic, ...))
+	end
 end
 
 function ManagerCommunication:Invoke(topic: string, ...)
+	self:awaitReceiverReady()
 	return self.__invoke:Invoke(topic, ...)
 end
 

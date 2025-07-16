@@ -53,6 +53,8 @@ StarterScripts:Init()
 -- Finalize
 Log.debug("Finalizing...")
 
+WorkerManagers:ready()
+
 local loadTime = math.round((os.clock() - __start) * 1000)
 Log.print(`Loaded in {loadTime}ms.`)
 

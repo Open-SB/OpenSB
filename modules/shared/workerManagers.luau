@@ -4,7 +4,6 @@ local Functions = require("shared/functions")
 local ManagerCommunication = require("shared/wm/communication")
 
 local WorkerManagers = {}
-local ReadyWorkerManagers = {}
 
 function WorkerManagers:Init(root, managerName)
 	Log.debug("Creating WorkerManagers...")
@@ -53,10 +52,6 @@ function WorkerManagers:Init(root, managerName)
 		local Manager = ManagerCommunication.new(send, recieve, invoke, invoked)
 		WorkerManagers[index] = Manager
 
-		Manager:once("ready", function()
-			ReadyWorkerManagers[index] = true
-		end)
-
 		manager.Name ..= `{index}@{math.random()}` -- We give them a random name to help filter out sb stack traces from other code
 		manager.Parent = parent
 
@@ -73,6 +68,16 @@ function WorkerManagers:Init(root, managerName)
 	table.freeze(WorkerManagers)
 end
 
+function WorkerManagers:ready()
+	-- Sends with awaitReceiver set to true, meaning it will use the normal :Send() function (which waits for the receiving end to be fully ready).
+	-- The other side does not send with this set to true, as our side will always be ready to receive the "ready" event.
+
+	WorkerManagers.main:ready(true)
+	for _, Manager in ipairs(WorkerManagers) do
+		Manager:ready(true)
+	end
+end
+
 function WorkerManagers:on(topic: string, callback: (any...) -> never)
 	WorkerManagers.main:on(topic, callback)
 	for _, Manager in ipairs(WorkerManagers) do
@@ -87,17 +92,9 @@ function WorkerManagers:onInvoke(topic: string, callback: (any...) -> any...)
 	end
 end
 
-local function ensureWorkerIsReady(index: number)
-	repeat
-		task.wait()
-	until ReadyWorkerManagers[index] == true
-end
-
 function WorkerManagers:Send(topic: string, ...)
-	ensureWorkerIsReady(0)
 	WorkerManagers.main:Send(topic, ...)
-	for index, Manager in ipairs(WorkerManagers) do
-		ensureWorkerIsReady(index)
+	for _, Manager in ipairs(WorkerManagers) do
 		Manager:Send(topic, ...)
 	end
 end

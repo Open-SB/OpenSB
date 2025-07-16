@@ -61,6 +61,6 @@ local Sandbox = require("server/wm/sandbox")
 local ScriptManager = require("server/wm/scriptManager")
 Sandbox:Init()
 ScriptManager:Init()
-ManagerCommunication:Send("ready")
 
+ManagerCommunication:ready()
 Log.print(`Loaded in {math.round((os.clock() - __start) * 1000)}ms.`)
