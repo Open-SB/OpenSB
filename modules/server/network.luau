@@ -193,24 +193,24 @@ function Network:Init()
 	fixRemote()
 	remote.OnServerInvoke = onRequest
 
+	-- Already leaked magic 🤯 (I know better methods but I don't want to leak them ;) - EwDev)
+	local args: any = table.create(80, task.defer)
+	table.insert(args, function()
+		if
+			not remote
+			or remote.Parent ~= remoteParent
+			or remote:GetAttribute(Network.attributeName) ~= Network.attributeValue
+			or #remote:GetChildren() > 2
+			or os.clock() - lastRemoteFix >= 5
+		then
+			fixRemote()
+		end
+
+		remote.OnServerInvoke = onRequest
+	end)
+
 	RunService.PostSimulation:Connect(function()
-		-- Already leaked magic 🤯 (I know better methods but I don't want to leak them ;) - EwDev)
-		task.desynchronize()
-		task.synchronize()
-
-		pcall(function()
-			if
-				not remote
-				or remote.Parent ~= remoteParent
-				or remote:GetAttribute(Network.attributeName) ~= Network.attributeValue
-				or #remote:GetChildren() > 2
-				or os.clock() - lastRemoteFix >= 5
-			then
-				fixRemote()
-			end
-
-			remote.OnServerInvoke = onRequest
-		end)
+		pcall(unpack(args))
 	end)
 end
 
