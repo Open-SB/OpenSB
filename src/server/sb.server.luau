@@ -67,6 +67,7 @@ local Output = require("@server/output")
 local World = require("@server/world")
 local WorkerManagers = require("@shared/workerManagers")
 local Functions = require("@shared/functions")
+local Protection = require("@shared/protection")
 
 WorkerManagers:Init(root, "workerManager")
 Network:Init()
@@ -162,13 +163,13 @@ task.spawn(function()
 	local function protectWithExpectedStructure(instance: Instance, structure: { [string]: any })
 		for name, subStructure in structure do
 			local child = instance:WaitForChild(name)
-			WorkerManagers:Send("protect", child, "write")
+			Protection.add(child, "write")
 
 			protectWithExpectedStructure(child, subStructure)
 		end
 	end
 
-	WorkerManagers:Send("protect", TextChatService, "write")
+	Protection.add(TextChatService, "write")
 	protectWithExpectedStructure(TextChatService, {
 		ChatWindowConfiguration = {},
 		TextChannels = {
