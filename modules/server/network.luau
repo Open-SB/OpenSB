@@ -1,3 +1,5 @@
+--!strict
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -9,6 +11,19 @@ local ClientRequestMethod = RequestMethods.Client
 local Log = require("@shared/log")
 local Functions = require("@shared/functions")
 local HashLib = require("@shared/hashLib")
+local EdDSA = require("@shared/network/eddsa")
+local Base64 = require("@shared/network/base64")
+local Blake3 = require("@shared/network/blake3")
+local AEAD = require("@shared/network/AEAD")
+local Encoding = require("@shared/network/encoding")
+
+local MaskedX25519 = EdDSA.MaskedX25519
+
+local serverPrivateKey = Base64.Decode(buffer.fromstring(_G.serverPrivateKey))
+local serverPublicKey = EdDSA.PublicKey(serverPrivateKey)
+
+local maskedServerPrivateKey = MaskedX25519.Mask(serverPrivateKey)
+local serverPublicKeyMasked = MaskedX25519.PublicKey(maskedServerPrivateKey)
 
 local Network = {}
 Network.attributeName, Network.attributeValue = string.sub(tostring(math.random()), 3), math.random()
@@ -31,7 +46,9 @@ function Network:RegisterFunction(name: string, callback: (...unknown) -> ...unk
 	registeredFunctions[name] = callback
 end
 
+-- keys are one time keys for communication
 local keys: { [Player]: string } = {}
+local clientNetworkData: { [Player]: { maskedKey: buffer, staticKey: buffer, nonce: number } } = {}
 local usedHashes: { [Player]: { [string]: boolean } } = {} -- Prevent replay attacks
 
 local function isValidRequestKey(player: Player, requestKey): boolean
@@ -81,12 +98,51 @@ local function generateRequestKey(player: Player): { string }
 	return { hash, salt }
 end
 
+local function encryptBufferForPlayer(player: Player, data: buffer): (buffer, buffer)
+	local networkData = clientNetworkData[player]
+	local ciphertext, tag =
+		AEAD.Encrypt(data, networkData.staticKey, Blake3.Digest(buffer.fromstring(tostring(networkData.nonce)), 12))
+
+	networkData.nonce += 1
+	print(networkData.nonce)
+
+	return ciphertext, tag
+end
+
+local function encryptAnythingForPlayer(player: Player, data: any): (buffer, buffer, { Instance })
+	local encodedData, instancesArray = Encoding.encode(data)
+	local ciphertext, tag = encryptBufferForPlayer(player, encodedData)
+
+	return ciphertext, tag, instancesArray
+end
+
+local function decryptRawBufferWithPlayer(player: Player, ciphertext: buffer, tag: buffer): buffer
+	local networkData = clientNetworkData[player]
+	local result = assert(
+		AEAD.Decrypt(
+			ciphertext,
+			assert(networkData.staticKey, "network static value not obtained yet"),
+			Blake3.Digest(buffer.fromstring(tostring(networkData.nonce)), 12),
+			tag
+		),
+		"failed decrypting data with aead"
+	)
+
+	networkData.nonce += 1
+
+	return result
+end
+
+local function decryptAnythingWithPlayer(player: Player, ciphertext: buffer, tag: buffer, instanceArray: { Instance })
+	return Encoding.decode(decryptRawBufferWithPlayer(player, ciphertext, tag), instanceArray)
+end
+
 local connectedPlayers: { [Player]: boolean } = {} -- We keep track of players that have successfully connected to the remote, so we don't accidentally send stuff to them without them actually listening to the remote
 local lockedKeys: { [Player]: boolean } = {} -- We lock keys after the first handshake
 
 local remote: RemoteFunction, remoteParent: Instance
 
-local function onRequest(player: Player, requestType, requestKey, ...)
+local function onRequest(player: Player, requestType, requestKey: any, ...): ...any
 	-- Key exchange and handshake requests should be the only times we return something from remote functions, the only reason we are using them is to prevent logging
 	-- When returning something from remote functions we are risking it never getting sent back to the client if the remote function were to get destroyed while the callback is executing
 	-- In that case we just allow the client to resend the request (it's also why we are not locking the key here)
@@ -98,12 +154,39 @@ local function onRequest(player: Player, requestType, requestKey, ...)
 			return
 		end
 
-		-- TODO: Sign key with asymmetric keys (public private keys), so the client can verify the servers identity (and prevent man in the middle attacks)
+		local maskedClientPublicKey = requestKey
+
+		if
+			typeof(maskedClientPublicKey) ~= "buffer"
+			or (typeof(maskedClientPublicKey) == "buffer" and buffer.len(maskedClientPublicKey) ~= 32)
+		then
+			return
+		end
+
+		if
+			clientNetworkData[player] ~= nil
+			and buffer.tostring(clientNetworkData[player].maskedKey) ~= buffer.tostring(maskedClientPublicKey)
+		then
+			-- player should not be able to change their masked public key
+			return
+		end
 
 		local key = Functions.randomString(64) -- 64 is the blocksize for sha256, if it's not exactly 64 then HMAC would either extend the key to be 64 characters, or hash the key to become 64 characters
 		keys[player] = key
 
-		return key
+		local staticSecret, _serverEphemeral = MaskedX25519.Exchange(maskedServerPrivateKey, maskedClientPublicKey)
+
+		staticSecret = Blake3.Digest(staticSecret, 32)
+		if clientNetworkData[player] ~= nil then
+			clientNetworkData[player].staticKey = staticSecret
+		else
+			clientNetworkData[player] = { maskedKey = maskedClientPublicKey, staticKey = staticSecret, nonce = 0 }
+		end
+
+		return key,
+			serverPublicKeyMasked,
+			EdDSA.Sign(serverPrivateKey, serverPublicKey, buffer.fromstring(key)),
+			EdDSA.Sign(serverPrivateKey, serverPublicKey, serverPublicKeyMasked)
 	elseif requestType == ServerRequestMethod.Handshake then
 		-- Basic handshake to verify the servers identity, is not 100% immune to man in the middle attacks, but checking the time it took for the request to complete compared to your ping should help
 
@@ -114,7 +197,13 @@ local function onRequest(player: Player, requestType, requestKey, ...)
 		connectedPlayers[player] = true -- We will assume that the handshake succeeds for the client aswell
 		lockedKeys[player] = true
 
-		return generateRequestKey(player)
+		local data = generateRequestKey(player)
+		local ciphertext, tag, instanceArray = encryptAnythingForPlayer(player, data)
+
+		return ciphertext,
+			tag,
+			instanceArray,
+			EdDSA.Sign(serverPrivateKey, serverPublicKey, buffer.fromstring(`{data[1]}{data[2]}`))
 	elseif requestType == ServerRequestMethod.Event then
 		-- Minimize the yielding time for the client if the server is calculating stuff
 		task.spawn(function(eventName, ...)
@@ -127,7 +216,15 @@ local function onRequest(player: Player, requestType, requestKey, ...)
 				return
 			end
 
-			callback(player, ...)
+			local ciphertext, tag, instanceArray = ...
+
+			if typeof(ciphertext) ~= "buffer" or typeof(tag) ~= "buffer" or typeof(instanceArray) ~= "table" then
+				return Log.debug("thing failed")
+			end
+
+			local arguments = decryptAnythingWithPlayer(player, ciphertext, tag, instanceArray :: { Instance })
+
+			callback(player, unpack(arguments))
 		end, ...)
 	elseif requestType == ServerRequestMethod.Invoke then
 		-- Minimize the yielding time for the client if the server is calculating stuff
@@ -146,7 +243,8 @@ local function onRequest(player: Player, requestType, requestKey, ...)
 					task.wait()
 				end
 
-				remote:InvokeClient(player, ClientRequestMethod.InvokeResult, generateRequestKey(player), id, ...)
+				local a, b, c = encryptAnythingForPlayer(player, { ... })
+				remote:InvokeClient(player, ClientRequestMethod.InvokeResult, generateRequestKey(player), id, a, b, c)
 			end)(callback(player, ...))
 		end, ...)
 	end

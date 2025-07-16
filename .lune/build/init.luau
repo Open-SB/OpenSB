@@ -9,9 +9,13 @@ print(`Building for "{branch}"`)
 stdio.write(stdio.color("reset"))
 
 if fs.isDir("build") then
-	if not stdio.prompt("confirm", 'The "build" directory already exists, continuing will remove it. Is that ok?') then
-		print("Cancelled build")
-		return process.exit(1)
+	if table.find(process.args, "nodemon") == -1 then
+		if
+			not stdio.prompt("confirm", 'The "build" directory already exists, continuing will remove it. Is that ok?')
+		then
+			print("Cancelled build")
+			return process.exit(1)
+		end
 	end
 
 	print("Removing existing build directory...")

@@ -1,3 +1,5 @@
+--!strict
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -10,11 +12,29 @@ local Log = require("@shared/log")
 local Functions = require("@shared/functions")
 local HashLib = require("@shared/hashLib")
 local Signal = require("@shared/signal")
+local EdDSA = require("@shared/network/eddsa")
+local Base64 = require("@shared/network/base64")
+local Blake3 = require("@shared/network/blake3")
+local AEAD = require("@shared/network/AEAD")
+local Encoding = require("@shared/network/encoding")
+
+local MaskedX25519 = EdDSA.MaskedX25519
 
 local localPlayer = Players.LocalPlayer
 local attributeName, attributeValue
 
 local Network = {}
+
+local serverPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.serverPublicKey))
+local maskedServerPublicKey: buffer? = nil
+local networkStaticValue: buffer? = nil
+local nonce = 0
+
+local clientPrivateKey: buffer = EdDSA.CSPRNG.Ed25519Random()
+local clientPublicKey: buffer = EdDSA.PublicKey(clientPrivateKey)
+
+local maskedClientPrivateKey = MaskedX25519.Mask(clientPrivateKey)
+local maskedClientPublicKey = MaskedX25519.PublicKey(maskedClientPrivateKey)
 
 local registeredEvents: { [string]: (...unknown) -> nil } = {}
 function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
@@ -68,6 +88,45 @@ local function generateRequestKey(): { string }
 	return { hash, salt }
 end
 
+local function encryptBuffer(player: Player, data: buffer): (buffer, buffer)
+	local ciphertext, tag = AEAD.Encrypt(
+		data,
+		assert(networkStaticValue, "network static value not obtained yet"),
+		Blake3.Digest(buffer.fromstring(tostring(nonce)), 12)
+	)
+
+	nonce += 1
+
+	return ciphertext, tag
+end
+
+local function encryptAnything(player: Player, data: any): (buffer, buffer, { Instance })
+	local encodedData, instancesArray = Encoding.encode(data)
+	local ciphertext, tag = encryptBuffer(player, encodedData)
+
+	return ciphertext, tag, instancesArray
+end
+
+local function decryptBuffer(ciphertext: buffer, tag: buffer): buffer
+	local result = assert(
+		AEAD.Decrypt(
+			ciphertext,
+			assert(networkStaticValue, "network static value not obtained yet"),
+			Blake3.Digest(buffer.fromstring(tostring(nonce)), 12),
+			tag
+		),
+		"failed decrypting data with aead"
+	)
+
+	nonce += 1
+
+	return result
+end
+
+local function decryptAnything(ciphertext: buffer, tag: buffer, instanceArray: { Instance })
+	return Encoding.decode(decryptBuffer(ciphertext, tag), instanceArray)
+end
+
 local remotes: { [RemoteFunction]: Instance } = {}
 local invokeResults: { [string]: BindableEvent } = {}
 
@@ -98,7 +157,15 @@ local function onRequest(requestType, requestKey, ...)
 				return
 			end
 
-			signal:Fire(...)
+			local ciphertext, tag, instanceArray = ...
+
+			if typeof(ciphertext) ~= "buffer" or typeof(tag) ~= "buffer" or typeof(instanceArray) ~= "table" then
+				return
+			end
+
+			local decryptedArguments = decryptAnything(ciphertext, tag, instanceArray :: { Instance })
+
+			signal:Fire(unpack(decryptedArguments))
 		end, ...)
 	end
 end
@@ -115,7 +182,8 @@ function Network:FireServer(eventName: string, ...)
 		end
 
 		for remote, _ in remotes do
-			task.spawn(remote.InvokeServer, remote, ServerRequestMethod.Event, requestKey, eventName, ...)
+			local a, b, c = encryptAnything({ ... })
+			task.spawn(remote.InvokeServer, remote, ServerRequestMethod.Event, requestKey, eventName, a, b, c)
 		end
 	end, ...)
 end
@@ -139,7 +207,9 @@ function Network:InvokeServer(functionName: string, ...)
 	end
 
 	for remote, _ in remotes do
-		task.spawn(remote.InvokeServer, remote, ServerRequestMethod.Invoke, requestKey, id, functionName, ...)
+		local a, b, c = encryptAnything({ ... })
+
+		task.spawn(remote.InvokeServer, remote, ServerRequestMethod.Invoke, requestKey, id, functionName, a, b, c)
 	end
 
 	return (function(...)
@@ -162,27 +232,77 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 		-- Even if this check fails, it would get rechecked the next time the remote refits.
 		-- (Not the most reliable way of detecting a mitm attack.)
 
-		local requestStart, ping = os.clock(), localPlayer:GetNetworkPing()
-		local newKey, requestTime = remote:InvokeServer(ServerRequestMethod.KeyExchange), os.clock() - requestStart
+		-- local requestStart, ping = os.clock(), localPlayer:GetNetworkPing()
+		local newKey, returnedPublicKeyMasked, signature, returnedPublicKeyMaskedSignature =
+			remote:InvokeServer(ServerRequestMethod.KeyExchange, maskedClientPublicKey)
 
-		if not newKey then
+		if
+			typeof(newKey) ~= "string"
+			or typeof(returnedPublicKeyMasked) ~= "buffer"
+			or typeof(signature) ~= "buffer"
+		then
 			return Log.warn(
-				`Key exchange failed on remote "{remote:GetFullName()}" (no key exchanged)\nIf the issue does not resolve then try rejoining`
+				`Key exchange failed on remote "{remote:GetFullName()}" (invalid arguments: expected string, buffer, buffer, but got {typeof(
+					newKey
+				)} {typeof(returnedPublicKeyMasked)} {typeof(signature)})`
 			)
 		end
 
-		if ping > 0 and requestTime > ping * 5 then
+		if buffer.len(returnedPublicKeyMasked) ~= 32 then
 			return Log.warn(
-				`Key exchange failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping * 2}])`
+				`Key exchange failed on remote "{remote:GetFullName()}" (buffer length is not 32, got {buffer.len(
+					returnedPublicKeyMasked
+				)})`
 			)
 		end
+
+		if not EdDSA.Verify(serverPublicKey, returnedPublicKeyMasked, returnedPublicKeyMaskedSignature) then
+			return Log.warn(`Key exchange failed on remote "{remote:GetFullName()}" (invalid key signature)`)
+		end
+
+		if not EdDSA.Verify(serverPublicKey, buffer.fromstring(newKey), signature) then
+			return Log.warn(
+				`Key exchange failed on remote "{remote:GetFullName()}" (invalid server public key signature)`
+			)
+		end
+
+		-- ensure server does not try and screw us over
+		if maskedServerPublicKey and maskedServerPublicKey ~= returnedPublicKeyMasked then
+			return Log.warn(
+				"Key exchange failed! Server already gave one masked public key, and attempted to change it."
+			)
+		end
+
+		-- local requestTime = os.clock() - requestStart
+
+		-- if ping > 0 and requestTime > ping * 5 then
+		-- 	return Log.warn(
+		-- 		`Key exchange failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping * 2}])`
+		-- 	)
+		-- end
+
+		maskedServerPublicKey = returnedPublicKeyMasked
+		local staticSecret, _clientEphemeral =
+			MaskedX25519.Exchange(maskedClientPrivateKey, maskedServerPublicKey :: buffer)
+
+		networkStaticValue = Blake3.Digest(staticSecret, 32)
 
 		key = newKey
 	end
 
-	local requestStart, ping = os.clock(), localPlayer:GetNetworkPing()
-	local requestKey, requestTime =
-		remote:InvokeServer(ServerRequestMethod.Handshake, generateRequestKey()), os.clock() - requestStart
+	-- local requestStart, ping = os.clock(), localPlayer:GetNetworkPing()
+	local ciphertext, tag, instanceArray, keySignature =
+		remote:InvokeServer(ServerRequestMethod.Handshake, generateRequestKey())
+	-- local requestTime = os.clock() - requestStart
+
+	if typeof(ciphertext) ~= "buffer" or typeof(tag) ~= "buffer" then
+		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (some values are invalid)`)
+
+		key = nil
+		return connectRemote(service, remote)
+	end
+
+	local requestKey = decryptAnything(ciphertext, tag, instanceArray)
 
 	-- If the handshake fails on the server then the client has an incorrect key, so we redo the key exchange
 	if not requestKey then
@@ -196,14 +316,24 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 
 	-- We still check if the key is valid before performing a timing check, so if the key was valid it would get invalidated
 	if not isValidRequestKey(requestKey) then
-		return Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (key check)`)
+		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (key check)`)
+
+		key = nil
+		return connectRemote(service, remote)
 	end
 
-	if ping > 0 and requestTime > ping * 5 then
-		return Log.warn(
-			`Handshake failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping * 2}])`
-		)
+	if not EdDSA.Verify(serverPublicKey, buffer.fromstring(`{requestKey[1]}{requestKey[2]}`), keySignature) then
+		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (key signature check)`)
+
+		key = nil
+		return connectRemote(service, remote)
 	end
+
+	-- if ping > 0 and requestTime > ping * 5 then
+	-- 	return Log.warn(
+	-- 		`Handshake failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping * 2}])`
+	-- 	)
+	-- end
 
 	remotes[remote] = service
 	remote.OnClientInvoke = onRequest
