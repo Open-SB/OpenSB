@@ -15,5 +15,8 @@
 /out
 /build
 
+# Rojo sourcemap
+sourcemap.json
+
 # Custom config file
 .config.toml
