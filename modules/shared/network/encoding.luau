@@ -9,7 +9,11 @@ local Module = {}
 
 -- Returns a u32
 local function computeDecentChecksum(instance: Instance): number
-	return XXH32(buffer.fromstring(`{instance:GetFullName()}{instance.ClassName}`))
+	-- We should only use datapoints here that are actually garuanteed to be shared with the server
+	-- So something like :GetFullName() might seem ok, but it's return could actually differ on the client and server (as the client could change the instance's parent or name).
+	--
+	-- Only other datapoint I could think of would be the instance's creation date, but keeping track of that on all instances is expensive.
+	return XXH32(buffer.fromstring(`{instance.ClassName}`))
 end
 
 -- Returns a MessagePack encoded string blob and a list of instances to be shipped alongside the blob.
