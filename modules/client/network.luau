@@ -154,7 +154,7 @@ end
 
 function Network:FireServer(eventName: string, ...)
 	task.spawn(function(...)
-		while exchanged ~= true do
+		while exchanged ~= true or next(remotes) == nil do
 			task.wait()
 		end
 
@@ -170,10 +170,6 @@ function Network:FireServer(eventName: string, ...)
 end
 
 function Network:InvokeServer(functionName: string, ...)
-	while exchanged ~= true do
-		task.wait()
-	end
-
 	local id = nil
 	repeat
 		id = Functions.randomString(8)
@@ -182,7 +178,7 @@ function Network:InvokeServer(functionName: string, ...)
 	local signal = Signal.new()
 	invokeResults[id] = signal
 
-	while next(remotes) == nil do
+	while exchanged ~= true or next(remotes) == nil do
 		task.wait()
 	end
 
