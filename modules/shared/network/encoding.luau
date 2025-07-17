@@ -1,6 +1,4 @@
 local MessagePack = require("@shared/msgpack")
-local Blake3 = require("@shared/crypto/blake3")
-local Base64 = require("@shared/crypto/base64")
 local XXH32 = require("@shared/crypto/XXH32")
 
 local INSTANCE_EXTENSION_TYPE = 12 -- 0x0c
@@ -11,7 +9,6 @@ local Module = {}
 local function computeDecentChecksum(instance: Instance): number
 	-- We should only use datapoints here that are actually garuanteed to be shared with the server
 	-- So something like :GetFullName() might seem ok, but it's return could actually differ on the client and server (as the client could change the instance's parent or name).
-	--
 	-- Only other datapoint I could think of would be the instance's creation date, but keeping track of that on all instances is expensive.
 	return XXH32(buffer.fromstring(`{instance.ClassName}`))
 end
@@ -49,8 +46,8 @@ function Module.encode(data: any): (buffer, { Instance })
 		return data, instanceArray
 	end
 
-	local clone, instanceArray = encode(data, {}, true)
-	return MessagePack.encode(clone), instanceArray
+	local dataWithoutInstances, instanceArray = encode(data, {}, true)
+	return MessagePack.encode(dataWithoutInstances), instanceArray
 end
 
 -- Decodes a MessagePack blob with an instance array, returning the decoded data.
