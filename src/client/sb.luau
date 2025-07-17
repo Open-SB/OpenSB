@@ -15,20 +15,20 @@ end
 local sbActor = script.Parent
 local root = sbActor.Parent
 
--- do
--- 	local thread = coroutine.running()
--- 	task.defer(
--- 		function() -- Defer has a small yield (under a frame) allowing us to delete the script (instances can't change their parent instantly after there were parented / created)
--- 			sbActor:Destroy()
--- 			script:Destroy()
--- 			script = nil
+do
+	local thread = coroutine.running()
+	task.defer(
+		function() -- Defer has a small yield (under a frame) allowing us to delete the script (instances can't change their parent instantly after there were parented / created)
+			sbActor:Destroy()
+			script:Destroy()
+			script = nil
 
--- 			task.spawn(thread)
--- 		end
--- 	)
+			task.spawn(thread)
+		end
+	)
 
--- 	coroutine.yield() -- Yield thread until script has been destroyed, so events dont get connected in the process (then disconnected by :Destroy())
--- end
+	coroutine.yield() -- Yield thread until script has been destroyed, so events dont get connected in the process (then disconnected by :Destroy())
+end
 
 local Assets = require("@shared/assets")
 Assets:Init(root, "assets")
