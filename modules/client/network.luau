@@ -37,7 +37,7 @@ local maskedClientPublicKey = MaskedX25519.PublicKey(maskedClientPrivateKey)
 local clientNonce = -1 -- Last client used nonce, next nonce to use should be this + 1
 local lastServerNonce = -1 -- Last nonce server sent, new nonces should always be greater than this one
 
-local exchanged = false
+local hasExchanged = false
 
 local registeredEvents: { [string]: (...unknown) -> nil } = {}
 function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
@@ -154,7 +154,7 @@ end
 
 function Network:FireServer(eventName: string, ...)
 	task.spawn(function(...)
-		while exchanged ~= true or next(remotes) == nil do
+		while next(remotes) == nil do
 			task.wait()
 		end
 
@@ -178,7 +178,7 @@ function Network:InvokeServer(functionName: string, ...)
 	local signal = Signal.new()
 	invokeResults[id] = signal
 
-	while exchanged ~= true or next(remotes) == nil do
+	while next(remotes) == nil do
 		task.wait()
 	end
 
@@ -274,7 +274,7 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 		return reexchange()
 	end
 
-	exchanged = true -- If decryption is sucessful, then we've exchanged on the server
+	hasExchanged = true -- If decryption is sucessful, then we've exchanged on the server
 
 	if newCheck ~= check then
 		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (invalid check)`)
