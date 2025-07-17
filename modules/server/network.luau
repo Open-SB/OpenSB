@@ -16,6 +16,7 @@ local Blake3 = require("@shared/crypto/blake3")
 local AEAD = require("@shared/crypto/AEAD")
 local Encoding = require("@shared/network/encoding")
 local Protection = require("@shared/protection")
+local PlayerList = require("@shared/playerList")
 
 local MaskedX25519 = EdDSA.MaskedX25519
 
@@ -24,6 +25,26 @@ local serverPublicKey = EdDSA.PublicKey(serverPrivateKey)
 
 local maskedServerPrivateKey = MaskedX25519.Mask(serverPrivateKey)
 local serverPublicKeyMasked = MaskedX25519.PublicKey(maskedServerPrivateKey)
+
+local clientNetworkData: {
+	[Player]: {
+		maskedKey: buffer,
+		staticKey: buffer,
+
+		nonce: number, -- Last server used nonce, next nonce to use should be this + 1
+		lastNonce: number, -- Last nonce client sent, new nonces should always be greater than this one
+	},
+} =
+	{}
+
+local connectedPlayers: { [Player]: boolean } = {} -- We keep track of players that have successfully connected to the remote, so we don't accidentally send stuff to them without them actually listening to the remote
+local exchanged: { [Player]: boolean } = {} -- We lock keys after the first handshake
+
+PlayerList.Removed:Connect(function(player: Player)
+	clientNetworkData[player] = nil
+	connectedPlayers[player] = nil
+	exchanged[player] = nil
+end)
 
 local Network = {}
 Network.attributeName, Network.attributeValue = string.sub(tostring(math.random()), 3), math.random()
@@ -45,17 +66,6 @@ function Network:RegisterFunction(name: string, callback: (...unknown) -> ...unk
 
 	registeredFunctions[name] = callback
 end
-
-local clientNetworkData: {
-	[Player]: {
-		maskedKey: buffer,
-		staticKey: buffer,
-
-		nonce: number, -- Last server used nonce, next nonce to use should be this + 1
-		lastNonce: number, -- Last nonce client sent, new nonces should always be greater than this one
-	},
-} =
-	{}
 
 local function padNonce(nonce: number): buffer
 	local buf = buffer.create(12)
@@ -123,9 +133,6 @@ local function decryptFromPlayerAndVarargs(player: Player, ciphertext, nonce, ta
 
 	return data
 end
-
-local connectedPlayers: { [Player]: boolean } = {} -- We keep track of players that have successfully connected to the remote, so we don't accidentally send stuff to them without them actually listening to the remote
-local exchanged: { [Player]: boolean } = {} -- We lock keys after the first handshake
 
 local remote: RemoteFunction, remoteParent: Instance
 
