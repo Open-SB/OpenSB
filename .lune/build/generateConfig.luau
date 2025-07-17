@@ -1,14 +1,35 @@
+local EdDSA = require("@shared/network/eddsa")
+local Base64 = require("@shared/network/base64")
+local CSPRNG = EdDSA.CSPRNG
+
+local globalsWhichShouldBeRandomlyGenerated = table.freeze({
+	"scriptHostKey",
+	"localScriptHostKey",
+	"moduleScriptHostKey",
+})
+
 return function(config)
 	local rules = table.clone(config.darkluaRules)
-	for k, v in config do
-		if k == "darkluaRules" then
+	local privateKey = CSPRNG.Ed25519Random()
+	local publicKey = EdDSA.PublicKey(privateKey)
+
+	for key, value in config do
+		if key == "darkluaRules" then
 			continue
+		end
+
+		if table.find(globalsWhichShouldBeRandomlyGenerated, key) then
+			value = CSPRNG.RandomString(256)
+		elseif key == "serverPublicKey" then
+			value = buffer.tostring(Base64.Encode(publicKey))
+		elseif key == "serverPrivateKey" then
+			value = buffer.tostring(Base64.Encode(privateKey))
 		end
 
 		table.insert(rules, 1, {
 			rule = "inject_global_value",
-			identifier = k,
-			value = v,
+			identifier = key,
+			value = value,
 		})
 	end
 

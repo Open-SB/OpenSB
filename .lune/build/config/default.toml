@@ -16,15 +16,17 @@ wakeCompilerModuleId = true # If set to true, this module will be initially requ
 
 workerThreads = 2 # How many worker threads to allocate on start (set to at least 1 to support the NewWorker() function with Parallel Luau), higher values will increase the baseline memory usage (for both server and client).
 
-# These are communication keys that SB scripts use to fetch their information. It's recommended to change these, but even if you don't / someone gets a hand on them it shouldn't be a high risk
-# because the most they allow you to get is the scripts main function / error message and arguments (never the actual code). They are only usable outside of the sandbox anyways.
-scriptHostKey = "defaultKey"
-localScriptHostKey = "defaultKey"
-moduleScriptHostKey = "defaultKey"
+# These are communication keys that SB scripts use to fetch their information. These are randomly generated.
+# The most they would let an attacker get is the scripts main function / error message and arguments (never the actual code).
+# These are only usable outside of the sandbox anyways.
+scriptHostKey = ""
+localScriptHostKey = ""
+moduleScriptHostKey = ""
 
-# use lune run generateKeys to get these
-serverPublicKey = "mvqOG86uDk102u+3vmlcMjpmt5jmsOl5bqnQYhdWJEA="
-serverPrivateKey = "csXnIYpD2A/ACWVF1gH0yNW4Axmj1LUBwSzAAnwFS8E="
+# These are keys that the SB uses for signing & encrypting communication between the client and the server.
+# These are also randomly generated.
+serverPublicKey = ""
+serverPrivateKey = ""
 
 [dev]
 darkluaRules = [
@@ -37,9 +39,6 @@ debugging = false
 accountAgeLimit = 7
 
 workerThreads = 8
-scriptHostKey = "CHANGE_THIS_KEY"
-localScriptHostKey = "CHANGE_THIS_KEY"
-moduleScriptHostKey = "CHANGE_THIS_KEY"
 
 darkluaRules = [
     "compute_expression",
