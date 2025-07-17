@@ -79,7 +79,7 @@ function Commands:Run(command, context, arguments)
 end
 
 function Commands:Process(player, data, input, inputContext)
-	local prefix,arguments,commandName = data.prefix,data.arguments,data.commandName
+	local prefix, arguments, commandName = data.prefix, data.arguments, data.commandName
 	local namespace = Commands.namespaceLookup[string.lower(prefix)]
 	if not namespace then
 		-- No namespace with prefix found, default namespace, command should be the 1st split string (command/arguments).

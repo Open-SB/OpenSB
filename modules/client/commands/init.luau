@@ -84,12 +84,11 @@ function Commands:Run(command, context, arguments)
 end
 
 function Commands:ProcessServer(prefix, commandName, arguments, contextData, input, inputContext)
-	contextData.prefix=prefix
-	contextData.commandName=commandName
-	contextData.arguments=arguments
+	contextData.prefix = prefix
+	contextData.commandName = commandName
+	contextData.arguments = arguments
 	return Network:InvokeServer("processCommand", contextData, input, inputContext)
 end
-
 
 function Commands:ProcessClient(namespace, commandName, arguments, input, inputContext)
 	local command = namespace.commandLookup[string.lower(commandName)]
@@ -144,10 +143,11 @@ function Commands:Process(input, inputContext)
 		Output:append(Output.MessageType.Error, "No command was given.")
 		return
 	end
-	commandName = commandName:split(' ')
+	commandName = commandName:split(" ")
 
-	for i,commandName in pairs(commandName) do
-		local clientResult, clientMessage, contextData = Commands:ProcessClient(namespace, commandName, arguments, input, inputContext)
+	for i, commandName in pairs(commandName) do
+		local clientResult, clientMessage, contextData =
+			Commands:ProcessClient(namespace, commandName, arguments, input, inputContext)
 		if clientResult ~= ProcessResult.Success then
 			-- Only output fail messages if the inputContext wasn't the chat (because you can also send chat messages in chat, duh),
 			-- Error messages should always be displayed.
@@ -155,15 +155,19 @@ function Commands:Process(input, inputContext)
 				clientResult == ProcessResult.Error
 				or (clientResult == ProcessResult.Fail and inputContext ~= InputContext.Chat)
 			then
-				Output:append(Output.MessageType.Error, clientMessage or "Unexpected error occured while running command.")
+				Output:append(
+					Output.MessageType.Error,
+					clientMessage or "Unexpected error occured while running command."
+				)
 			end
 
 			continue
 		elseif clientMessage then
 			Output:append(Output.MessageType.Success, clientMessage)
 		end
-		
-		local serverResult, serverMessage = Commands:ProcessServer(prefix, commandName, arguments, contextData, input, inputContext)
+
+		local serverResult, serverMessage =
+			Commands:ProcessServer(prefix, commandName, arguments, contextData, input, inputContext)
 		if serverResult ~= ProcessResult.Success then
 			-- We don't check if the ProcessResult was a Fail or Error here, because it should always be an Error.
 			Output:append(Output.MessageType.Error, serverMessage or "Unexpected error occured while running command.")
