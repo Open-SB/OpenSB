@@ -140,7 +140,7 @@ function Module.Init(_, Sandbox, wrapper, rules)
 				if cIndex == "Parent" or cIndex == "parent" then
 					if isRemoveProtected(self) then
 						return error(Errors.lockedParentSet(self, value), 0)
-					elseif isWriteProtected(value) then
+					elseif value ~= nil and isWriteProtected(value) then
 						return error(Errors.parentToWriteProtected(value), 0)
 					end
 				end
