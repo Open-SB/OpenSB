@@ -1,3 +1,5 @@
+--!strict
+
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -8,13 +10,34 @@ local ClientRequestMethod = RequestMethods.Client
 
 local Log = require("@shared/log")
 local Functions = require("@shared/functions")
-local HashLib = require("@shared/hashLib")
 local Signal = require("@shared/signal")
+local EdDSA = require("@shared/crypto/EdDSA")
+local Base64 = require("@shared/crypto/base64")
+local Blake3 = require("@shared/crypto/blake3")
+local AEAD = require("@shared/crypto/AEAD")
+local Encoding = require("@shared/network/encoding")
+
+local MaskedX25519 = EdDSA.MaskedX25519
 
 local localPlayer = Players.LocalPlayer
 local attributeName, attributeValue
 
 local Network = {}
+
+local serverPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.serverPublicKey))
+local maskedServerPublicKey: buffer? = nil
+local networkStaticValue: buffer? = nil
+
+local clientPrivateKey: buffer = EdDSA.CSPRNG.Ed25519Random()
+local clientPublicKey: buffer = EdDSA.PublicKey(clientPrivateKey)
+
+local maskedClientPrivateKey = MaskedX25519.Mask(clientPrivateKey)
+local maskedClientPublicKey = MaskedX25519.PublicKey(maskedClientPrivateKey)
+
+local clientNonce = -1 -- Last client used nonce, next nonce to use should be this + 1
+local lastServerNonce = -1 -- Last nonce server sent, new nonces should always be greater than this one
+
+local hasExchanged = false
 
 local registeredEvents: { [string]: (...unknown) -> nil } = {}
 function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
@@ -25,111 +48,132 @@ function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
 	registeredEvents[name] = callback
 end
 
-local key: string?
-local keyLocked = false
-local usedHashes: { [string]: boolean } = {} -- Prevent replay attacks
+local function padNonce(nonce: number): buffer
+	local buf = buffer.create(12)
+	buffer.writeu32(buf, 0, nonce)
 
-local function isValidRequestKey(requestKey): boolean
-	if type(requestKey) ~= "table" then
-		return false
-	end
-
-	local hash, salt = requestKey[1], requestKey[2]
-	if type(hash) ~= "string" or type(salt) ~= "string" then
-		return false
-	end
-
-	if usedHashes[hash] then
-		return false
-	end
-
-	if hash == HashLib.hmac(HashLib.sha256, key, salt) then
-		usedHashes[hash] = true
-
-		return true
-	end
-
-	return false
+	return buf
 end
 
-local function generateRequestKey(): { string }
-	while key == nil do
-		task.wait()
+local function encryptBuffer(data: buffer): (buffer, number, buffer)
+	clientNonce += 1
+
+	local ciphertext, tag =
+		AEAD.Encrypt(data, assert(networkStaticValue, "network static value not obtained yet"), padNonce(clientNonce))
+	return ciphertext, clientNonce, tag
+end
+
+local function encryptAnything(data: any): (buffer, number, buffer, { Instance })
+	local encodedData, instancesArray = Encoding.encode(data)
+	local ciphertext, nonce, tag = encryptBuffer(encodedData)
+
+	return ciphertext, nonce, tag, instancesArray
+end
+
+local function decryptBuffer(ciphertext: buffer, nonce: number, tag: buffer): buffer
+	return assert(
+		AEAD.Decrypt(
+			ciphertext,
+			assert(networkStaticValue, "network static value not obtained yet"),
+			padNonce(nonce),
+			tag
+		),
+		"failed decrypting data with aead"
+	)
+end
+
+local function decryptAnything(ciphertext: buffer, nonce: number, tag: buffer, instanceArray: { Instance }): any
+	return Encoding.decode(decryptBuffer(ciphertext, nonce, tag), instanceArray)
+end
+
+local function decryptWithUnknownVarargs(ciphertext, nonce, tag, instanceArray): any?
+	if
+		type(ciphertext) ~= "buffer"
+		or type(nonce) ~= "number"
+		or type(tag) ~= "buffer"
+		or type(instanceArray) ~= "table"
+	then
+		return nil
 	end
 
-	local salt = Functions.randomString(64)
-	local hash = HashLib.hmac(HashLib.sha256, key, salt)
-
-	if usedHashes[hash] then -- It's very unlikely this would ever happen, but ¯\_(ツ)_/¯
-		return generateRequestKey()
+	if nonce <= lastServerNonce then
+		-- This is a replayed nonce
+		return nil
 	end
 
-	usedHashes[hash] = true
-	return { hash, salt }
+	local data = decryptAnything(ciphertext, nonce, tag, instanceArray :: { Instance })
+	lastServerNonce = nonce
+
+	return data
 end
 
 local remotes: { [RemoteFunction]: Instance } = {}
 local invokeResults: { [string]: BindableEvent } = {}
 
-local function onRequest(requestType, requestKey, ...)
+local function onRequest(requestType, ...)
 	if requestType == ClientRequestMethod.Event then
 		-- Minimize the yielding time for the server if the client is calculating stuff
-		task.spawn(function(eventName, ...)
-			local callback = registeredEvents[eventName]
+		task.spawn(function(...)
+			local decryptedData = decryptWithUnknownVarargs(...)
+			if
+				type(decryptedData) ~= "table"
+				or type(decryptedData.eventName) ~= "string"
+				or type(decryptedData.arguments) ~= "table"
+			then
+				return
+			end
+
+			local callback = registeredEvents[decryptedData.eventName]
 			if not callback then
 				return
 			end
 
-			if not isValidRequestKey(requestKey) then
-				return
-			end
-
-			callback(...)
+			callback(unpack(decryptedData.arguments))
 		end, ...)
 	elseif requestType == ClientRequestMethod.InvokeResult then
 		-- Minimize the yielding time for the server if the client is calculating stuff
-		task.spawn(function(id, ...)
-			local signal = invokeResults[id]
+		task.spawn(function(...)
+			local decryptedData = decryptWithUnknownVarargs(...)
+			if
+				type(decryptedData) ~= "table"
+				or type(decryptedData.id) ~= "string"
+				or type(decryptedData.arguments) ~= "table"
+			then
+				return
+			end
+
+			local signal = invokeResults[decryptedData.id]
 			if not signal then
 				return
 			end
 
-			if not isValidRequestKey(requestKey) then
-				return
-			end
-
-			signal:Fire(...)
+			signal:Fire(unpack(decryptedData.arguments))
 		end, ...)
 	end
 end
 
 function Network:FireServer(eventName: string, ...)
 	task.spawn(function(...)
-		while keyLocked ~= true do
-			task.wait()
-		end
-
-		local requestKey = generateRequestKey()
 		while next(remotes) == nil do
 			task.wait()
 		end
 
 		for remote, _ in remotes do
-			task.spawn(remote.InvokeServer, remote, ServerRequestMethod.Event, requestKey, eventName, ...)
+			task.spawn(
+				remote.InvokeServer,
+				remote,
+				ServerRequestMethod.Event,
+				encryptAnything({ eventName = eventName, arguments = { ... } })
+			)
 		end
 	end, ...)
 end
 
 function Network:InvokeServer(functionName: string, ...)
-	while keyLocked ~= true do
-		task.wait()
-	end
-
-	local requestKey, id = generateRequestKey(), nil
-
+	local id = nil
 	repeat
 		id = Functions.randomString(8)
-	until invokeResults[id] == nil
+	until not invokeResults[id]
 
 	local signal = Signal.new()
 	invokeResults[id] = signal
@@ -139,7 +183,16 @@ function Network:InvokeServer(functionName: string, ...)
 	end
 
 	for remote, _ in remotes do
-		task.spawn(remote.InvokeServer, remote, ServerRequestMethod.Invoke, requestKey, id, functionName, ...)
+		task.spawn(
+			remote.InvokeServer,
+			remote,
+			ServerRequestMethod.Invoke,
+			encryptAnything({
+				id = id,
+				functionName = functionName,
+				arguments = { ... },
+			})
+		)
 	end
 
 	return (function(...)
@@ -155,54 +208,77 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 		return
 	end
 
-	if not key then
-		-- TODO: Check signature of key
+	if not networkStaticValue then
+		local returnedPublicKeyMasked, returnedPublicKeyMaskedSignature =
+			remote:InvokeServer(ServerRequestMethod.KeyExchange, maskedClientPublicKey)
 
-		-- We check if the timing is above your ping * 5, as it would take at minimum your ping * 6 to do a man in the middle attack.
-		-- Even if this check fails, it would get rechecked the next time the remote refits.
-		-- (Not the most reliable way of detecting a mitm attack.)
-
-		local requestStart, ping = os.clock(), localPlayer:GetNetworkPing()
-		local newKey, requestTime = remote:InvokeServer(ServerRequestMethod.KeyExchange), os.clock() - requestStart
-
-		if not newKey then
+		if type(returnedPublicKeyMasked) ~= "buffer" or type(returnedPublicKeyMaskedSignature) ~= "buffer" then
 			return Log.warn(
-				`Key exchange failed on remote "{remote:GetFullName()}" (no key exchanged)\nIf the issue does not resolve then try rejoining`
+				`Key exchange failed on remote "{remote:GetFullName()}" (invalid arguments: expected buffer, buffer but got {typeof(
+					returnedPublicKeyMasked
+				)}, {typeof(returnedPublicKeyMaskedSignature)}`
 			)
 		end
 
-		if ping > 0 and requestTime > ping * 5 then
+		if buffer.len(returnedPublicKeyMasked) ~= 32 then
 			return Log.warn(
-				`Key exchange failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping * 2}])`
+				`Key exchange failed on remote "{remote:GetFullName()}" (buffer length is not 32, got {buffer.len(
+					returnedPublicKeyMasked
+				)})`
 			)
 		end
 
-		key = newKey
+		if not EdDSA.Verify(serverPublicKey, returnedPublicKeyMasked, returnedPublicKeyMaskedSignature) then
+			return Log.warn(
+				`Key exchange failed on remote "{remote:GetFullName()}" (invalid server public key signature)`
+			)
+		end
+
+		-- ensure server does not try and screw us over
+		if maskedServerPublicKey and maskedServerPublicKey ~= returnedPublicKeyMasked then
+			return Log.warn(
+				"Key exchange failed! Server already gave one masked public key, and attempted to change it."
+			)
+		end
+
+		maskedServerPublicKey = returnedPublicKeyMasked
+
+		local staticSecret, _clientEphemeral =
+			MaskedX25519.Exchange(maskedClientPrivateKey, maskedServerPublicKey :: buffer)
+		networkStaticValue = Blake3.Digest(staticSecret, 32)
 	end
 
-	local requestStart, ping = os.clock(), localPlayer:GetNetworkPing()
-	local requestKey, requestTime =
-		remote:InvokeServer(ServerRequestMethod.Handshake, generateRequestKey()), os.clock() - requestStart
+	local check = EdDSA.CSPRNG.RandomString(32)
 
-	-- If the handshake fails on the server then the client has an incorrect key, so we redo the key exchange
-	if not requestKey then
-		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (server key check)\nRetrieving new key...`)
+	local ciphertext, nonce, tag, instanceArray =
+		remote:InvokeServer(ServerRequestMethod.Handshake, encryptAnything(check))
 
-		key = nil
+	local function reexchange()
+		networkStaticValue = nil
 		return connectRemote(service, remote)
 	end
 
-	keyLocked = true
-
-	-- We still check if the key is valid before performing a timing check, so if the key was valid it would get invalidated
-	if not isValidRequestKey(requestKey) then
-		return Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (key check)`)
+	if
+		type(ciphertext) ~= "buffer"
+		or type(nonce) ~= "number"
+		or type(tag) ~= "buffer"
+		or type(instanceArray) ~= "table"
+	then
+		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (some values are invalid)`)
+		return reexchange()
 	end
 
-	if ping > 0 and requestTime > ping * 5 then
-		return Log.warn(
-			`Handshake failed on remote "{remote:GetFullName()}" (timing check: [{requestTime}, {ping * 2}])`
-		)
+	local newCheck = decryptWithUnknownVarargs(ciphertext, nonce, tag, instanceArray)
+	if not newCheck then
+		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (decryption failed)`)
+		return reexchange()
+	end
+
+	hasExchanged = true -- If decryption is sucessful, then we've exchanged on the server
+
+	if newCheck ~= check then
+		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (invalid check)`)
+		return
 	end
 
 	remotes[remote] = service

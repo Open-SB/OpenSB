@@ -9,7 +9,13 @@ print(`Building for "{branch}"`)
 stdio.write(stdio.color("reset"))
 
 if fs.isDir("build") then
-	if not stdio.prompt("confirm", 'The "build" directory already exists, continuing will remove it. Is that ok?') then
+	if
+		not table.find(process.args, "yes")
+		and not stdio.prompt(
+			"confirm",
+			'The "build" directory already exists, continuing will remove it. Is that ok? (Pass "yes" as an argument to skip this.)'
+		)
+	then
 		print("Cancelled build")
 		return process.exit(1)
 	end

@@ -10,24 +10,6 @@ do
 	table.freeze(wm)
 end
 
-if _G.prod and _G.scriptHostKey == "CHANGE_THIS_KEY" then
-	Log.warn(
-		"The 'scriptHostKey' global is set to the default value while in a production build! Consider changing it."
-	)
-end
-
-if _G.prod and _G.localScriptHostKey == "CHANGE_THIS_KEY" then
-	Log.warn(
-		"The 'localScriptHostKey' global is set to the default value while in a production build! Consider changing it."
-	)
-end
-
-if _G.prod and _G.moduleScriptHostKey == "CHANGE_THIS_KEY" then
-	Log.warn(
-		"The 'moduleScriptHostKey' global is set to the default value while in a production build! Consider changing it."
-	)
-end
-
 -- Fetch assets and destroy script
 local sbActor = script.Parent
 local root = sbActor.Parent

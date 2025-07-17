@@ -1,14 +1,37 @@
+local EdDSA = require("@shared/crypto/EdDSA")
+local Base64 = require("@shared/crypto/base64")
+local CSPRNG = EdDSA.CSPRNG
+
 return function(config)
 	local rules = table.clone(config.darkluaRules)
-	for k, v in config do
-		if k == "darkluaRules" then
-			continue
+
+	local inject = table.clone(config)
+	inject.darkluaRules = nil
+
+	do
+		local function set(global: string, value: any)
+			if inject[global] ~= true then
+				return
+			end
+
+			inject[global] = value
 		end
 
+		local privateKey = CSPRNG.Ed25519Random()
+		local publicKey = EdDSA.PublicKey(privateKey)
+		set("serverPrivateKey", buffer.tostring(Base64.Encode(privateKey)))
+		set("serverPublicKey", buffer.tostring(Base64.Encode(publicKey)))
+
+		for _, global in ipairs({ "scriptHostKey", "localScriptHostKey", "moduleScriptHostKey" }) do
+			set(global, CSPRNG.RandomString(256))
+		end
+	end
+
+	for key, value in inject do
 		table.insert(rules, 1, {
 			rule = "inject_global_value",
-			identifier = k,
-			value = v,
+			identifier = key,
+			value = value,
 		})
 	end
 
