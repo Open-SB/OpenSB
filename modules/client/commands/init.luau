@@ -113,6 +113,10 @@ end
 function Commands:Process(input, inputContext)
 	-- Check if the input matches a command string, if not then we can silently ignore it.
 	if not string.match(input, "^.+/") then
+		if inputContext ~= InputContext.Chat then
+			Output:append(Output.MessageType.Error, "Not a valid command string.")
+		end
+
 		return
 	end
 
