@@ -1,5 +1,5 @@
-local EdDSA = require("@shared/network/eddsa")
-local Base64 = require("@shared/network/base64")
+local EdDSA = require("@shared/crypto/EdDSA")
+local Base64 = require("@shared/crypto/base64")
 local CSPRNG = EdDSA.CSPRNG
 
 return function(config)

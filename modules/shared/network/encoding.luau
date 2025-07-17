@@ -1,6 +1,6 @@
-local MessagePack = require("@shared/network/msgpack")
-local Blake3 = require("@shared/network/blake3")
-local Base64 = require("@shared/network/base64")
+local MessagePack = require("@shared/msgpack")
+local Blake3 = require("@shared/crypto/blake3")
+local Base64 = require("@shared/crypto/base64")
 
 local INSTANCE_EXTENSION_TYPE = 12 -- 0x0c
 

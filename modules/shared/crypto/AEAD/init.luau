@@ -24,8 +24,8 @@
 --!optimize 2
 --!native
 
-local ChaCha20 = require("@shared/network/AEAD/ChaCha20")
-local Poly1305 = require("@shared/network/AEAD/Poly1305")
+local ChaCha20 = require("./ChaCha20")
+local Poly1305 = require("./Poly1305")
 
 local QWORD = 8
 

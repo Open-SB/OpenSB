@@ -21,11 +21,11 @@
 --!optimize 2
 --!native
 
-local FieldQuadratic = require("@shared/network/eddsa/FieldQuadratic")
-local SHA512 = require("@shared/network/eddsa/SHA512")
-local Edwards25519 = require("@shared/network/eddsa/Edwards25519")
-local Mask = require("@shared/network/eddsa/Mask")
-local CSPRNG = require("@shared/network/eddsa/CSPRNG")
+local FieldQuadratic = require("./FieldQuadratic")
+local SHA512 = require("./SHA512")
+local Edwards25519 = require("./Edwards25519")
+local Mask = require("./Mask")
+local CSPRNG = require("./CSPRNG")
 
 local ED25519_SECRET_KEY_SIZE = 32
 local ED25519_PUBLIC_KEY_SIZE = 32
