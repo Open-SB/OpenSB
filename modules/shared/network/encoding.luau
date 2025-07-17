@@ -26,7 +26,7 @@ function Module.encode(data: any): (buffer, { Instance })
 				new[key] = encode(value, instanceArray, false)
 			end
 
-			return MessagePack.encode(new), instanceArray
+			data = new
 		elseif datatype == "Instance" then
 			local extensionData = buffer.create(20)
 			buffer.copy(extensionData, 0, computeDecentHash(data), 0)
@@ -35,24 +35,16 @@ function Module.encode(data: any): (buffer, { Instance })
 			local extension = MessagePack.Extension.new(INSTANCE_EXTENSION_TYPE, extensionData)
 
 			table.insert(instanceArray, data)
-
 			index += 1
 
-			if first then
-				return MessagePack.encode(extension), instanceArray
-			else
-				return extension, instanceArray
-			end
-		else
-			if first then
-				return MessagePack.encode(data), instanceArray
-			else
-				return data, instanceArray
-			end
+			data = extension
 		end
+
+		return data, instanceArray
 	end
 
-	return encode(data, {}, true)
+	local clone, instanceArray = encode(data, {}, true)
+	return MessagePack.encode(clone), instanceArray
 end
 
 -- Decodes a MessagePack blob with an instance array, returning the decoded data.

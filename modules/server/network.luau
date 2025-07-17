@@ -49,7 +49,7 @@ end
 
 -- keys are one time keys for communication
 local keys: { [Player]: string } = {}
-local clientNetworkData: { [Player]: { maskedKey: buffer, staticKey: buffer, nonce: number } } = {}
+local clientNetworkData: { [Player]: { maskedKey: buffer, staticKey: buffer } } = {}
 local usedHashes: { [Player]: { [string]: boolean } } = {} -- Prevent replay attacks
 
 local function isValidRequestKey(player: Player, requestKey): boolean
@@ -102,10 +102,7 @@ end
 local function encryptBufferForPlayer(player: Player, data: buffer): (buffer, buffer)
 	local networkData = clientNetworkData[player]
 	local ciphertext, tag =
-		AEAD.Encrypt(data, networkData.staticKey, Blake3.Digest(buffer.fromstring(tostring(networkData.nonce)), 12))
-
-	networkData.nonce += 1
-	print(networkData.nonce)
+		AEAD.Encrypt(data, networkData.staticKey, Blake3.Digest(buffer.fromstring(tostring(keys[player])), 12))
 
 	return ciphertext, tag
 end
@@ -119,23 +116,27 @@ end
 
 local function decryptRawBufferWithPlayer(player: Player, ciphertext: buffer, tag: buffer): buffer
 	local networkData = clientNetworkData[player]
-	local result = assert(
+	return assert(
 		AEAD.Decrypt(
 			ciphertext,
 			assert(networkData.staticKey, "network static value not obtained yet"),
-			Blake3.Digest(buffer.fromstring(tostring(networkData.nonce)), 12),
+			Blake3.Digest(buffer.fromstring(tostring(keys[player])), 12),
 			tag
 		),
 		"failed decrypting data with aead"
 	)
-
-	networkData.nonce += 1
-
-	return result
 end
 
 local function decryptAnythingWithPlayer(player: Player, ciphertext: buffer, tag: buffer, instanceArray: { Instance })
 	return Encoding.decode(decryptRawBufferWithPlayer(player, ciphertext, tag), instanceArray)
+end
+
+local function decryptFromPlayerAndVarargs(player: Player, ciphertext, tag, instanceArray)
+	if typeof(ciphertext) ~= "buffer" or typeof(tag) ~= "buffer" or typeof(instanceArray) ~= "table" then
+		return nil
+	end
+
+	return decryptAnythingWithPlayer(player, ciphertext, tag, instanceArray :: { Instance })
 end
 
 local connectedPlayers: { [Player]: boolean } = {} -- We keep track of players that have successfully connected to the remote, so we don't accidentally send stuff to them without them actually listening to the remote
@@ -181,7 +182,7 @@ local function onRequest(player: Player, requestType, requestKey: any, ...): ...
 		if clientNetworkData[player] ~= nil then
 			clientNetworkData[player].staticKey = staticSecret
 		else
-			clientNetworkData[player] = { maskedKey = maskedClientPublicKey, staticKey = staticSecret, nonce = 0 }
+			clientNetworkData[player] = { maskedKey = maskedClientPublicKey, staticKey = staticSecret }
 		end
 
 		return key,
@@ -207,8 +208,18 @@ local function onRequest(player: Player, requestType, requestKey: any, ...): ...
 			EdDSA.Sign(serverPrivateKey, serverPublicKey, buffer.fromstring(`{data[1]}{data[2]}`))
 	elseif requestType == ServerRequestMethod.Event then
 		-- Minimize the yielding time for the client if the server is calculating stuff
-		task.spawn(function(eventName, ...)
-			local callback = registeredEvents[eventName]
+		task.spawn(function(...)
+			local decryptedData: {
+				eventName: string,
+				arguments: { any },
+			}? =
+				decryptFromPlayerAndVarargs(player, ...)
+
+			if not decryptedData then
+				return
+			end
+
+			local callback = registeredEvents[decryptedData.eventName]
 			if not callback then
 				return
 			end
@@ -217,20 +228,23 @@ local function onRequest(player: Player, requestType, requestKey: any, ...): ...
 				return
 			end
 
-			local ciphertext, tag, instanceArray = ...
-
-			if typeof(ciphertext) ~= "buffer" or typeof(tag) ~= "buffer" or typeof(instanceArray) ~= "table" then
-				return Log.debug("thing failed")
-			end
-
-			local arguments = decryptAnythingWithPlayer(player, ciphertext, tag, instanceArray :: { Instance })
-
-			callback(player, unpack(arguments))
+			callback(player, unpack(decryptedData.arguments))
 		end, ...)
 	elseif requestType == ServerRequestMethod.Invoke then
 		-- Minimize the yielding time for the client if the server is calculating stuff
-		task.spawn(function(id, functionName, ...)
-			local callback = registeredFunctions[functionName]
+		task.spawn(function(...)
+			local decryptedData: {
+				id: string,
+				functionName: string,
+				arguments: { any },
+			}? =
+				decryptFromPlayerAndVarargs(player, ...)
+
+			if not decryptedData then
+				return
+			end
+
+			local callback = registeredFunctions[decryptedData.functionName]
 			if not callback then
 				return
 			end
@@ -244,9 +258,13 @@ local function onRequest(player: Player, requestType, requestKey: any, ...): ...
 					task.wait()
 				end
 
-				local a, b, c = encryptAnythingForPlayer(player, { ... })
-				remote:InvokeClient(player, ClientRequestMethod.InvokeResult, generateRequestKey(player), id, a, b, c)
-			end)(callback(player, ...))
+				remote:InvokeClient(
+					player,
+					ClientRequestMethod.InvokeResult,
+					generateRequestKey(player),
+					encryptAnythingForPlayer(player, { id = decryptedData.id, arguments = { ... } })
+				)
+			end)(callback(player, unpack(decryptedData.arguments)))
 		end, ...)
 	end
 
@@ -259,7 +277,15 @@ function Network:FireClient(player: Player, eventName: string, ...: any)
 			task.wait()
 		end
 
-		remote:InvokeClient(player, ClientRequestMethod.Event, generateRequestKey(player), eventName, ...)
+		remote:InvokeClient(
+			player,
+			ClientRequestMethod.Event,
+			generateRequestKey(player),
+			encryptAnythingForPlayer(player, {
+				eventName = eventName,
+				arguments = { ... },
+			})
+		)
 	end, ...)
 end
 

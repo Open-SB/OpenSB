@@ -28,7 +28,6 @@ local Network = {}
 local serverPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.serverPublicKey))
 local maskedServerPublicKey: buffer? = nil
 local networkStaticValue: buffer? = nil
-local nonce = 0
 
 local clientPrivateKey: buffer = EdDSA.CSPRNG.Ed25519Random()
 local clientPublicKey: buffer = EdDSA.PublicKey(clientPrivateKey)
@@ -88,21 +87,18 @@ local function generateRequestKey(): { string }
 	return { hash, salt }
 end
 
-local function encryptBuffer(player: Player, data: buffer): (buffer, buffer)
+local function encryptBuffer(data: buffer): (buffer, buffer)
 	local ciphertext, tag = AEAD.Encrypt(
 		data,
 		assert(networkStaticValue, "network static value not obtained yet"),
-		Blake3.Digest(buffer.fromstring(tostring(nonce)), 12)
+		Blake3.Digest(buffer.fromstring(tostring(assert(key))), 12)
 	)
-
-	nonce += 1
-
 	return ciphertext, tag
 end
 
-local function encryptAnything(player: Player, data: any): (buffer, buffer, { Instance })
+local function encryptAnything(data: any): (buffer, buffer, { Instance })
 	local encodedData, instancesArray = Encoding.encode(data)
-	local ciphertext, tag = encryptBuffer(player, encodedData)
+	local ciphertext, tag = encryptBuffer(encodedData)
 
 	return ciphertext, tag, instancesArray
 end
@@ -112,13 +108,11 @@ local function decryptBuffer(ciphertext: buffer, tag: buffer): buffer
 		AEAD.Decrypt(
 			ciphertext,
 			assert(networkStaticValue, "network static value not obtained yet"),
-			Blake3.Digest(buffer.fromstring(tostring(nonce)), 12),
+			Blake3.Digest(buffer.fromstring(tostring(assert(key))), 12),
 			tag
 		),
 		"failed decrypting data with aead"
 	)
-
-	nonce += 1
 
 	return result
 end
@@ -127,45 +121,59 @@ local function decryptAnything(ciphertext: buffer, tag: buffer, instanceArray: {
 	return Encoding.decode(decryptBuffer(ciphertext, tag), instanceArray)
 end
 
+local function decryptWithUnknownVarargs(ciphertext, tag, instanceArray): any?
+	if typeof(ciphertext) ~= "buffer" or typeof(tag) ~= "buffer" or typeof(instanceArray) ~= "table" then
+		return nil
+	end
+
+	return decryptAnything(ciphertext, tag, instanceArray :: { Instance })
+end
+
 local remotes: { [RemoteFunction]: Instance } = {}
 local invokeResults: { [string]: BindableEvent } = {}
 
 local function onRequest(requestType, requestKey, ...)
 	if requestType == ClientRequestMethod.Event then
 		-- Minimize the yielding time for the server if the client is calculating stuff
-		task.spawn(function(eventName, ...)
-			local callback = registeredEvents[eventName]
+		task.spawn(function(...)
+			if not isValidRequestKey(requestKey) then
+				return
+			end
+
+			local decryptedData: {
+				eventName: string,
+				arguments: { any },
+			} = decryptWithUnknownVarargs(...)
+
+			if not decryptedData then
+				return
+			end
+
+			local callback = registeredEvents[decryptedData.eventName]
 			if not callback then
 				return
 			end
 
+			callback(unpack(decryptedData.arguments))
+		end, ...)
+	elseif requestType == ClientRequestMethod.InvokeResult then
+		-- Minimize the yielding time for the server if the client is calculating stuff
+		task.spawn(function(...)
 			if not isValidRequestKey(requestKey) then
 				return
 			end
 
-			callback(...)
-		end, ...)
-	elseif requestType == ClientRequestMethod.InvokeResult then
-		-- Minimize the yielding time for the server if the client is calculating stuff
-		task.spawn(function(id, ...)
-			local signal = invokeResults[id]
+			local decryptedData: {
+				id: string,
+				arguments: { any },
+			} = decryptWithUnknownVarargs(...)
+
+			local signal = invokeResults[decryptedData.id]
 			if not signal then
 				return
 			end
 
-			if not isValidRequestKey(requestKey) then
-				return
-			end
-
-			local ciphertext, tag, instanceArray = ...
-
-			if typeof(ciphertext) ~= "buffer" or typeof(tag) ~= "buffer" or typeof(instanceArray) ~= "table" then
-				return
-			end
-
-			local decryptedArguments = decryptAnything(ciphertext, tag, instanceArray :: { Instance })
-
-			signal:Fire(unpack(decryptedArguments))
+			signal:Fire(unpack(decryptedData.arguments))
 		end, ...)
 	end
 end
@@ -182,8 +190,13 @@ function Network:FireServer(eventName: string, ...)
 		end
 
 		for remote, _ in remotes do
-			local a, b, c = encryptAnything({ ... })
-			task.spawn(remote.InvokeServer, remote, ServerRequestMethod.Event, requestKey, eventName, a, b, c)
+			task.spawn(
+				remote.InvokeServer,
+				remote,
+				ServerRequestMethod.Event,
+				requestKey,
+				encryptAnything({ eventName = eventName, arguments = { ... } })
+			)
 		end
 	end, ...)
 end
@@ -207,9 +220,13 @@ function Network:InvokeServer(functionName: string, ...)
 	end
 
 	for remote, _ in remotes do
-		local a, b, c = encryptAnything({ ... })
+		local a, b, c = encryptAnything({
+			id = id,
+			functionName = functionName,
+			arguments = { ... },
+		})
 
-		task.spawn(remote.InvokeServer, remote, ServerRequestMethod.Invoke, requestKey, id, functionName, a, b, c)
+		task.spawn(remote.InvokeServer, remote, ServerRequestMethod.Invoke, requestKey, a, b, c)
 	end
 
 	return (function(...)
