@@ -16,19 +16,23 @@ wakeCompilerModuleId = true # If set to true, this module will be initially requ
 
 workerThreads = 2 # How many worker threads to allocate on start (set to at least 1 to support the NewWorker() function with Parallel Luau), higher values will increase the baseline memory usage (for both server and client).
 
-# These are communication keys that SB scripts use to fetch their information. These are randomly generated.
+# These are communication keys that SB scripts use to fetch their information. These are randomly generated when set to true.
 # The most they would let an attacker get is the scripts main function / error message and arguments (never the actual code).
 # These are only usable outside of the sandbox anyways.
-scriptHostKey = ""
-localScriptHostKey = ""
-moduleScriptHostKey = ""
+scriptHostKey = true
+localScriptHostKey = true
+moduleScriptHostKey = true
 
 # These are keys that the SB uses for signing & encrypting communication between the client and the server.
-# These are also randomly generated.
-serverPublicKey = ""
-serverPrivateKey = ""
+# These are also randomly generated when set to true.
+serverPublicKey = true
+serverPrivateKey = true
 
 [dev]
+scriptHostKey = "dev:script_key"
+localScriptHostKey = "dev:localScript_key"
+moduleScriptHostKey = "dev:moduleScript_key"
+
 darkluaRules = [
     "convert_local_function_to_assign", # Required because it actually changes script behaviour
 ]
