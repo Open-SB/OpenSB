@@ -25,6 +25,7 @@ local debug = debug
 
 local ManagerCommunication = require("@shared/wm/communication")
 local Functions = require("@shared/functions")
+local Errors = require("@shared/errors")
 
 local Sandbox
 local VM = require("./vm")
@@ -39,7 +40,7 @@ local getRunning = VM.getRunning
 local formatError = VM.formatError
 local closureInfo = VM.closureInfo
 
-local toCString = Functions.toCString
+local nullTerminate = Functions.nullTerminate
 
 local renv = getfenv() -- Raw environment
 local senv = {} -- Sandboxed environment
@@ -918,9 +919,9 @@ function Module:Init()
 
 		-- https://create.roblox.com/docs/reference/engine/datatypes/Instance#new
 		r.new = function(...)
-			local className = toCString(checkArg("new", "string", 1, ...))
+			local className = nullTerminate(checkArg("new", "string", 1, ...))
 			if BlockedInstances[className] then
-				return error(`Unable to create an Instance of type "{className}"`, 0) -- Roblox seems to be throwing Instance.new errors at level 0
+				return error(Errors.createBlockedClass(className), 0) -- Roblox seems to be throwing Instance.new errors at level 0
 			end
 
 			return new(className, getArg(2, ...))
@@ -931,7 +932,7 @@ function Module:Init()
 			local existingInstance = checkArg("fromExisting", "Instance", 1, ...)
 
 			if typeof(existingInstance) == "Instance" and BlockedInstances[existingInstance.ClassName] then
-				return error(`Cannot fromExisting() {existingInstance.ClassName}`, 0) -- Roblox seems to be throwing Instance.fromExisting errors at level 0
+				return error(Errors.createBlockedClass(existingInstance.ClassName), 0) -- Roblox seems to be throwing Instance.fromExisting errors at level 0
 			end
 
 			return fromExisting(existingInstance, getArg(2, ...))

@@ -9,6 +9,7 @@ local Wrapper
 local Rules
 local Functions = require("@shared/functions")
 local Protection = require("@shared/wm/protection")
+local Errors = require("@shared/errors")
 
 local wrap, unwrap
 local wrapMany, unwrapMany
@@ -86,6 +87,8 @@ local function modify(mutator: (table) -> never)
 
 	return table.freeze(clone)
 end
+
+local nullTerminate = Functions.nullTerminate
 local toCString = Functions.toCString
 
 function Module.Init(_, Sandbox, wrapper, rules)
@@ -127,14 +130,18 @@ function Module.Init(_, Sandbox, wrapper, rules)
 				return error("Property write failed: Instance is write protected", 2)
 			end
 
-			if type(index) == "string" and typeof(self) == "Instance" then
+			if
+				type(index) == "string"
+				and typeof(self) == "Instance"
+				and (value == nil or typeof(value) == "Instance")
+			then
 				-- TODO: Add this in rules.luau.
-				local cIndex = toCString(index)
+				local cIndex = nullTerminate(index)
 				if cIndex == "Parent" or cIndex == "parent" then
 					if isRemoveProtected(self) then
-						return error("Cannot parent " .. self.ClassName, 2)
-					elseif typeof(value) == "Instance" and isWriteProtected(value) then
-						return error(`Cannot set parent to {value.ClassName}`, 2)
+						return error(Errors.lockedParentSet(self, value), 0)
+					elseif isWriteProtected(value) then
+						return error(Errors.parentToWriteProtected(value), 0)
 					end
 				end
 			end

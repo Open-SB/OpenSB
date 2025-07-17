@@ -16,6 +16,7 @@ local Base64 = require("@shared/network/base64")
 local Blake3 = require("@shared/network/blake3")
 local AEAD = require("@shared/network/AEAD")
 local Encoding = require("@shared/network/encoding")
+local Protection = require("@shared/protection")
 
 local MaskedX25519 = EdDSA.MaskedX25519
 
@@ -274,7 +275,10 @@ function Network:Init()
 		lastRemoteFix = os.clock()
 
 		if remote then
-			task.delay(0, game.Destroy, remote)
+			task.delay(0, function(oldRemote)
+				Protection.remove(oldRemote)
+				oldRemote:Destroy()
+			end, remote)
 		end
 
 		table.clear(connectedPlayers)
@@ -283,6 +287,8 @@ function Network:Init()
 		remote.Name = Functions.randomInstanceName()
 		remote.Archivable = false
 		remote:SetAttribute(Network.attributeName, Network.attributeValue)
+
+		Protection.add(remote, "write")
 
 		remoteParent = services[math.random(1, #services)]
 		remote.Parent = remoteParent
