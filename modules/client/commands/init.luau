@@ -111,9 +111,8 @@ function Commands:ProcessClient(namespace, commandName, arguments, input, inputC
 end
 
 function Commands:Process(input, inputContext)
-	-- Check if the input matches a command string, if not then we can ignore it.
+	-- Check if the input matches a command string, if not then we can silently ignore it.
 	if not string.match(input, "^.+/") then
-		Output:append(Output.MessageType.Error, "Not a valid command string.")
 		return
 	end
 
