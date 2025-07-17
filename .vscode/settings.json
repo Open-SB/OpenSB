@@ -1,0 +1,9 @@
+{
+  "vscord.app.privacyMode.enable": false,
+  "stylua.targetReleaseVersion": "latest",
+  "luau-lsp.require.mode": "relativeToFile",
+  "luau-lsp.require.directoryAliases": {
+    "@lune/": "~/.lune/.typedefs/0.8.9/"
+  },
+  "luau-lsp.require.useOriginalRequireByStringSemantics": true // Darklua compat
+}
