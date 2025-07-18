@@ -4,6 +4,7 @@ local compile = require("@server/compile")
 local Assets = require("@shared/assets")
 local WorkerManagers = require("@shared/workerManagers")
 local DB = require("@server/db")
+local PlayerList = require("@shared/playerList")
 
 local ScriptTypes = require("@shared/scriptManager/scriptTypes")
 
@@ -220,5 +221,9 @@ do
 		end
 	end)
 end
+
+PlayerList.Removed:Connect(function(player: Player)
+	Module:StopScripts(player)
+end)
 
 return Module

@@ -2,15 +2,10 @@ local ScriptManager = require("@server/scriptManager")
 local Output = require("@server/output")
 local DB = require("@server/db")
 local Network = require("@server/network")
-local PlayerList = require("@shared/playerList")
 
 local HttpService = game:GetService("HttpService")
 
 local playerScripts: { [Player]: { [string]: { type: any, instance: BaseScript } } } = ScriptManager.PlayerScripts
-PlayerList.Removed:Connect(function(player)
-	playerScripts[player] = nil
-end)
-
 local function runScript(player: Player, type, name: string, source: string, parent: Instance?, arguments: table?)
 	local runningScripts = playerScripts[player]
 	if not runningScripts then
