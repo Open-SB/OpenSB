@@ -2,12 +2,12 @@ local ScriptManager = require("@server/scriptManager")
 local Output = require("@server/output")
 local DB = require("@server/db")
 local Network = require("@server/network")
+local PlayerList = require("@shared/playerList")
 
 local HttpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
 
 local playerScripts: { [Player]: { [string]: { type: any, instance: BaseScript } } } = ScriptManager.PlayerScripts
-Players.PlayerRemoving:Connect(function(player)
+PlayerList.Removed:Connect(function(player)
 	playerScripts[player] = nil
 end)
 

@@ -14,7 +14,8 @@ local function getUserData(userId: number)
 	return data
 end
 
-game:GetService("Players").PlayerRemoving:Connect(function(player)
+local PlayerList = require("@shared/playerList")
+PlayerList.Removed:Connect(function(player)
 	datas[player.UserId] = nil
 end)
 

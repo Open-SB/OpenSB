@@ -59,6 +59,8 @@ Log.debug("Loading systems...") -- Maybe we should move these into their own mod
 
 -- Player system
 do
+	local PlayerList = require("@shared/playerList")
+
 	local function disconnectPlayer(player: Player)
 		Output:appendToOthers(
 			player,
@@ -129,10 +131,10 @@ do
 		end
 	end
 
-	Players.PlayerAdded:Connect(connectPlayer)
-	Players.PlayerRemoving:Connect(disconnectPlayer)
+	PlayerList.Added:Connect(connectPlayer)
+	PlayerList.Removed:Connect(disconnectPlayer)
 
-	for _, player: Player in ipairs(Players:GetPlayers()) do
+	for _, player: Player in ipairs(PlayerList:GetList()) do
 		task.spawn(connectPlayer, player)
 	end
 end
