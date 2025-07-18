@@ -560,16 +560,17 @@ function Module:Init()
 	end
 
 	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#require
-	senv.require = function(target)
-		if type(target) == "boolean" then
-			target = if target then 1 else 0
+	senv.require = function(...)
+		local target = getArg(1, ...)
+		if typeof(target) ~= "Instance" and type(target) ~= "string" then
+			target = Functions.toCDouble(target) or target
 		end
 
 		if type(target) == "number" then
-			return error("require(assetId) is disabled", seekSafeLevel())
+			return error(Errors.cannotAssetRequire(), 0)
 		end
 
-		return wrapMany(renv.require(unwrapMany(target)))
+		return wrapMany(renv.require(unwrap(target)))
 	end
 
 	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#settings

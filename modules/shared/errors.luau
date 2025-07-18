@@ -22,6 +22,10 @@ function Errors.cannotCall(func: () -> () | string, capability: string?): string
 	end
 end
 
+function Errors.cannotAssetRequire(): string
+	return `The current thread cannot require using asset ID (lacking capability AssetRequire)`
+end
+
 function Errors.lockedParent(instance: Instance): string
 	return `The Parent property of {getInstanceName(instance)} is locked`
 end
