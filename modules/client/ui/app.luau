@@ -159,7 +159,7 @@ function App.scriptPrompt(bindable: BindableEvent, owner: Player, script: BaseSc
 
 	StarterGui:SetCore("SendNotification", {
 		Title = `{script.ClassName} request`,
-		Text = `{owner.DisplayName} would like to run a script on you.\n({script:GetFullName()})`,
+		Text = `Allow {owner.DisplayName}'s script to load on your client?\n({script:GetFullName()})`,
 		Duration = 15,
 		Callback = bindableFunction,
 		Button1 = "Allow",
