@@ -95,20 +95,16 @@ function Module.Init(_, Sandbox)
 
 			local parentThread = coroutine.running()
 			local warnThread
+			local fullName = GetFullName(self)
+			local traceback = debug.traceback(`Infinite yield possible on '{fullName}:WaitForChild("{childName}")`, 2)
 			if not timeOut and typeof(self) == "Instance" then
-				local fullName = GetFullName(self)
 				warnThread = task.delay(5, function()
 					-- Incase the WaitForChild thread stopped yielding (could be because the function threw an error), then don't emit the warning
 					if coroutine.status(parentThread) ~= "suspended" then
 						return
 					end
 
-					-- TODO: Add stacktrace
-					ManagerCommunication:Send(
-						"warn",
-						sandbox.Owner,
-						`Infinite yield possible on '{fullName}:WaitForChild("{childName}")'`
-					)
+					ManagerCommunication:Send("warn", sandbox.Owner, traceback)
 				end)
 				sandbox.Threads[warnThread] = true
 			end
@@ -150,8 +146,7 @@ function Module.Init(_, Sandbox)
 			assertTerminated(sandbox)
 
 			if type(func) ~= "function" then
-				-- TODO: Add stacktrace
-				ManagerCommunication:Send("error", sandbox.Owner, Errors.connectNonFunction())
+				ManagerCommunication:Send("error", sandbox.Owner, debug.traceback(Errors.connectNonFunction(), 2))
 				return Connect(unwrap(self))
 			end
 
@@ -171,8 +166,7 @@ function Module.Init(_, Sandbox)
 			assertTerminated(sandbox)
 
 			if type(func) ~= "function" then
-				-- TODO: Add stacktrace
-				ManagerCommunication:Send("error", sandbox.Owner, Errors.connectNonFunction())
+				ManagerCommunication:Send("error", sandbox.Owner, debug.traceback(Errors.connectNonFunction(), 2))
 				return ConnectParallel(unwrap(self))
 			end
 
@@ -192,8 +186,7 @@ function Module.Init(_, Sandbox)
 			assertTerminated(sandbox)
 
 			if type(func) ~= "function" then
-				-- TODO: Add stacktrace
-				ManagerCommunication:Send("error", sandbox.Owner, Errors.connectNonFunction())
+				ManagerCommunication:Send("error", sandbox.Owner, debug.traceback(Errors.connectNonFunction(), 2))
 				return Once(unwrap(self))
 			end
 

@@ -79,34 +79,11 @@ function Commands:Run(command, context, arguments)
 end
 
 function Commands:Process(player, data, input, inputContext)
-	-- Check if the input matches a command string, if not then we can ignore it.
-	if not string.match(input, "^.+/") then
-		return ProcessResult.Fail, "Not a valid command string."
-	end
-
-	local arguments = string.split(input, "/")
-	local prefix = table.remove(arguments, 1)
-	if not prefix then
-		return ProcessResult.Fail, "No prefix was found."
-	end
-
-	-- Remove last argument if empty.
-	if #arguments[#arguments] == 0 then
-		table.remove(arguments, #arguments)
-	end
-
-	-- Find namespace, and get the command.
-	local commandName
+	local prefix, arguments, commandName = data.prefix, data.arguments, data.commandName
 	local namespace = Commands.namespaceLookup[string.lower(prefix)]
 	if not namespace then
 		-- No namespace with prefix found, default namespace, command should be the 1st split string (command/arguments).
-		commandName = prefix
 		namespace = Commands.namespaces.default
-	elseif arguments[1] and #arguments[1] > 0 then -- Check if there is a 2nd split string, otherwise no command was given.
-		-- Not default namespace, command should be the 2nd split string (prefix/command/arguments).
-		commandName = table.remove(arguments, 1)
-	else
-		return ProcessResult.Fail, "No command was given."
 	end
 
 	local command = namespace.commandLookup[string.lower(commandName)]
