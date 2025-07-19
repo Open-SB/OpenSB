@@ -6,9 +6,6 @@ local Instance = Instance
 local table = table
 local game = game
 local task = task
-local debug = debug
-local string = string
-local tonumber = tonumber
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -19,13 +16,10 @@ local ManagerCommunication = require("@shared/wm/communication")
 
 local Functions = require("@shared/functions")
 local ScriptTypes = require("@shared/scriptManager/scriptTypes")
+local StackTrace = require("@client/wm/stackTrace")
 
 local getRunning = VM.getRunning
-local getDebugInfo = VM.getDebugInfo
 local formatError = VM.formatError
-
-local vmStart = VM.vmStart
-local vmEnd = VM.vmEnd
 
 type source = {
 	owner: Player,
@@ -244,12 +238,9 @@ function Module:Init()
 		end,
 	})
 
-	-- Get the source of the worker manager (to work with stack traces)
-	local wmSource = debug.info(Functions.empty, "s")
-
 	-- Listen for script errors (defer because it doesn't work otherwise, idk why)
 	local ErrorSignal = game:GetService("ScriptContext").Error
-	task.defer(ErrorSignal.Connect, ErrorSignal, function(message, stackTrace, script)
+	task.defer(ErrorSignal.Connect, ErrorSignal, function(message, stackTraceString, script)
 		if not scripts[script] then
 			return
 		end
@@ -259,50 +250,14 @@ function Module:Init()
 			return
 		end
 
+		local stackTrace = StackTrace.fromScriptContextStackTrace(stackTraceString)
+		local filteredStackTrace = StackTrace.filter(stackTrace, running)
+		local formatted = StackTrace.formatScriptStackTrace(filteredStackTrace)
+
 		ManagerCommunication:Send("error", formatError(running, message))
-		ManagerCommunication:Send("info", "Stack Begin")
-
-		-- Format and filter out sb stack traces
-		local traces = string.split(stackTrace, "\n")
-		local currentStack = running
-		for index = 1, #traces - 1 do -- Last trace is always "" (so we skip it)
-			local source, line, func = string.match(traces[index], "^(.+), line (%d+) %- function (.+)$")
-			if not func then
-				source, line = string.match(traces[index], "^(.+), line (%d+)$")
-			end
-
-			-- Check if the stack is external
-			if source ~= wmSource then
-				if func then
-					ManagerCommunication:Send("info", `Script '{source}', Line {line} - function {func}`)
-				else
-					ManagerCommunication:Send("info", `Script '{source}', Line {line}`)
-				end
-
-				continue
-			end
-
-			line = tonumber(line)
-			if line < vmStart or line > vmEnd then
-				-- If the line is before vmStart or after vmEnd, it's not a user owned stack
-				continue
-			end
-
-			if not currentStack then
-				continue
-			end
-
-			local vmSource, vmLine, vmFunc = getDebugInfo(currentStack)
-			if vmFunc then
-				ManagerCommunication:Send("info", `Script '{vmSource}', Line {vmLine or "?"} - function {vmFunc}`)
-			else
-				ManagerCommunication:Send("info", `Script '{vmSource}', Line {vmLine or "?"}`)
-			end
-
-			currentStack = currentStack.stackParent
+		for _, str in ipairs(formatted) do
+			ManagerCommunication:Send("info", str)
 		end
-
-		ManagerCommunication:Send("info", "Stack End")
 	end)
 end
 

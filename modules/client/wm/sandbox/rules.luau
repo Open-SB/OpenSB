@@ -8,6 +8,7 @@ local renv = getfenv()
 
 local ManagerCommunication = require("@shared/wm/communication")
 local Errors = require("@shared/errors")
+local StackTrace = require("@client/wm/stackTrace")
 
 local Module = {}
 
@@ -42,17 +43,26 @@ function Module.Init(_, Sandbox)
 			local warnThread
 			if not timeOut and typeof(self) == "Instance" then
 				local fullName = GetFullName(self)
+
+				local stackTrace = StackTrace.get(2)
+				local filteredStackTrace = StackTrace.filter(stackTrace) -- Have to to this now due to how getRunning() works
+
 				warnThread = task.delay(5, function()
 					-- Incase the WaitForChild thread stopped yielding (could be because the function threw an error), then don't emit the warning
 					if coroutine.status(parentThread) ~= "suspended" then
 						return
 					end
 
+					local formatted = StackTrace.formatScriptStackTrace(filteredStackTrace)
+
 					-- TODO: Add stacktrace
 					ManagerCommunication:Send(
 						"warn",
 						`Infinite yield possible on '{fullName}:WaitForChild("{childName}")'`
 					)
+					for _, str in ipairs(formatted) do
+						ManagerCommunication:Send("info", str)
+					end
 				end)
 				sandbox.Threads[warnThread] = true
 			end

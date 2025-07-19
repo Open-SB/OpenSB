@@ -12,6 +12,7 @@ local Wrapper = require("./wrapper")
 local Protection = require("@shared/wm/protection")
 local Functions = require("@shared/functions")
 local Errors = require("@shared/errors")
+local StackTrace = require("@server/wm/stackTrace")
 
 local renv = getfenv()
 
@@ -97,18 +98,25 @@ function Module.Init(_, Sandbox)
 			local warnThread
 			if not timeOut and typeof(self) == "Instance" then
 				local fullName = GetFullName(self)
+				local stackTrace = StackTrace.get(2)
+
 				warnThread = task.delay(5, function()
 					-- Incase the WaitForChild thread stopped yielding (could be because the function threw an error), then don't emit the warning
 					if coroutine.status(parentThread) ~= "suspended" then
 						return
 					end
 
-					-- TODO: Add stacktrace
+					local filteredStackTrace = StackTrace.filter(stackTrace)
+					local formatted = StackTrace.formatScriptStackTrace(filteredStackTrace)
+
 					ManagerCommunication:Send(
 						"warn",
 						sandbox.Owner,
 						`Infinite yield possible on '{fullName}:WaitForChild("{childName}")'`
 					)
+					for _, str in ipairs(formatted) do
+						ManagerCommunication:Send("info", sandbox.Owner, str)
+					end
 				end)
 				sandbox.Threads[warnThread] = true
 			end
@@ -150,8 +158,15 @@ function Module.Init(_, Sandbox)
 			assertTerminated(sandbox)
 
 			if type(func) ~= "function" then
-				-- TODO: Add stacktrace
+				local stackTrace = StackTrace.get(2)
+				local filteredStackTrace = StackTrace.filter(stackTrace)
+				local formatted = StackTrace.formatScriptStackTrace(filteredStackTrace)
+
 				ManagerCommunication:Send("error", sandbox.Owner, Errors.connectNonFunction())
+				for _, str in ipairs(formatted) do
+					ManagerCommunication:Send("info", sandbox.Owner, str)
+				end
+
 				return Connect(unwrap(self))
 			end
 
@@ -171,8 +186,15 @@ function Module.Init(_, Sandbox)
 			assertTerminated(sandbox)
 
 			if type(func) ~= "function" then
-				-- TODO: Add stacktrace
+				local stackTrace = StackTrace.get(2)
+				local filteredStackTrace = StackTrace.filter(stackTrace)
+				local formatted = StackTrace.formatScriptStackTrace(filteredStackTrace)
+
 				ManagerCommunication:Send("error", sandbox.Owner, Errors.connectNonFunction())
+				for _, str in ipairs(formatted) do
+					ManagerCommunication:Send("info", sandbox.Owner, str)
+				end
+
 				return ConnectParallel(unwrap(self))
 			end
 
@@ -192,8 +214,15 @@ function Module.Init(_, Sandbox)
 			assertTerminated(sandbox)
 
 			if type(func) ~= "function" then
-				-- TODO: Add stacktrace
+				local stackTrace = StackTrace.get(2)
+				local filteredStackTrace = StackTrace.filter(stackTrace)
+				local formatted = StackTrace.formatScriptStackTrace(filteredStackTrace)
+
 				ManagerCommunication:Send("error", sandbox.Owner, Errors.connectNonFunction())
+				for _, str in ipairs(formatted) do
+					ManagerCommunication:Send("info", sandbox.Owner, str)
+				end
+
 				return Once(unwrap(self))
 			end
 

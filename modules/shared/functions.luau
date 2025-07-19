@@ -53,7 +53,7 @@ end
 
 function Functions.getFunctionName(func: () -> ()): string?
 	local name = debug.info(func, "n")
-	return if #name == 0 then nil else name
+	return if name and #name == 0 then nil else name
 end
 
 do

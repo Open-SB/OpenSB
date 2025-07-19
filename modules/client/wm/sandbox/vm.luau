@@ -44,8 +44,34 @@ local Vector3_new = Vector3.new
 
 local debug_info = debug.info
 
+export type Proto = {
+	maxstacksize: number,
+	numparams: number,
+	nups: number,
+	isvararg: boolean,
+	linedefined: number,
+	debugname: string?,
+
+	sizecode: number,
+	code: any,
+
+	sizek: number,
+	k: any,
+
+	sizep: number,
+	protos: any,
+
+	lineinfoenabled: boolean,
+	instructionlineinfo: { [number]: number }?,
+
+	bytecodeid: any,
+}
+
+export type ClosureInfo = { proto: Proto, sandbox: any, running: RunningInfo }
+export type RunningInfo = { thread: thread, pc: number, closureInfo: ClosureInfo, stackParent: RunningInfo? }
+
 local closureInfo = setmetatable({}, { __mode = "k" })
-local running
+local running: RunningInfo?
 local fmap
 
 local ttisnumber = function(v)
@@ -1505,7 +1531,7 @@ local function luau_load(module, sandbox)
 end
 local vmEnd = debug_info(function() end, "l")
 
-local function getDebugInfo(runningInfo: table): (string, number?, string?)
+local function getDebugInfo(runningInfo: RunningInfo): (string, number?, string?)
 	local closure = runningInfo.closureInfo
 	local proto = closure.proto
 
@@ -1517,7 +1543,7 @@ local function getDebugInfo(runningInfo: table): (string, number?, string?)
 end
 
 local wmSource = debug_info(function() end, "s")
-local function formatError(runningInfo: table, message: string): string
+local function formatError(runningInfo: RunningInfo, message: string): string
 	if string_sub(message, 1, #wmSource) ~= wmSource then -- Level 0 error
 		return message
 	end

@@ -5,11 +5,8 @@ local error = error
 local pcall = pcall
 local rawequal = rawequal
 local loadstring = loadstring
-local getfenv = getfenv
 local coroutine = coroutine
 local game = game
-local debug = debug
-local string = string
 local task = task
 local table = table
 local ipairs = ipairs
@@ -21,6 +18,7 @@ local ManagerCommunication = require("@shared/wm/communication")
 local compile = require("@server/compile")
 local Functions = require("@shared/functions")
 local ScriptTypes = require("@shared/scriptManager/scriptTypes")
+local StackTrace = require("@server/wm/stackTrace")
 
 local CollectionService = game:GetService("CollectionService")
 
@@ -281,40 +279,23 @@ function Module:Init()
 		end,
 	})
 
-	-- Get the source of the worker manager (to filter out stack traces)
-	local wmSource = debug.info(Functions.empty, "s")
-
 	-- Listen for script errors
-	game:GetService("ScriptContext").Error:Connect(function(message, stackTrace, script)
+	game:GetService("ScriptContext").Error:Connect(function(message, stackTraceString, script)
 		local scriptData = scripts[script]
 		if not scriptData then
 			return
 		end
 
 		local player = scriptData.sandbox.Owner
+
+		local stackTrace = StackTrace.fromScriptContextStackTrace(stackTraceString)
+		local filteredStackTrace = StackTrace.filter(stackTrace)
+		local formatted = StackTrace.formatScriptStackTrace(filteredStackTrace)
+
 		ManagerCommunication:Send("error", player, message)
-		ManagerCommunication:Send("info", player, "Stack Begin")
-
-		-- Format and filter out sb stack traces
-		local traces = string.split(stackTrace, "\n")
-		for index = 1, #traces - 1 do -- Last trace is always "" (so we skip it)
-			local source, line, func = string.match(traces[index], "^(.+), line (%d+) %- function (.+)$")
-			if not func then
-				source, line = string.match(traces[index], "^(.+), line (%d+)$")
-			end
-
-			if source == wmSource then
-				continue
-			end
-
-			if func then
-				ManagerCommunication:Send("info", player, `Script '{source}', Line {line} - function {func}`)
-			else
-				ManagerCommunication:Send("info", player, `Script '{source}', Line {line}`)
-			end
+		for _, str in ipairs(formatted) do
+			ManagerCommunication:Send("info", player, str)
 		end
-
-		ManagerCommunication:Send("info", player, "Stack End")
 	end)
 end
 
