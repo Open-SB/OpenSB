@@ -1,8 +1,9 @@
 # ENV file
 .env
 
-# Project place file
-/OpenSB.rbxlx
+# Place files
+/*.rbxl
+/*.rbxlx
 
 # Roblox Studio lock files
 /*.rbxlx.lock

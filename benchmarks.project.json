@@ -1,0 +1,9 @@
+{
+  "name": "OpenSB_Benchmarks",
+  "tree": {
+    "$className": "DataModel",
+    "ServerStorage": {
+      "$path": "./benchmarks"
+    }
+  }
+}

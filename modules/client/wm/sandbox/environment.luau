@@ -171,8 +171,7 @@ local function assertArg(functionName: string, index: number, condition: boolean
 end
 
 local function getArg(index: number, ...): any
-	-- TODO: Check if doing (select(index, ...)) is faster
-	return ({ ... })[index]
+	return (select(index, ...)) -- Wrapped in () to only return 1 value
 end
 
 local function checkArg(functionName: string, expected: { string } | string, index: number, ...): any
@@ -184,13 +183,11 @@ local function checkArg(functionName: string, expected: { string } | string, ind
 
 		local arg = getArg(index, ...)
 		local argType = typeof(arg)
-		for _, expectedType in ipairs(expected) do
-			if argType == expectedType then
-				return arg
-			end
+		if not table.find(expected, argType) then
+			return invalidArg(functionName, index, expected[1] .. " expected, got " .. argType, 2)
 		end
 
-		return invalidArg(functionName, index, expected[1] .. " expected, got " .. argType, 2)
+		return arg
 	end
 
 	if nargs < index then
