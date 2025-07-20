@@ -4,11 +4,11 @@ This file is for use by Benchmarker (https://boatbomber.itch.io/benchmarker)
 |WARNING| THIS RUNS IN YOUR REAL ENVIRONMENT. |WARNING|
 --]]
 
-local parameters = 10
-local N = 2000
+local N = 100
 
 return {
 	ParameterGenerator = function()
+		local parameters = math.random(1, 10)
 		return unpack(table.create(parameters, "value"), 1, parameters)
 	end,
 

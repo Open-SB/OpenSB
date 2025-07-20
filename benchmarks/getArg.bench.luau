@@ -4,12 +4,12 @@ This file is for use by Benchmarker (https://boatbomber.itch.io/benchmarker)
 |WARNING| THIS RUNS IN YOUR REAL ENVIRONMENT. |WARNING|
 --]]
 
-local parameters = 10
-local N = 500
+local N = 100
 
 return {
 	ParameterGenerator = function()
-		return unpack(table.create(parameters, "value"), 1, parameters)
+		local parameters = math.random(1, 10)
+		return parameters, unpack(table.create(parameters, "value"), 1, parameters)
 	end,
 
 	BeforeAll = function() end,
@@ -18,7 +18,7 @@ return {
 	AfterEach = function() end,
 
 	Functions = {
-		["select"] = function(Profiler, ...)
+		["select"] = function(Profiler, parameters, ...)
 			local function getArg(index, ...)
 				return (select(index, ...))
 			end
@@ -34,7 +34,7 @@ return {
 			end
 		end,
 
-		["index"] = function(Profiler, ...)
+		["index"] = function(Profiler, parameters, ...)
 			local function getArg(index, ...)
 				return ({ ... })[index]
 			end
@@ -50,7 +50,7 @@ return {
 			end
 		end,
 
-		["rawget"] = function(Profiler, ...)
+		["rawget"] = function(Profiler, parameters, ...)
 			local function getArg(index, ...)
 				return rawget({ ... }, index)
 			end
