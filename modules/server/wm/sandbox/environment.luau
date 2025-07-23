@@ -309,8 +309,8 @@ function Module:Init()
 
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#error
 	senv.error = function(...)
-		local message = getArg(1, ...)
 		local level = checkOptionalArg("error", "number", 2, ...)
+		local message = ...
 		if rawequal(message, nil) then
 			return error("Error occurred, no output from Lua.", 0)
 		end
@@ -328,7 +328,7 @@ function Module:Init()
 
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#getfenv
 	senv.getfenv = function(...)
-		local stack = getArg(1, ...)
+		local stack = ...
 
 		local stackType = type(stack)
 		if stackType == "number" then
@@ -375,18 +375,17 @@ function Module:Init()
 		local sandbox = getSandbox()
 		assertTerminated(sandbox)
 
-		return (function(...)
-			assertTerminated(sandbox)
+		return (function(_sandbox, ...)
+			assertTerminated(_sandbox)
 			return ...
-		end)(pcall(...))
+		end)(sandbox, pcall(...))
 	end
 	senv.ypcall = senv.pcall
 
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#print
 	senv.print = function(...)
-		local sandbox = getSandbox();
 		(function(...)
-			ManagerCommunication:Send("log", sandbox.Owner, manyToString(...))
+			ManagerCommunication:Send("log", getSandbox().Owner, manyToString(...))
 
 			-- Fire LogService events
 			print(...)
@@ -411,7 +410,7 @@ function Module:Init()
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#setfenv
 	senv.setfenv = function(...)
 		local env = checkArg("setfenv", "table", 2, ...)
-		local stack = getArg(1, ...)
+		local stack = ...
 
 		local stackType = type(stack)
 		if stackType == "number" then
@@ -466,27 +465,22 @@ function Module:Init()
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#xpcall
 	senv.xpcall = function(...)
 		local errorHandler = checkArg("xpcall", "function", 2, ...)
-		local func = getArg(1, ...)
+		local func = ...
 
 		local sandbox = getSandbox()
 		assertTerminated(sandbox)
 
-		return (function(success, result1, ...)
-			assertTerminated(sandbox)
+		return (function(_sandbox, _errorHandler, success, message, ...)
+			assertTerminated(_sandbox)
 			if success then
-				return true, result1, ...
+				return true, message, ...
 			end
 
-			return (function(errorHandlerSuccess, result)
-				assertTerminated(sandbox)
-				if errorHandlerSuccess then
-					-- The error handler in xpcall can only return 1 value
-					return false, result
-				end
+			local errorHandlerSuccess, result = pcall(_errorHandler, message)
+			assertTerminated(_sandbox)
 
-				return false, "error in error handling"
-			end)(pcall(errorHandler, result1))
-		end)(pcall(func, select(3, ...)))
+			return false, if errorHandlerSuccess then result else "error in error handling"
+		end)(sandbox, errorHandler, pcall(func, select(3, ...)))
 	end
 
 	--[[
@@ -514,17 +508,17 @@ function Module:Init()
 			return error("delay function requires 2 arguments", seekSafeLevel())
 		end
 
-		local delayTime, callback = ...
 		local sandbox = getSandbox()
 		assertTerminated(sandbox)
 
-		sandbox.Threads[task.spawn(function()
-			callback((function(...)
-				assertTerminated(sandbox)
-				return ...
-			end)(renv.wait(delayTime)))
-		end)] =
+		sandbox.Threads[task.spawn(function(_sandbox, delayTime, callback)
+			local delta, total = renv.wait(delayTime)
+			assertTerminated(_sandbox)
+			callback(delta, total)
+		end, sandbox, ...)] =
 			true
+
+		return
 	end
 
 	-- delay == Delay is false
@@ -558,7 +552,7 @@ function Module:Init()
 
 	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#require
 	senv.require = function(...)
-		local target = getArg(1, ...)
+		local target = ...
 		if typeof(target) ~= "Instance" and type(target) ~= "string" then
 			target = Functions.toCDouble(target) or target
 		end
@@ -579,17 +573,17 @@ function Module:Init()
 			return error("Spawn function requires 1 argument", seekSafeLevel())
 		end
 
-		local callback = ...
 		local sandbox = getSandbox()
 		assertTerminated(sandbox)
 
-		sandbox.Threads[task.spawn(function()
-			callback((function(...)
-				assertTerminated(sandbox)
-				return ...
-			end)(renv.wait()))
-		end)] =
+		sandbox.Threads[task.spawn(function(_sandbox, callback)
+			local delta, total = renv.wait()
+			assertTerminated(_sandbox)
+			callback(delta, total)
+		end, sandbox, ...)] =
 			true
+
+		return
 	end
 
 	-- spawn == Spawn is false
@@ -620,17 +614,16 @@ function Module:Init()
 		local sandbox = getSandbox()
 		assertTerminated(sandbox)
 
-		return (function(...)
-			assertTerminated(sandbox)
-			return ...
-		end)(renv.wait(...))
+		local delta, total = renv.wait(...)
+		assertTerminated(sandbox)
+
+		return delta, total
 	end
 
 	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#warn
 	senv.warn = function(...)
-		local sandbox = getSandbox();
 		(function(...)
-			ManagerCommunication:Send("warn", sandbox.Owner, manyToString(...))
+			ManagerCommunication:Send("warn", getSandbox().Owner, manyToString(...))
 
 			-- Fire LogService events
 			warn(...)
@@ -652,14 +645,12 @@ function Module:Init()
 	senv.coroutine = replaceLibrary(renv.coroutine, function(l, rl)
 		-- https://create.roblox.com/docs/reference/engine/libraries/coroutine#close
 		l.close = function(...)
-			local thread = ...
-
 			-- Just a lazy way to not having to do our own typechecking to avoid unnecessary work
-			return (function(...)
+			return (function(thread, ...)
 				getSandbox().Threads[thread] = nil
 
 				return ...
-			end)(coroutine.close(...))
+			end)((...), coroutine.close(...))
 		end
 
 		-- https://create.roblox.com/docs/reference/engine/libraries/coroutine#create
@@ -722,10 +713,10 @@ function Module:Init()
 			local sandbox = getSandbox()
 			assertTerminated(sandbox)
 
-			return (function(...)
-				assertTerminated(sandbox)
+			return (function(_sandbox, ...)
+				assertTerminated(_sandbox)
 				return ...
-			end)(coroutine.yield(...))
+			end)(sandbox, coroutine.yield(...))
 		end
 	end)
 
@@ -774,7 +765,7 @@ function Module:Init()
 
 		-- https://create.roblox.com/docs/reference/engine/libraries/debug#info
 		r.info = function(...)
-			local stack = getArg(1, ...)
+			local stack = ...
 			local optionsIndex = 2
 
 			local stackType = type(stack)
@@ -897,16 +888,16 @@ function Module:Init()
 			local sandbox = getSandbox()
 			assertTerminated(sandbox)
 
-			return (function(...)
-				assertTerminated(sandbox)
-				return ...
-			end)(task.wait(...))
+			local delta = task.wait(...)
+			assertTerminated(sandbox)
+
+			return delta
 		end
 
 		-- https://create.roblox.com/docs/reference/engine/libraries/task#cancel
-		l.cancel = function(thread)
-			task.cancel(thread)
-			getSandbox().Threads[thread] = nil
+		l.cancel = function(...)
+			task.cancel(...)
+			getSandbox().Threads[(...)] = nil
 		end
 	end)
 

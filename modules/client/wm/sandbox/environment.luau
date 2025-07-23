@@ -294,8 +294,8 @@ function Module:Init()
 
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#error
 	senv.error = function(...)
-		local message = getArg(1, ...)
 		local level = checkOptionalArg("error", "number", 2, ...)
+		local message = ...
 		if rawequal(message, nil) then
 			return error("Error occurred, no output from Lua.", 0)
 		end
@@ -313,7 +313,7 @@ function Module:Init()
 
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#getfenv
 	senv.getfenv = function(...)
-		local stack = getArg(1, ...)
+		local stack = ...
 
 		local stackType = type(stack)
 		if stackType == "number" then
@@ -396,7 +396,7 @@ function Module:Init()
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#setfenv
 	senv.setfenv = function(...)
 		local env = checkArg("setfenv", "table", 2, ...)
-		local stack = getArg(1, ...)
+		local stack = ...
 
 		local stackType = type(stack)
 		if stackType == "number" then
@@ -444,14 +444,20 @@ function Module:Init()
 
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#xpcall
 	senv.xpcall = function(...)
-		local err = checkArg("xpcall", "function", 2, ...)
-		local func = getArg(1, ...)
+		local errorHandler = checkArg("xpcall", "function", 2, ...)
+		local func = ...
 
-		return renv.xpcall(fmap[func] or func, function(message)
+		return (function(_errorHandler, success, message, ...)
+			if success then
+				return true, message, ...
+			end
+
 			local running = getRunning()
+			local errorHandlerSuccess, result =
+				pcall(fmap[_errorHandler] or _errorHandler, if running then formatError(running, message) else message)
 
-			return (fmap[err] or err)(if running then formatError(running, message) else message)
-		end, select(3, ...))
+			return false, if errorHandlerSuccess then result else "error in error handling"
+		end)(errorHandler, pcall(fmap[func] or func, select(3, ...)))
 	end
 
 	--[[
@@ -479,10 +485,12 @@ function Module:Init()
 			return error("delay function requires 2 arguments", seekSafeLevel())
 		end
 
-		local delayTime, callback = ...
-		getSandbox().Threads[task.spawn(function()
+		getSandbox().Threads[task.spawn(function(delayTime, callback)
 			(fmap[callback] or callback)(renv.wait(delayTime))
-		end)] = true
+		end, ...)] =
+			true
+
+		return
 	end
 
 	-- delay == Delay is false
@@ -495,19 +503,18 @@ function Module:Init()
 
 	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#printidentity
 	senv.printidentity = function(...)
-		local sandbox = getSandbox()
 		local length = select("#", ...)
 
 		-- This will always print that the current identity is 2 in the SB console (you shouldn't really be able to escalate permissions in the first place)
 		if length > 0 then
 			local last = ({ ... })[length]
 			if type(last) == "string" or type(last) == "number" then
-				ManagerCommunication:Send("log", sandbox.Owner, last .. " 2")
+				ManagerCommunication:Send("log", last .. " 2")
 			else
-				ManagerCommunication:Send("log", sandbox.Owner, "(null) 2")
+				ManagerCommunication:Send("log", "(null) 2")
 			end
 		else
-			ManagerCommunication:Send("log", sandbox.Owner, "Current identity is 2")
+			ManagerCommunication:Send("log", "Current identity is 2")
 		end
 
 		-- Fire LogService events
@@ -516,7 +523,7 @@ function Module:Init()
 
 	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#require
 	senv.require = function(...)
-		local target = getArg(1, ...)
+		local target = ...
 		if typeof(target) ~= "Instance" and type(target) ~= "string" then
 			target = Functions.toCDouble(target) or target
 		end
@@ -537,10 +544,12 @@ function Module:Init()
 			return error("Spawn function requires 1 argument", seekSafeLevel())
 		end
 
-		local callback = ...
-		getSandbox().Threads[task.spawn(function()
+		getSandbox().Threads[task.spawn(function(callback)
 			(fmap[callback] or callback)(renv.wait())
-		end)] = true
+		end, ...)] =
+			true
+
+		return
 	end
 
 	-- spawn == Spawn is false
@@ -586,14 +595,12 @@ function Module:Init()
 	senv.coroutine = replaceLibrary(renv.coroutine, function(l, rl)
 		-- https://create.roblox.com/docs/reference/engine/libraries/coroutine#close
 		l.close = function(...)
-			local thread = ...
-
 			-- Just a lazy way to not having to do our own typechecking to avoid unnecessary work
-			return (function(...)
+			return (function(thread, ...)
 				getSandbox().Threads[thread] = nil
 
 				return ...
-			end)(coroutine.close(...))
+			end)((...), coroutine.close(...))
 		end
 
 		-- https://create.roblox.com/docs/reference/engine/libraries/coroutine#create
@@ -704,7 +711,7 @@ function Module:Init()
 
 		-- https://create.roblox.com/docs/reference/engine/libraries/debug#info
 		r.info = function(...)
-			local stack = getArg(1, ...)
+			local stack = ...
 			local optionsIndex = 2
 
 			local stackType = type(stack)
@@ -818,7 +825,7 @@ function Module:Init()
 	senv.task = replaceLibrary(renv.task, function(l, rl)
 		-- https://create.roblox.com/docs/reference/engine/libraries/task#spawn
 		l.spawn = function(...)
-			local func = getArg(1, ...)
+			local func = ...
 			local thread = task.spawn(if type(func) == "function" then (fmap[func] or func) else func, select(2, ...))
 			getSandbox().Threads[thread] = true
 
@@ -827,7 +834,7 @@ function Module:Init()
 
 		-- https://create.roblox.com/docs/reference/engine/libraries/task#defer
 		l.defer = function(...)
-			local func = getArg(1, ...)
+			local func = ...
 			local thread = task.defer(if type(func) == "function" then (fmap[func] or func) else func, select(2, ...))
 			getSandbox().Threads[thread] = true
 
@@ -836,12 +843,9 @@ function Module:Init()
 
 		-- https://create.roblox.com/docs/reference/engine/libraries/task#delay
 		l.delay = function(...)
-			local func = getArg(2, ...)
-			local thread = task.delay(
-				getArg(1, ...),
-				if type(func) == "function" then (fmap[func] or func) else func,
-				select(3, ...)
-			)
+			local duration, func = ...
+			local thread =
+				task.delay(duration, if type(func) == "function" then (fmap[func] or func) else func, select(3, ...))
 			getSandbox().Threads[thread] = true
 
 			return thread
@@ -857,9 +861,9 @@ function Module:Init()
 		l.wait = rl.wait
 
 		-- https://create.roblox.com/docs/reference/engine/libraries/task#cancel
-		l.cancel = function(thread)
-			task.cancel(thread)
-			getSandbox().Threads[thread] = nil
+		l.cancel = function(...)
+			task.cancel(...)
+			getSandbox().Threads[(...)] = nil
 		end
 	end)
 
@@ -922,7 +926,8 @@ function Module:Init()
 				return error(Errors.createBlockedClass(className), 0) -- Roblox seems to be throwing Instance.new errors at level 0
 			end
 
-			return new(className, getArg(2, ...))
+			local _, parent = ...
+			return new(className, parent)
 		end
 
 		-- https://create.roblox.com/docs/reference/engine/datatypes/Instance#fromExisting
@@ -933,7 +938,7 @@ function Module:Init()
 				return error(Errors.createBlockedClass(existingInstance.ClassName), 0) -- Roblox seems to be throwing Instance.fromExisting errors at level 0
 			end
 
-			return fromExisting(existingInstance, getArg(2, ...))
+			return fromExisting(existingInstance)
 		end
 	end)
 
