@@ -440,7 +440,7 @@ function Module:Init()
 	senv.tostring = renv.tostring
 
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#type
-	senv.type = renv.typeof
+	senv.type = renv.type
 
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#unpack
 	senv.unpack = renv.unpack
