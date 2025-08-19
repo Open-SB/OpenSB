@@ -281,6 +281,10 @@ function Base64.Decode(Input: buffer): buffer
 	local Padding, DecodeLUT = PADDING_CHARACTER, DECODE_TABLE
 	local InputLength = buffer.len(Input)
 
+	if InputLength == 0 then
+		return buffer.create(0)
+	end
+
 	local PaddingCount = 0
 	if InputLength > 0 and buffer.readu8(Input, InputLength - 1) == Padding then
 		PaddingCount = 1
@@ -291,7 +295,6 @@ function Base64.Decode(Input: buffer): buffer
 
 	local OutputLength = (InputLength / 4) * 3 - PaddingCount
 	local Output = buffer.create(OutputLength)
-
 	local InputChunks = InputLength // 4
 
 	local DoubleChunks = (InputChunks - 1) // 2
@@ -331,9 +334,9 @@ function Base64.Decode(Input: buffer): buffer
 	end
 
 	local ProcessedChunks = DoubleChunks * 2
-	if ProcessedChunks < InputChunks then
-		local InputIndex = ProcessedChunks * 4
-		local OutputIndex = ProcessedChunks * 3
+	for ChunkIndex = ProcessedChunks + 1, InputChunks do
+		local InputIndex = (ChunkIndex - 1) * 4
+		local OutputIndex = (ChunkIndex - 1) * 3
 
 		local Char1 = buffer.readu8(Input, InputIndex)
 		local Char2 = buffer.readu8(Input, InputIndex + 1)
@@ -347,14 +350,16 @@ function Base64.Decode(Input: buffer): buffer
 
 		local Combined = bit32.bor(bit32.lshift(Value1, 18), bit32.lshift(Value2, 12), bit32.lshift(Value3, 6), Value4)
 
-		if OutputIndex < OutputLength then
+		local BytesToWrite = math.min(3, OutputLength - OutputIndex)
+
+		if BytesToWrite >= 1 then
 			buffer.writeu8(Output, OutputIndex, bit32.band(bit32.rshift(Combined, 16), 255))
-			if OutputIndex + 1 < OutputLength then
-				buffer.writeu8(Output, OutputIndex + 1, bit32.band(bit32.rshift(Combined, 8), 255))
-				if OutputIndex + 2 < OutputLength then
-					buffer.writeu8(Output, OutputIndex + 2, bit32.band(Combined, 255))
-				end
-			end
+		end
+		if BytesToWrite >= 2 then
+			buffer.writeu8(Output, OutputIndex + 1, bit32.band(bit32.rshift(Combined, 8), 255))
+		end
+		if BytesToWrite >= 3 then
+			buffer.writeu8(Output, OutputIndex + 2, bit32.band(Combined, 255))
 		end
 	end
 
