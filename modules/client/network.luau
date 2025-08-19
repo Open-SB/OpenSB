@@ -11,33 +11,41 @@ local ClientRequestMethod = RequestMethods.Client
 local Log = require("@shared/log")
 local Functions = require("@shared/functions")
 local Signal = require("@shared/signal")
-local EdDSA = require("@shared/crypto/EdDSA")
-local Base64 = require("@shared/crypto/base64")
-local Blake3 = require("@shared/crypto/blake3")
+local MLDSA87 = require("@shared/crypto/MlDSA").ML_DSA_87
+local MLKEM1024 = require("@shared/crypto/MlKEM").MLKEM_1024
 local AEAD = require("@shared/crypto/AEAD")
+local CSPRNG = require("@shared/crypto/CSPRNG")
+local Base64 = require("@shared/crypto/base64")
 local Encoding = require("@shared/network/encoding")
-
-local MaskedX25519 = EdDSA.MaskedX25519
+local Utils = require("@shared/network/utils")
 
 local localPlayer = Players.LocalPlayer
 local attributeName, attributeValue
 
 local Network = {}
 
-local serverPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.serverPublicKey))
-local maskedServerPublicKey: buffer? = nil
+local dsaServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.dsaServerPublicKey))
+local kemServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.kemServerPublicKey))
 local networkStaticValue: buffer? = nil
 
-local clientPrivateKey: buffer = EdDSA.CSPRNG.Ed25519Random()
-local clientPublicKey: buffer = EdDSA.PublicKey(clientPrivateKey)
+-- add extra entropy
+do
+	local HttpService = game:GetService("HttpService")
+	local seed = ""
 
-local maskedClientPrivateKey = MaskedX25519.Mask(clientPrivateKey)
-local maskedClientPublicKey = MaskedX25519.PublicKey(maskedClientPrivateKey)
+	for _ = 1, 128 do
+		seed ..= HttpService:GenerateGUID(false)
+	end
+
+	CSPRNG.Instance:GatherEntropy(buffer.fromstring(seed))
+end
+
+local kemClientPublicKey: buffer, _kemClientPrivateKey: buffer = MLKEM1024.GenerateKeys()
 
 local clientNonce = -1 -- Last client used nonce, next nonce to use should be this + 1
 local lastServerNonce = -1 -- Last nonce server sent, new nonces should always be greater than this one
 
-local hasExchanged = false
+local _hasExchanged = false
 
 local registeredEvents: { [string]: (...unknown) -> nil } = {}
 function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
@@ -195,12 +203,12 @@ function Network:InvokeServer(functionName: string, ...)
 		)
 	end
 
-	return (function(...)
+	return (function(signal, ...)
 		invokeResults[id] = nil
 		signal:Destroy()
 
 		return ...
-	end)(signal:Wait())
+	end)(signal, signal:Wait())
 end
 
 local function connectRemote(service: Instance, remote: RemoteFunction)
@@ -209,46 +217,48 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 	end
 
 	if not networkStaticValue then
-		local returnedPublicKeyMasked, returnedPublicKeyMaskedSignature =
-			remote:InvokeServer(ServerRequestMethod.KeyExchange, maskedClientPublicKey)
+		local ciphertext, sharedSecret = MLKEM1024.Encapsulate(kemServerPublicKey, CSPRNG.RandomBytes(32))
 
-		if type(returnedPublicKeyMasked) ~= "buffer" or type(returnedPublicKeyMaskedSignature) ~= "buffer" then
+		local messageSignature, message =
+			remote:InvokeServer(ServerRequestMethod.KeyExchange, kemClientPublicKey, ciphertext)
+
+		if type(messageSignature) ~= "buffer" or type(message) ~= "buffer" then
 			return Log.warn(
 				`Key exchange failed on remote "{remote:GetFullName()}" (invalid arguments: expected buffer, buffer but got {typeof(
-					returnedPublicKeyMasked
-				)}, {typeof(returnedPublicKeyMaskedSignature)}`
+					messageSignature
+				)}, {typeof(message)}`
 			)
 		end
 
-		if buffer.len(returnedPublicKeyMasked) ~= 32 then
+		if buffer.len(messageSignature) ~= MLDSA87.SigByteLen then
 			return Log.warn(
-				`Key exchange failed on remote "{remote:GetFullName()}" (buffer length is not 32, got {buffer.len(
-					returnedPublicKeyMasked
+				`Key exchange failed on remote "{remote:GetFullName()}" (buffer length is not {MLDSA87.SigByteLen}, got {buffer.len(
+					messageSignature
 				)})`
 			)
 		end
 
-		if not EdDSA.Verify(serverPublicKey, returnedPublicKeyMasked, returnedPublicKeyMaskedSignature) then
+		if not MLDSA87.Verify(dsaServerPublicKey, message, Utils.getDsaContext(localPlayer), messageSignature) then
 			return Log.warn(
 				`Key exchange failed on remote "{remote:GetFullName()}" (invalid server public key signature)`
 			)
 		end
 
-		-- ensure server does not try and screw us over
-		if maskedServerPublicKey and maskedServerPublicKey ~= returnedPublicKeyMasked then
-			return Log.warn(
-				"Key exchange failed! Server already gave one masked public key, and attempted to change it."
+		local messageSplit = string.split(buffer.tostring(message), "@")
+		local messageType: "alreadyExchanged" | "exchanged" = messageSplit[1] :: any
+
+		if messageType == "alreadyExchanged" then
+			localPlayer:Kick(
+				"[SB Client] A localscript succeeded a key exchange on your client; try rejoining. (an mitm attack was prevented)"
 			)
+
+			return
 		end
 
-		maskedServerPublicKey = returnedPublicKeyMasked
-
-		local staticSecret, _clientEphemeral =
-			MaskedX25519.Exchange(maskedClientPrivateKey, maskedServerPublicKey :: buffer)
-		networkStaticValue = Blake3.Digest(staticSecret, 32)
+		networkStaticValue = sharedSecret
 	end
 
-	local check = EdDSA.CSPRNG.RandomString(32)
+	local check = CSPRNG.RandomString(32)
 
 	local ciphertext, nonce, tag, instanceArray =
 		remote:InvokeServer(ServerRequestMethod.Handshake, encryptAnything(check))

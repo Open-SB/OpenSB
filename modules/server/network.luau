@@ -10,25 +10,39 @@ local ClientRequestMethod = RequestMethods.Client
 
 local Log = require("@shared/log")
 local Functions = require("@shared/functions")
-local EdDSA = require("@shared/crypto/EdDSA")
-local Base64 = require("@shared/crypto/base64")
-local Blake3 = require("@shared/crypto/blake3")
+local MLDSA87 = require("@shared/crypto/MlDSA").ML_DSA_87
+local MLKEM = require("@shared/crypto/MlKEM").MLKEM_1024
+local CSPRNG = require("@shared/crypto/CSPRNG")
 local AEAD = require("@shared/crypto/AEAD")
+local Base64 = require("@shared/crypto/base64")
 local Encoding = require("@shared/network/encoding")
 local Protection = require("@shared/protection")
 local PlayerList = require("@shared/playerList")
 
-local MaskedX25519 = EdDSA.MaskedX25519
+local Utils = require("@shared/network/utils")
 
-local serverPrivateKey = Base64.Decode(buffer.fromstring(_G.serverPrivateKey))
-local serverPublicKey = EdDSA.PublicKey(serverPrivateKey)
+-- add extra entropy
+do
+	local HttpService = game:GetService("HttpService")
+	local seed = ""
 
-local maskedServerPrivateKey = MaskedX25519.Mask(serverPrivateKey)
-local serverPublicKeyMasked = MaskedX25519.PublicKey(maskedServerPrivateKey)
+	for _ = 1, 128 do
+		seed ..= HttpService:GenerateGUID(false)
+	end
+
+	CSPRNG.Instance:GatherEntropy(buffer.fromstring(seed))
+end
+
+local dsaServerPrivateKey: buffer = Base64.Decode(buffer.fromstring(_G.dsaServerPrivateKey))
+-- local dsaServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.dsaServerPublicKey))
+
+local kemServerPrivateKey: buffer = Base64.Decode(buffer.fromstring(_G.kemServerPrivateKey))
+-- local kemServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.kemServerPublicKey))
 
 local clientNetworkData: {
 	[Player]: {
-		maskedKey: buffer,
+		kemPublicKey: buffer,
+
 		staticKey: buffer,
 
 		nonce: number, -- Last server used nonce, next nonce to use should be this + 1
@@ -39,7 +53,6 @@ local clientNetworkData: {
 
 local connectedPlayers: { [Player]: boolean } = {} -- We keep track of players that have successfully connected to the remote, so we don't accidentally send stuff to them without them actually listening to the remote
 local exchanged: { [Player]: boolean } = {} -- We lock keys after the first handshake
-
 PlayerList.Removed:Connect(function(player: Player)
 	clientNetworkData[player] = nil
 	connectedPlayers[player] = nil
@@ -145,33 +158,58 @@ local function onRequest(player: Player, requestType, ...): ...any
 
 	if requestType == ServerRequestMethod.KeyExchange then
 		if exchanged[player] then
+			local outputSignature = buffer.create(MLDSA87.SigByteLen)
+			local messageToSign = buffer.fromstring("alreadyExchanged@" .. os.time()) -- this can be static because of randomness, but still
+			local randomness = CSPRNG.RandomBytes(MLDSA87.SigningSeedByteLen)
+
+			local signSuccess = MLDSA87.Sign(
+				randomness,
+				dsaServerPrivateKey,
+				messageToSign,
+				Utils.getDsaContext(player),
+				outputSignature
+			)
+
+			if signSuccess then
+				return outputSignature, messageToSign
+			end
+		end
+
+		local kemPublicKey, kemCiphertext = ...
+
+		if type(kemPublicKey) ~= "buffer" or buffer.len(kemPublicKey) ~= Utils.ML_KEM_1024_PUBLIC_KEY_SIZE then
 			return
 		end
 
-		local maskedClientPublicKey = ...
-		if type(maskedClientPublicKey) ~= "buffer" or buffer.len(maskedClientPublicKey) ~= 32 then
+		if type(kemCiphertext) ~= "buffer" or buffer.len(kemCiphertext) ~= Utils.ML_KEM_1024_CIPHERTEXT_SIZE then
 			return
 		end
 
-		if
-			clientNetworkData[player] ~= nil
-			and buffer.tostring(clientNetworkData[player].maskedKey) ~= buffer.tostring(maskedClientPublicKey)
-		then
-			-- player should not be able to change their masked public key
+		local sharedSecret = MLKEM.Decapsulate(kemServerPrivateKey, kemCiphertext)
+
+		if clientNetworkData[player] == nil then
+			clientNetworkData[player] = {
+				kemPublicKey = kemPublicKey,
+				staticKey = sharedSecret,
+				nonce = -1,
+				lastNonce = -1,
+			}
+		end
+
+		local outputSignature = buffer.create(MLDSA87.SigByteLen)
+		local messageToSign = buffer.fromstring("exchanged@" .. os.time()) -- this can be static because of randomness, but still
+		local randomness = CSPRNG.RandomBytes(MLDSA87.SigningSeedByteLen)
+
+		local signSuccess =
+			MLDSA87.Sign(randomness, dsaServerPrivateKey, messageToSign, Utils.getDsaContext(player), outputSignature)
+
+		if not signSuccess then
 			return
 		end
 
-		local staticSecret, _serverEphemeral = MaskedX25519.Exchange(maskedServerPrivateKey, maskedClientPublicKey)
-		staticSecret = Blake3.Digest(staticSecret, 32)
+		exchanged[player] = true
 
-		if clientNetworkData[player] ~= nil then
-			clientNetworkData[player].staticKey = staticSecret
-		else
-			clientNetworkData[player] =
-				{ maskedKey = maskedClientPublicKey, staticKey = staticSecret, nonce = -1, lastNonce = -1 }
-		end
-
-		return serverPublicKeyMasked, EdDSA.Sign(serverPrivateKey, serverPublicKey, serverPublicKeyMasked)
+		return outputSignature, messageToSign
 	elseif requestType == ServerRequestMethod.Handshake then
 		local check = decryptFromPlayerAndVarargs(player, ...)
 		if type(check) ~= "string" then
