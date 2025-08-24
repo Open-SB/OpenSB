@@ -13,10 +13,8 @@ local Functions = require("@shared/functions")
 local Signal = require("@shared/signal")
 local MLDSA87 = require("@shared/crypto/MlDSA").ML_DSA_87
 local MLKEM1024 = require("@shared/crypto/MlKEM").MLKEM_1024
-local AEAD = require("@shared/crypto/AEAD")
 local CSPRNG = require("@shared/crypto/CSPRNG")
 local Base64 = require("@shared/crypto/base64")
-local Encoding = require("@shared/network/encoding")
 local Utils = require("@shared/network/utils")
 
 local localPlayer = Players.LocalPlayer
@@ -26,15 +24,18 @@ local Network = {}
 
 local dsaServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.dsaServerPublicKey))
 local kemServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.kemServerPublicKey))
-local networkStaticValue: buffer? = nil
 
 -- add extra entropy
 CSPRNG.Instance:GatherEntropy(Utils.generateEntropy())
 
 local kemClientPublicKey: buffer, _kemClientPrivateKey: buffer = MLKEM1024.GenerateKeys()
 
-local clientNonce = -1 -- Last client used nonce, next nonce to use should be this + 1
-local lastServerNonce = -1 -- Last nonce server sent, new nonces should always be greater than this one
+local networkData = {
+	staticKey = nil :: buffer?,
+
+	nonce = -1,
+	lastNonce = -1,
+}
 
 local registeredEvents: { [string]: (...unknown) -> nil } = {}
 function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
@@ -45,61 +46,14 @@ function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
 	registeredEvents[name] = callback
 end
 
-local function padNonce(nonce: number): buffer
-	local buf = buffer.create(12)
-	buffer.writeu32(buf, 0, nonce)
-
-	return buf
+local function encryptAnything(data)
+	assert(networkData.staticKey, "network static value not obtained yet")
+	return Utils.encryptAnything(networkData :: Utils.networkData, data)
 end
 
-local function encryptBuffer(data: buffer): (buffer, number, buffer)
-	assert(networkStaticValue, "network static value not obtained yet")
-
-	clientNonce += 1
-
-	local ciphertext, tag = AEAD.Encrypt(data, networkStaticValue, padNonce(clientNonce))
-	return ciphertext, clientNonce, tag
-end
-
-local function encryptAnything(data: any): (buffer, number, buffer, { Instance })
-	local encodedData, instancesArray = Encoding.encode(data)
-	local ciphertext, nonce, tag = encryptBuffer(encodedData)
-
-	return ciphertext, nonce, tag, instancesArray
-end
-
-local function decryptBuffer(ciphertext: buffer, nonce: number, tag: buffer): buffer
-	assert(networkStaticValue, "network static value not obtained yet")
-
-	return assert(
-		AEAD.Decrypt(ciphertext, networkStaticValue, padNonce(nonce), tag),
-		"failed decrypting data with aead"
-	)
-end
-
-local function decryptAnything(ciphertext: buffer, nonce: number, tag: buffer, instanceArray: { Instance }): any
-	return Encoding.decode(decryptBuffer(ciphertext, nonce, tag), instanceArray)
-end
-
-local function decryptWithUnknownVarargs(ciphertext, nonce, tag, instanceArray): any?
-	if
-		type(ciphertext) ~= "buffer"
-		or type(nonce) ~= "number"
-		or type(tag) ~= "buffer"
-		or type(instanceArray) ~= "table"
-	then
-		return nil
-	end
-
-	if nonce <= lastServerNonce then
-		-- This is a replayed nonce
-		return nil
-	end
-
-	local data = decryptAnything(ciphertext, nonce, tag, instanceArray :: { Instance })
-	lastServerNonce = nonce
-
-	return data
+local function decryptWithUnknownVarargs(ciphertext, nonce, tag, instanceArray)
+	assert(networkData.staticKey, "network static value not obtained yet")
+	return Utils.decryptAnythingAndVerify(networkData :: Utils.networkData, ciphertext, nonce, tag, instanceArray)
 end
 
 local remotes: { [RemoteFunction]: Instance } = {}
@@ -203,7 +157,7 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 		return
 	end
 
-	if not networkStaticValue then
+	if not networkData.staticKey then
 		local ciphertext, sharedSecret = MLKEM1024.Encapsulate(kemServerPublicKey, CSPRNG.RandomBytes(32))
 
 		local messageSignature, message =
@@ -242,7 +196,7 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 			return
 		end
 
-		networkStaticValue = sharedSecret
+		networkData.staticKey = sharedSecret
 	end
 
 	local check = CSPRNG.RandomString(32)
@@ -251,7 +205,7 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 		remote:InvokeServer(ServerRequestMethod.Handshake, encryptAnything(check))
 
 	local function reexchange()
-		networkStaticValue = nil
+		networkData.staticKey = nil
 		return connectRemote(service, remote)
 	end
 

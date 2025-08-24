@@ -13,9 +13,7 @@ local Functions = require("@shared/functions")
 local MLDSA87 = require("@shared/crypto/MlDSA").ML_DSA_87
 local MLKEM = require("@shared/crypto/MlKEM").MLKEM_1024
 local CSPRNG = require("@shared/crypto/CSPRNG")
-local AEAD = require("@shared/crypto/AEAD")
 local Base64 = require("@shared/crypto/base64")
-local Encoding = require("@shared/network/encoding")
 local Protection = require("@shared/protection")
 local PlayerList = require("@shared/playerList")
 
@@ -71,67 +69,18 @@ function Network:RegisterFunction(name: string, callback: (...unknown) -> ...unk
 	registeredFunctions[name] = callback
 end
 
-local function padNonce(nonce: number): buffer
-	local buf = buffer.create(12)
-	buffer.writeu32(buf, 0, nonce)
-
-	return buf
-end
-
-local function encryptBufferForPlayer(player: Player, data: buffer): (buffer, number, buffer)
+local function encryptAnythingForPlayer(player: Player, data)
 	local networkData = clientNetworkData[player]
-	networkData.nonce += 1
+	assert(networkData, `Failed to get network data for {player}`)
 
-	local ciphertext, tag = AEAD.Encrypt(data, networkData.staticKey, padNonce(networkData.nonce))
-	return ciphertext, networkData.nonce, tag
+	return Utils.encryptAnything(networkData, data)
 end
 
-local function encryptAnythingForPlayer(player: Player, data: any): (buffer, number, buffer, { Instance })
-	local encodedData, instancesArray = Encoding.encode(data)
-	local ciphertext, nonce, tag = encryptBufferForPlayer(player, encodedData)
-
-	return ciphertext, nonce, tag, instancesArray
-end
-
-local function decryptRawBufferWithPlayer(player: Player, ciphertext: buffer, nonce: number, tag: buffer): buffer
+local function decryptFromPlayerAndVarargs(player: Player, ciphertext, nonce, tag, instanceArray)
 	local networkData = clientNetworkData[player]
+	assert(networkData, `Failed to get network data for {player}`)
 
-	return assert(
-		AEAD.Decrypt(ciphertext, networkData.staticKey, padNonce(nonce), tag),
-		"failed decrypting data with aead"
-	)
-end
-
-local function decryptAnythingWithPlayer(
-	player: Player,
-	ciphertext: buffer,
-	nonce: number,
-	tag: buffer,
-	instanceArray: { Instance }
-): any
-	return Encoding.decode(decryptRawBufferWithPlayer(player, ciphertext, nonce, tag), instanceArray)
-end
-
-local function decryptFromPlayerAndVarargs(player: Player, ciphertext, nonce, tag, instanceArray): any
-	if
-		type(ciphertext) ~= "buffer"
-		or type(nonce) ~= "number"
-		or type(tag) ~= "buffer"
-		or type(instanceArray) ~= "table"
-	then
-		return nil
-	end
-
-	local networkData = clientNetworkData[player]
-	if nonce <= networkData.lastNonce then
-		-- This is a replayed nonce
-		return nil
-	end
-
-	local data = decryptAnythingWithPlayer(player, ciphertext, nonce, tag, instanceArray :: { Instance })
-	networkData.lastNonce = nonce
-
-	return data
+	return Utils.decryptAnythingAndVerify(networkData, ciphertext, nonce, tag, instanceArray)
 end
 
 local remote: RemoteFunction, remoteParent: Instance
