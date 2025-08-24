@@ -22,16 +22,7 @@ local PlayerList = require("@shared/playerList")
 local Utils = require("@shared/network/utils")
 
 -- add extra entropy
-do
-	local HttpService = game:GetService("HttpService")
-	local seed = ""
-
-	for _ = 1, 128 do
-		seed ..= HttpService:GenerateGUID(false)
-	end
-
-	CSPRNG.Instance:GatherEntropy(buffer.fromstring(seed))
-end
+CSPRNG.Instance:GatherEntropy(Utils.generateEntropy())
 
 local dsaServerPrivateKey: buffer = Base64.Decode(buffer.fromstring(_G.dsaServerPrivateKey))
 -- local dsaServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.dsaServerPublicKey))
@@ -104,13 +95,9 @@ end
 
 local function decryptRawBufferWithPlayer(player: Player, ciphertext: buffer, nonce: number, tag: buffer): buffer
 	local networkData = clientNetworkData[player]
+
 	return assert(
-		AEAD.Decrypt(
-			ciphertext,
-			assert(networkData.staticKey, "network static value not obtained yet"),
-			padNonce(nonce),
-			tag
-		),
+		AEAD.Decrypt(ciphertext, networkData.staticKey, padNonce(nonce), tag),
 		"failed decrypting data with aead"
 	)
 end

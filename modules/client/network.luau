@@ -29,23 +29,12 @@ local kemServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.kemServerP
 local networkStaticValue: buffer? = nil
 
 -- add extra entropy
-do
-	local HttpService = game:GetService("HttpService")
-	local seed = ""
-
-	for _ = 1, 128 do
-		seed ..= HttpService:GenerateGUID(false)
-	end
-
-	CSPRNG.Instance:GatherEntropy(buffer.fromstring(seed))
-end
+CSPRNG.Instance:GatherEntropy(Utils.generateEntropy())
 
 local kemClientPublicKey: buffer, _kemClientPrivateKey: buffer = MLKEM1024.GenerateKeys()
 
 local clientNonce = -1 -- Last client used nonce, next nonce to use should be this + 1
 local lastServerNonce = -1 -- Last nonce server sent, new nonces should always be greater than this one
-
-local _hasExchanged = false
 
 local registeredEvents: { [string]: (...unknown) -> nil } = {}
 function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
@@ -64,10 +53,11 @@ local function padNonce(nonce: number): buffer
 end
 
 local function encryptBuffer(data: buffer): (buffer, number, buffer)
+	assert(networkStaticValue, "network static value not obtained yet")
+
 	clientNonce += 1
 
-	local ciphertext, tag =
-		AEAD.Encrypt(data, assert(networkStaticValue, "network static value not obtained yet"), padNonce(clientNonce))
+	local ciphertext, tag = AEAD.Encrypt(data, networkStaticValue, padNonce(clientNonce))
 	return ciphertext, clientNonce, tag
 end
 
@@ -79,13 +69,10 @@ local function encryptAnything(data: any): (buffer, number, buffer, { Instance }
 end
 
 local function decryptBuffer(ciphertext: buffer, nonce: number, tag: buffer): buffer
+	assert(networkStaticValue, "network static value not obtained yet")
+
 	return assert(
-		AEAD.Decrypt(
-			ciphertext,
-			assert(networkStaticValue, "network static value not obtained yet"),
-			padNonce(nonce),
-			tag
-		),
+		AEAD.Decrypt(ciphertext, networkStaticValue, padNonce(nonce), tag),
 		"failed decrypting data with aead"
 	)
 end
@@ -283,8 +270,6 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (decryption failed)`)
 		return reexchange()
 	end
-
-	hasExchanged = true -- If decryption is sucessful, then we've exchanged on the server
 
 	if newCheck ~= check then
 		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (invalid check)`)
