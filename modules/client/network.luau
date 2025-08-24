@@ -11,33 +11,31 @@ local ClientRequestMethod = RequestMethods.Client
 local Log = require("@shared/log")
 local Functions = require("@shared/functions")
 local Signal = require("@shared/signal")
-local EdDSA = require("@shared/crypto/EdDSA")
+local MLDSA87 = require("@shared/crypto/MlDSA").ML_DSA_87
+local MLKEM1024 = require("@shared/crypto/MlKEM").MLKEM_1024
+local CSPRNG = require("@shared/crypto/CSPRNG")
 local Base64 = require("@shared/crypto/base64")
-local Blake3 = require("@shared/crypto/blake3")
-local AEAD = require("@shared/crypto/AEAD")
-local Encoding = require("@shared/network/encoding")
-
-local MaskedX25519 = EdDSA.MaskedX25519
+local Utils = require("@shared/network/utils")
 
 local localPlayer = Players.LocalPlayer
 local attributeName, attributeValue
 
 local Network = {}
 
-local serverPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.serverPublicKey))
-local maskedServerPublicKey: buffer? = nil
-local networkStaticValue: buffer? = nil
+local dsaServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.dsaServerPublicKey))
+local kemServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.kemServerPublicKey))
 
-local clientPrivateKey: buffer = EdDSA.CSPRNG.Ed25519Random()
-local clientPublicKey: buffer = EdDSA.PublicKey(clientPrivateKey)
+-- add extra entropy
+CSPRNG.Instance:GatherEntropy(Utils.generateEntropy())
 
-local maskedClientPrivateKey = MaskedX25519.Mask(clientPrivateKey)
-local maskedClientPublicKey = MaskedX25519.PublicKey(maskedClientPrivateKey)
+local kemClientPublicKey: buffer, _kemClientPrivateKey: buffer = MLKEM1024.GenerateKeys()
 
-local clientNonce = -1 -- Last client used nonce, next nonce to use should be this + 1
-local lastServerNonce = -1 -- Last nonce server sent, new nonces should always be greater than this one
+local networkData = {
+	staticKey = nil :: buffer?,
 
-local hasExchanged = false
+	nonce = -1,
+	lastNonce = -1,
+}
 
 local registeredEvents: { [string]: (...unknown) -> nil } = {}
 function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
@@ -48,63 +46,14 @@ function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
 	registeredEvents[name] = callback
 end
 
-local function padNonce(nonce: number): buffer
-	local buf = buffer.create(12)
-	buffer.writeu32(buf, 0, nonce)
-
-	return buf
+local function encryptAnything(data)
+	assert(networkData.staticKey, "network static value not obtained yet")
+	return Utils.encryptAnything(networkData :: Utils.networkData, data)
 end
 
-local function encryptBuffer(data: buffer): (buffer, number, buffer)
-	clientNonce += 1
-
-	local ciphertext, tag =
-		AEAD.Encrypt(data, assert(networkStaticValue, "network static value not obtained yet"), padNonce(clientNonce))
-	return ciphertext, clientNonce, tag
-end
-
-local function encryptAnything(data: any): (buffer, number, buffer, { Instance })
-	local encodedData, instancesArray = Encoding.encode(data)
-	local ciphertext, nonce, tag = encryptBuffer(encodedData)
-
-	return ciphertext, nonce, tag, instancesArray
-end
-
-local function decryptBuffer(ciphertext: buffer, nonce: number, tag: buffer): buffer
-	return assert(
-		AEAD.Decrypt(
-			ciphertext,
-			assert(networkStaticValue, "network static value not obtained yet"),
-			padNonce(nonce),
-			tag
-		),
-		"failed decrypting data with aead"
-	)
-end
-
-local function decryptAnything(ciphertext: buffer, nonce: number, tag: buffer, instanceArray: { Instance }): any
-	return Encoding.decode(decryptBuffer(ciphertext, nonce, tag), instanceArray)
-end
-
-local function decryptWithUnknownVarargs(ciphertext, nonce, tag, instanceArray): any?
-	if
-		type(ciphertext) ~= "buffer"
-		or type(nonce) ~= "number"
-		or type(tag) ~= "buffer"
-		or type(instanceArray) ~= "table"
-	then
-		return nil
-	end
-
-	if nonce <= lastServerNonce then
-		-- This is a replayed nonce
-		return nil
-	end
-
-	local data = decryptAnything(ciphertext, nonce, tag, instanceArray :: { Instance })
-	lastServerNonce = nonce
-
-	return data
+local function decryptWithUnknownVarargs(ciphertext, nonce, tag, instanceArray)
+	assert(networkData.staticKey, "network static value not obtained yet")
+	return Utils.decryptAnythingAndVerify(networkData :: Utils.networkData, ciphertext, nonce, tag, instanceArray)
 end
 
 local remotes: { [RemoteFunction]: Instance } = {}
@@ -195,12 +144,12 @@ function Network:InvokeServer(functionName: string, ...)
 		)
 	end
 
-	return (function(...)
+	return (function(signal, ...)
 		invokeResults[id] = nil
 		signal:Destroy()
 
 		return ...
-	end)(signal:Wait())
+	end)(signal, signal:Wait())
 end
 
 local function connectRemote(service: Instance, remote: RemoteFunction)
@@ -208,53 +157,55 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 		return
 	end
 
-	if not networkStaticValue then
-		local returnedPublicKeyMasked, returnedPublicKeyMaskedSignature =
-			remote:InvokeServer(ServerRequestMethod.KeyExchange, maskedClientPublicKey)
+	if not networkData.staticKey then
+		local ciphertext, sharedSecret = MLKEM1024.Encapsulate(kemServerPublicKey, CSPRNG.RandomBytes(32))
 
-		if type(returnedPublicKeyMasked) ~= "buffer" or type(returnedPublicKeyMaskedSignature) ~= "buffer" then
+		local messageSignature, message =
+			remote:InvokeServer(ServerRequestMethod.KeyExchange, kemClientPublicKey, ciphertext)
+
+		if type(messageSignature) ~= "buffer" or type(message) ~= "buffer" then
 			return Log.warn(
 				`Key exchange failed on remote "{remote:GetFullName()}" (invalid arguments: expected buffer, buffer but got {typeof(
-					returnedPublicKeyMasked
-				)}, {typeof(returnedPublicKeyMaskedSignature)}`
+					messageSignature
+				)}, {typeof(message)}`
 			)
 		end
 
-		if buffer.len(returnedPublicKeyMasked) ~= 32 then
+		if buffer.len(messageSignature) ~= MLDSA87.SigByteLen then
 			return Log.warn(
-				`Key exchange failed on remote "{remote:GetFullName()}" (buffer length is not 32, got {buffer.len(
-					returnedPublicKeyMasked
+				`Key exchange failed on remote "{remote:GetFullName()}" (buffer length is not {MLDSA87.SigByteLen}, got {buffer.len(
+					messageSignature
 				)})`
 			)
 		end
 
-		if not EdDSA.Verify(serverPublicKey, returnedPublicKeyMasked, returnedPublicKeyMaskedSignature) then
+		if not MLDSA87.Verify(dsaServerPublicKey, message, Utils.getDsaContext(localPlayer), messageSignature) then
 			return Log.warn(
 				`Key exchange failed on remote "{remote:GetFullName()}" (invalid server public key signature)`
 			)
 		end
 
-		-- ensure server does not try and screw us over
-		if maskedServerPublicKey and maskedServerPublicKey ~= returnedPublicKeyMasked then
-			return Log.warn(
-				"Key exchange failed! Server already gave one masked public key, and attempted to change it."
+		local messageSplit = string.split(buffer.tostring(message), "@")
+		local messageType: "alreadyExchanged" | "exchanged" = messageSplit[1] :: any
+
+		if messageType == "alreadyExchanged" then
+			localPlayer:Kick(
+				"[SB Client] A localscript succeeded a key exchange on your client; try rejoining. (an mitm attack was prevented)"
 			)
+
+			return
 		end
 
-		maskedServerPublicKey = returnedPublicKeyMasked
-
-		local staticSecret, _clientEphemeral =
-			MaskedX25519.Exchange(maskedClientPrivateKey, maskedServerPublicKey :: buffer)
-		networkStaticValue = Blake3.Digest(staticSecret, 32)
+		networkData.staticKey = sharedSecret
 	end
 
-	local check = EdDSA.CSPRNG.RandomString(32)
+	local check = CSPRNG.RandomString(32)
 
 	local ciphertext, nonce, tag, instanceArray =
 		remote:InvokeServer(ServerRequestMethod.Handshake, encryptAnything(check))
 
 	local function reexchange()
-		networkStaticValue = nil
+		networkData.staticKey = nil
 		return connectRemote(service, remote)
 	end
 
@@ -273,8 +224,6 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (decryption failed)`)
 		return reexchange()
 	end
-
-	hasExchanged = true -- If decryption is sucessful, then we've exchanged on the server
 
 	if newCheck ~= check then
 		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (invalid check)`)

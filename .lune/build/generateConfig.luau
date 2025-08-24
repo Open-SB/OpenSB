@@ -1,6 +1,7 @@
-local EdDSA = require("@shared/crypto/EdDSA")
+local MLDSA87 = require("@shared/crypto/MlDSA").ML_DSA_87
+local MLKEM1024 = require("@shared/crypto/MlKEM").MLKEM_1024
+local CSPRNG = require("@shared/crypto/CSPRNG")
 local Base64 = require("@shared/crypto/base64")
-local CSPRNG = EdDSA.CSPRNG
 
 return function(config)
 	local rules = table.clone(config.darkluaRules)
@@ -17,10 +18,13 @@ return function(config)
 			inject[global] = value
 		end
 
-		local privateKey = CSPRNG.Ed25519Random()
-		local publicKey = EdDSA.PublicKey(privateKey)
-		set("serverPrivateKey", buffer.tostring(Base64.Encode(privateKey)))
-		set("serverPublicKey", buffer.tostring(Base64.Encode(publicKey)))
+		local dsaPublicKey, dsaPrivateKey = MLDSA87.GenerateKeys()
+		set("dsaServerPublicKey", buffer.tostring(Base64.Encode(dsaPublicKey)))
+		set("dsaServerPrivateKey", buffer.tostring(Base64.Encode(dsaPrivateKey)))
+
+		local kemPublicKey, kemPrivateKey = MLKEM1024.GenerateKeys()
+		set("kemServerPublicKey", buffer.tostring(Base64.Encode(kemPublicKey)))
+		set("kemServerPrivateKey", buffer.tostring(Base64.Encode(kemPrivateKey)))
 
 		for _, global in ipairs({ "scriptHostKey", "localScriptHostKey", "moduleScriptHostKey" }) do
 			set(global, CSPRNG.RandomString(256))

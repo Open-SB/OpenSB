@@ -41,7 +41,6 @@
     "compute_expression",
     "convert_index_to_field",
     "convert_local_function_to_assign",
-    "remove_unused_variable",
     "remove_nil_declaration",
     "remove_unused_while",
     "remove_unused_if_branch",
