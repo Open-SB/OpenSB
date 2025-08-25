@@ -106,9 +106,12 @@ local function onRequest(player: Player, requestType, ...): ...any
 				outputSignature
 			)
 
-			if signSuccess then
-				return outputSignature, messageToSign
+			if not signSuccess then
+				-- explicitly prevent changing keys & allow client to prevent potential mitm as fast as possible
+				return
 			end
+
+			return outputSignature, messageToSign
 		end
 
 		local kemPublicKey, kemCiphertext = ...
@@ -147,19 +150,28 @@ local function onRequest(player: Player, requestType, ...): ...any
 
 		return outputSignature, messageToSign
 	elseif requestType == ServerRequestMethod.Handshake then
+		-- if the player has not exchanged keys, or has already sent a handshake, return
+		if not exchanged[player] or connectedPlayers[player] then
+			return
+		end
+
 		local check = decryptFromPlayerAndVarargs(player, ...)
 		if type(check) ~= "string" then
 			return
 		end
 
 		connectedPlayers[player] = true -- We will assume that the handshake succeeds for the client aswell
-		exchanged[player] = true
 
 		return encryptAnythingForPlayer(player, check)
 	elseif requestType == ServerRequestMethod.Event then
 		-- Minimize the yielding time for the client if the server is calculating stuff
 		task.spawn(function(...)
-			local decryptedData = decryptFromPlayerAndVarargs(player, ...)
+			local decryptedData: {
+				id: string,
+				eventName: string,
+				arguments: { any },
+			}? =
+				decryptFromPlayerAndVarargs(player, ...)
 			if
 				type(decryptedData) ~= "table"
 				or type(decryptedData.eventName) ~= "string"

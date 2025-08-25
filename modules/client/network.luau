@@ -63,7 +63,10 @@ local function onRequest(requestType, ...)
 	if requestType == ClientRequestMethod.Event then
 		-- Minimize the yielding time for the server if the client is calculating stuff
 		task.spawn(function(...)
-			local decryptedData = decryptWithUnknownVarargs(...)
+			local decryptedData: {
+				eventName: string,
+				arguments: { any },
+			}? = decryptWithUnknownVarargs(...)
 			if
 				type(decryptedData) ~= "table"
 				or type(decryptedData.eventName) ~= "string"
@@ -82,7 +85,10 @@ local function onRequest(requestType, ...)
 	elseif requestType == ClientRequestMethod.InvokeResult then
 		-- Minimize the yielding time for the server if the client is calculating stuff
 		task.spawn(function(...)
-			local decryptedData = decryptWithUnknownVarargs(...)
+			local decryptedData: {
+				id: string,
+				arguments: { any },
+			}? = decryptWithUnknownVarargs(...)
 			if
 				type(decryptedData) ~= "table"
 				or type(decryptedData.id) ~= "string"
@@ -190,7 +196,7 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 
 		if messageType == "alreadyExchanged" then
 			localPlayer:Kick(
-				"[SB Client] A localscript succeeded a key exchange on your client; try rejoining. (an mitm attack was prevented)"
+				"[SB Client] Another localscript already succeeded a key exchange on your client; try rejoining. (a mitm attack was prevented)"
 			)
 
 			return
@@ -234,7 +240,7 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 	remote.OnClientInvoke = onRequest
 end
 
-function Network:Init(attribute: {})
+function Network:Init(attribute: { any })
 	attributeName, attributeValue = unpack(attribute)
 
 	for _, service in ipairs(services) do
