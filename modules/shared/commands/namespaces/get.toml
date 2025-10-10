@@ -36,6 +36,10 @@ aliases = ["clear", "c"]
 description = "Fixes your camera."
 aliases = ["fixCamera", "fixCam", "fc"]
 
+[fixLighting]
+description = "Fixes the lighting."
+aliases = ["fixLighting", "fl"]
+
 [noGui]
 description = "Removes all guis."
 aliases = ["noGui", "nog", "ng"]

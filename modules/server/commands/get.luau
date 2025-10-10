@@ -164,6 +164,44 @@ return function(Commands)
 		return "Got clear."
 	end)
 
+	--:fixLighting
+	do
+		local Terrain: Terrain = workspace:WaitForChild("Terrain")
+		local Lighting = game:GetService("Lighting")
+
+		define("fixLighting", function()
+			Lighting:ClearAllChildren()
+
+			while true do
+				local Clouds = Terrain:FindFirstChildWhichIsA("Clouds")
+				if not Clouds then
+					break
+				end
+
+				Clouds:Destroy()
+			end
+
+			Lighting.Ambient = Color3.fromRGB(127, 127, 127)
+			Lighting.Brightness = 1
+			Lighting.ColorShift_Bottom = Color3.fromRGB(0, 0, 0)
+			Lighting.ColorShift_Top = Color3.fromRGB(0, 0, 0)
+			Lighting.EnvironmentDiffuseScale = 0
+			Lighting.EnvironmentSpecularScale = 0
+			Lighting.GlobalShadows = true
+			Lighting.OutdoorAmbient = Color3.fromRGB(127, 127, 127)
+			Lighting.ShadowSoftness = 0.5
+			Lighting.ExposureCompensation = 0
+			Lighting.FogColor = Color3.fromRGB(191, 191, 191)
+			Lighting.FogEnd = 100000
+			Lighting.FogStart = 0
+
+			-- day time
+			Lighting.ClockTime = 14.5
+
+			return "Fixed lighting."
+		end)
+	end
+
 	--:noGui
 	define("noGui", function(context)
 		local playerGui = context.Player:FindFirstChildOfClass("PlayerGui")
