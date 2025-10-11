@@ -114,7 +114,7 @@ function Commands:ProcessClient(input: string, inputContext): { CommandExecution
 	end
 
 	local results: { CommandExecutionResult } = {}
-	local namespace = Commands.namespaceLookup[namespaceString]
+	local namespace = Commands.namespaceLookup[string.lower(namespaceString)]
 
 	-- HACK: treat x/ c/ l/ etc. as one fragment
 	local possibleCommandFragments: { string } = if namespace
