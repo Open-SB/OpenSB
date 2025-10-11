@@ -146,7 +146,6 @@ function Commands:ProcessClient(input: string, inputContext): { CommandExecution
 
 		local command = namespace.commandLookup[string.lower(commandName)]
 		if not command then
-			print(namespaceString, commandName, arguments)
 			table.insert(
 				results,
 				{
