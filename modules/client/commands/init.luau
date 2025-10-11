@@ -1,3 +1,5 @@
+--!strict
+
 local Players = game:GetService("Players")
 local TextChatService = game:GetService("TextChatService")
 local UserInputService = game:GetService("UserInputService")
@@ -66,9 +68,9 @@ function Commands:Validate(command, context, arguments)
 	return command.validate(context, arguments)
 end
 
-function Commands:Run(command, context, arguments)
+function Commands:Run(command, context, arguments): (boolean, string?)
 	if not command.callback then
-		return true
+		return true, nil
 	end
 
 	local success, result, message = pcall(command.callback, context, arguments)
@@ -87,81 +89,144 @@ function Commands:ProcessServer(data, input, inputContext)
 	return Network:InvokeServer("processCommand", data, input, inputContext)
 end
 
-function Commands:ProcessClient(input, inputContext)
-	-- Check if the input matches a command string, if not then we can ignore it.
-	if not string.match(input, "^.+/") then
-		return ProcessResult.Fail, "Not a valid command string."
+type CommandExecutionResult = {
+	message: string?,
+	name: string,
+	intent: string,
+} & ({
+	result: "fail" | "error",
+	data: nil,
+} | {
+	result: "success",
+	data: unknown,
+})
+
+-- Please note we must process `g/no. sr c fl fc day d/10 rd/10`
+-- but we must not process `g c x/...`
+function Commands:ProcessClient(input: string, inputContext): { CommandExecutionResult }
+	local namespaceString, remainderOfString = string.match(input, "^(%a+)/(.+)$")
+
+	if not namespaceString or not remainderOfString then
+		return { {
+			message = "Not a valid command string.",
+			result = "fail",
+		} :: CommandExecutionResult }
 	end
 
-	local arguments = string.split(input, "/")
-	local prefix = table.remove(arguments, 1)
-	if not prefix then
-		return ProcessResult.Fail, "No prefix was found."
-	end
+	local results: { CommandExecutionResult } = {}
+	local namespace = Commands.namespaceLookup[namespaceString]
 
-	-- Remove last argument if empty.
-	if #arguments[#arguments] == 0 then
-		table.remove(arguments, #arguments)
-	end
+	-- HACK: treat x/ c/ l/ etc. as one fragment
+	local possibleCommandFragments: { string } = if namespace
+		then string.split(remainderOfString, " ")
+		else { namespaceString .. "/" .. remainderOfString }
 
-	-- Find namespace, and get the command.
-	local commandName
-	local namespace = Commands.namespaceLookup[string.lower(prefix)]
 	if not namespace then
-		-- No namespace with prefix found, default namespace, command should be the 1st split string (command/arguments).
-		commandName = prefix
 		namespace = Commands.namespaces.default
-	elseif arguments[1] and #arguments[1] > 0 then -- Check if there is a 2nd split string, otherwise no command was given.
-		-- Not default namespace, command should be the 2nd split string (prefix/command/arguments).
-		commandName = table.remove(arguments, 1)
-	else
-		return ProcessResult.Fail, "No command was given."
 	end
 
-	local command = namespace.commandLookup[string.lower(commandName)]
-	if not command then
-		return ProcessResult.Fail, `Command "{commandName}" was not found.`
+	for _, maybeACommandString: string in possibleCommandFragments do
+		local arguments = string.split(maybeACommandString, "/")
+		local commandName = table.remove(arguments, 1)
+
+		if not commandName then
+			continue
+		end
+
+		-- intent is the version of the command the server can understand
+		-- e.g g/d/10 rd/10 -> g/d/10 <BREAK> g/rd/10
+		local intent = if namespace == Commands.namespaces.default
+			then maybeACommandString
+			else namespaceString .. "/" .. maybeACommandString
+
+		-- Remove last argument if it exists and if it is empty.
+		if arguments[#arguments] and #arguments[#arguments] == 0 then
+			table.remove(arguments, #arguments)
+		end
+
+		local command = namespace.commandLookup[string.lower(commandName)]
+		if not command then
+			print(namespaceString, commandName, arguments)
+			table.insert(
+				results,
+				{
+					name = commandName,
+					result = "fail",
+					message = `Command "{commandName}" was not found.`,
+					intent = intent,
+				} :: CommandExecutionResult
+			)
+			continue
+		end
+
+		local context = Commands:CreateContext(command, input, inputContext)
+		local valid, message = Commands:Validate(command, context, arguments)
+		if not valid then
+			table.insert(
+				results,
+				{ name = commandName, result = "error", message = message, intent = intent } :: CommandExecutionResult
+			)
+			continue
+		end
+
+		local success, commandMessage = Commands:Run(command, context, arguments)
+		if not success then
+			table.insert(
+				results,
+				{ name = commandName, result = "error", message = commandMessage, intent = intent } :: CommandExecutionResult
+			)
+			continue
+		end
+
+		table.insert(
+			results,
+			{
+				name = commandName,
+				result = "success" :: "success",
+				message = commandMessage,
+				data = context.Data,
+				intent = intent,
+			} :: CommandExecutionResult
+		)
 	end
 
-	local context = Commands:CreateContext(command, input, inputContext)
-	local valid, message = Commands:Validate(command, context, arguments)
-	if not valid then
-		return ProcessResult.Error, message
-	end
-
-	local success, commandMessage = Commands:Run(command, context, arguments)
-	if not success then
-		return ProcessResult.Error, commandMessage
-	end
-
-	return ProcessResult.Success, commandMessage, context.Data
+	return results
 end
 
 function Commands:Process(input, inputContext)
-	local clientResult, clientMessage, contextData = Commands:ProcessClient(input, inputContext)
-	if clientResult ~= ProcessResult.Success then
-		-- Only output fail messages if the inputContext wasn't the chat (because you can also send chat messages in chat, duh),
-		-- Error messages should always be displayed.
-		if
-			clientResult == ProcessResult.Error
-			or (clientResult == ProcessResult.Fail and inputContext ~= InputContext.Chat)
-		then
-			Output:append(Output.MessageType.Error, clientMessage or "Unexpected error occured while running command.")
+	local clientResults = Commands:ProcessClient(input, inputContext)
+
+	for _, clientCommandProcessResult in clientResults do
+		local clientResult, clientMessage, contextData =
+			clientCommandProcessResult.result, clientCommandProcessResult.message, clientCommandProcessResult.data
+
+		if clientResult ~= "success" then
+			-- Only output fail messages if the inputContext wasn't the chat (because you can also send chat messages in chat, duh),
+			-- Error messages should always be displayed.
+			if clientResult == "error" or (clientResult == "fail" and inputContext ~= InputContext.Chat) then
+				Output:append(
+					Output.MessageType.Error,
+					clientMessage or "Unexpected error occured while running command."
+				)
+			end
+		elseif clientMessage then
+			Output:append(Output.MessageType.Success, clientMessage)
 		end
 
-		return
-	elseif clientMessage then
-		Output:append(Output.MessageType.Success, clientMessage)
-	end
+		if not clientCommandProcessResult.intent then
+			continue
+		end
 
-	local serverResult, serverMessage = Commands:ProcessServer(contextData, input, inputContext)
-	if serverResult ~= ProcessResult.Success then
-		-- We don't check if the ProcessResult was a Fail or Error here, because it should always be an Error.
-		Output:append(Output.MessageType.Error, serverMessage or "Unexpected error occured while running command.")
+		local serverResult, serverMessage =
+			Commands:ProcessServer(contextData, clientCommandProcessResult.intent, inputContext)
 
-		return
-	elseif serverMessage then
-		Output:append(Output.MessageType.Success, serverMessage)
+		-- server still uses ProcessResult enum and Old System
+		if serverResult ~= ProcessResult.Success then
+			-- We don't check if the ProcessResult was a Fail or Error here, because it should always be an Error.
+			Output:append(Output.MessageType.Error, serverMessage or "Unexpected error occured while running command.")
+		elseif serverMessage then
+			Output:append(Output.MessageType.Success, serverMessage)
+		end
 	end
 end
 
