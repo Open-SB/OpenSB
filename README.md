@@ -4,7 +4,7 @@ An opensource scriptbuilder for Roblox.
 
 ### Notice
 
-By default this depends on https://luau-compile-mapk.shuttle.app.rs/ ([running this](https://github.com/Open-SB/luau-compile)).
+By default this depends on https://luau-compile-5hrt.shuttle.app ([running this](https://github.com/Open-SB/luau-compile)).
 
 Which is being used to compile Luau sourcecode into bytecode (only for localscripts). As there is no good solution for compiling Luau in Luau at the moment (that is small & lightweight).
 <br>
