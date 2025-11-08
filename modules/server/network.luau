@@ -51,8 +51,8 @@ end)
 local Network = {}
 Network.attributeName, Network.attributeValue = string.sub(tostring(math.random()), 3), math.random()
 
-local registeredEvents: { [string]: (...unknown) -> nil } = {}
-function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
+local registeredEvents: { [string]: (Player, ...unknown) -> nil } = {}
+function Network:RegisterEvent(name: string, callback: (Player, ...unknown) -> nil)
 	if registeredEvents[name] then
 		Log.warn(`Network event "{name}" was overwritten.`)
 	end
@@ -60,8 +60,8 @@ function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
 	registeredEvents[name] = callback
 end
 
-local registeredFunctions: { [string]: (...unknown) -> ...unknown } = {}
-function Network:RegisterFunction(name: string, callback: (...unknown) -> ...unknown)
+local registeredFunctions: { [string]: (Player, ...unknown) -> ...unknown } = {}
+function Network:RegisterFunction(name: string, callback: (Player, ...unknown) -> ...unknown)
 	if registeredFunctions[name] then
 		Log.warn(`Network function "{name}" was overwritten.`)
 	end
