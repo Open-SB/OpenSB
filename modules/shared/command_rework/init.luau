@@ -36,7 +36,8 @@ export type Namespace = {
 	sb: no help callback implemented
 	c: no help callback implemented
 	]]
-	read help_callback: () -> HelpResults?,
+	-- forward is ONLY usable on the client
+	read help_callback: (forward: (() -> HelpResults?)?) -> HelpResults?,
 	read environment: "server" | "client",
 }
 

@@ -27,7 +27,7 @@ function Registry.dispatch<T>(dispatchContext: impl.DispatchContext<T>): impl.Co
 		return Result.err({
 			type = "generic",
 			message = "No prefix specified.",
-		})
+		}) :: impl.CommandResult
 	end
 
 	local lookup = Registry.prefixLookup[prefix]
@@ -35,7 +35,7 @@ function Registry.dispatch<T>(dispatchContext: impl.DispatchContext<T>): impl.Co
 		return Result.err({
 			type = "generic",
 			message = "Failed finding namespace with prefix.",
-		})
+		}) :: impl.CommandResult
 	end
 
 	return lookup.run_callback({
@@ -59,14 +59,35 @@ Network:RegisterFunction("forwardCommand", function(player: Player, ctx: any): i
 		return nil
 	end
 
-	local safeDispatchCtx: impl.DispatchContext<unknown> = {
+	local sanitizedDispatchContext: impl.DispatchContext<unknown> = {
 		player = player,
 		context = ctx.context :: any,
 		input = ctx.input,
 		data = ctx.data,
 	}
 
-	return Registry.dispatch(safeDispatchCtx)
+	return Registry.dispatch(sanitizedDispatchContext)
+end)
+
+type ForwardHelpResult = Result.Result<impl.HelpResults?, impl.Error>
+
+Network:RegisterFunction("forwardCommandHelp", function(player: Player, prefix: unknown): ForwardHelpResult
+	if type(prefix) ~= "string" then
+		return Result.err({
+			type = "validation",
+			message = "Prefix is not a string.",
+		}) :: ForwardHelpResult
+	end
+
+	local lookup = Registry.prefixLookup[prefix]
+	if not lookup then
+		return Result.err({
+			type = "validation",
+			message = "Failed finding namespace with prefix.",
+		}) :: ForwardHelpResult
+	end
+
+	return Result.ok(lookup.help_callback(nil)) :: ForwardHelpResult
 end)
 
 return table.freeze(Registry)
