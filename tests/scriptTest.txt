@@ -177,8 +177,10 @@ suite("Environment", function()
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#setmetatable
 
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#tonumber
+	check(tonumber("123") == 123, "tonumber didn't return 123 for string literal '123'")
 
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#tostring
+	check(tostring(123) == "123", "tonumber didn't return string literal '123' for number 123")
 
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#type
 
@@ -207,8 +209,10 @@ suite("Environment", function()
 end)
 
 local ms = math.round((os.clock() - start) * 1000 * 1000) / 1000
+local StudioTestService = game:GetService("StudioTestService")
+
 if anyIssues then
-	print(`Some issues occured, ran in {ms}ms`)
+	StudioTestService:EndTest(`Some issues occured, ran in {ms}ms`)
 else
-	print(`All tests ran without issues in {ms}ms`)
+	StudioTestService:EndTest(`All tests ran without issues in {ms}ms`)
 end
