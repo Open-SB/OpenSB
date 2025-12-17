@@ -20,7 +20,7 @@ local PlayerList = require("@shared/playerList")
 local Utils = require("@shared/network/utils")
 
 -- add extra entropy
-CSPRNG.Instance:GatherEntropy(Utils.generateEntropy())
+CSPRNG.AddEntropyProvider(Utils.robloxEntropyProvider)
 
 local dsaServerPrivateKey: buffer = Base64.Decode(buffer.fromstring(_G.dsaServerPrivateKey))
 -- local dsaServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.dsaServerPublicKey))

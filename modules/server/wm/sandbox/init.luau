@@ -10,9 +10,9 @@ local _G = _G
 local shared = shared
 
 local Log = require("@shared/log")
-local Environment = require("./environment")
-local Wrapper = require("./wrapper")
-local Rules = require("./rules")
+local Environment = require("@self/environment")
+local Wrapper = require("@self/wrapper")
+local Rules = require("@self/rules")
 
 local envLookup = {}
 local scriptLookup = {}
@@ -225,7 +225,7 @@ function Module:Init()
 
 	require("@shared/wm/protection").init()
 	Rules:Init(Module)
-	require("./wrapper/reflection"):Init(Module, Wrapper, Rules)
+	require("@self/wrapper/reflection"):Init(Module, Wrapper, Rules)
 
 	Environment.setSandbox(Module)
 	Environment:Init()

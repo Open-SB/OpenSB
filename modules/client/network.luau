@@ -26,7 +26,7 @@ local dsaServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.dsaServerP
 local kemServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.kemServerPublicKey))
 
 -- add extra entropy
-CSPRNG.Instance:GatherEntropy(Utils.generateEntropy())
+CSPRNG.AddEntropyProvider(Utils.robloxEntropyProvider)
 
 local kemClientPublicKey: buffer, _kemClientPrivateKey: buffer = MLKEM1024.GenerateKeys()
 

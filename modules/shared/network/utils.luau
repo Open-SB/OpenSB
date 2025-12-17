@@ -28,10 +28,14 @@ function Module.getDsaContext(player: Player)
 	return buffer.fromstring(`{base}{player.UserId}`)
 end
 
-function Module.generateEntropy(): buffer
+function Module.robloxEntropyProvider(bytesLeft: number): buffer?
 	local seed = ""
-	for _ = 1, 128 do
-		seed ..= HttpService:GenerateGUID(false)
+	local bytesGenerated = 0
+	while bytesGenerated < bytesLeft do
+		local guid = string.gsub(HttpService:GenerateGUID(false), "-", "")
+		local bytesToAdd = math.min(#guid, bytesLeft - bytesGenerated)
+		seed ..= string.sub(guid, 1, bytesToAdd)
+		bytesGenerated += bytesToAdd
 	end
 
 	return buffer.fromstring(seed)
