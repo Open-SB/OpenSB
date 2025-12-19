@@ -159,85 +159,104 @@ function Network:InvokeServer(functionName: string, ...)
 end
 
 local function connectRemote(service: Instance, remote: RemoteFunction)
-	if remote:GetAttribute(attributeName) ~= attributeValue then
-		return
-	end
-
-	if not networkData.staticKey then
-		local ciphertext, sharedSecret = MLKEM1024.Encapsulate(kemServerPublicKey, CSPRNG.RandomBytes(32))
-
-		local messageSignature, message =
-			remote:InvokeServer(ServerRequestMethod.KeyExchange, kemClientPublicKey, ciphertext)
-
-		if type(messageSignature) ~= "buffer" or type(message) ~= "buffer" then
-			return Log.warn(
-				`Key exchange failed on remote "{remote:GetFullName()}" (invalid arguments: expected buffer, buffer but got {typeof(
-					messageSignature
-				)}, {typeof(message)}`
-			)
-		end
-
-		if buffer.len(messageSignature) ~= MLDSA87.SigByteLen then
-			return Log.warn(
-				`Key exchange failed on remote "{remote:GetFullName()}" (buffer length is not {MLDSA87.SigByteLen}, got {buffer.len(
-					messageSignature
-				)})`
-			)
-		end
-
-		if not MLDSA87.Verify(dsaServerPublicKey, message, Utils.getDsaContext(localPlayer), messageSignature) then
-			return Log.warn(
-				`Key exchange failed on remote "{remote:GetFullName()}" (invalid server public key signature)`
-			)
-		end
-
-		local messageSplit = string.split(buffer.tostring(message), "@")
-		local messageType: "alreadyExchanged" | "exchanged" = messageSplit[1] :: any
-
-		if messageType == "alreadyExchanged" then
-			localPlayer:Kick(
-				"[SB Client] Another localscript already succeeded a key exchange on your client; try rejoining. (a mitm attack was prevented)"
-			)
-
+	while true do
+		if remote:GetAttribute(attributeName) ~= attributeValue then
 			return
 		end
 
-		networkData.staticKey = sharedSecret
-	end
+		if not networkData.staticKey then
+			-- We must retry if anything fails because we do not have a staticKey yet
 
-	local check = CSPRNG.RandomString(32)
+			local ciphertext, sharedSecret = MLKEM1024.Encapsulate(kemServerPublicKey, CSPRNG.RandomBytes(32))
 
-	local ciphertext, nonce, tag, instanceArray =
-		remote:InvokeServer(ServerRequestMethod.Handshake, encryptAnything(check))
+			local messageSignature, message =
+				remote:InvokeServer(ServerRequestMethod.KeyExchange, kemClientPublicKey, ciphertext)
 
-	local function reexchange()
-		networkData.staticKey = nil
-		return connectRemote(service, remote)
-	end
+			if type(messageSignature) ~= "buffer" or type(message) ~= "buffer" then
+				Log.warn(
+					`Key exchange failed on remote "{remote:GetFullName()}" (invalid arguments: expected buffer, buffer but got {typeof(
+						messageSignature
+					)}, {typeof(message)}`
+				)
 
-	if
-		type(ciphertext) ~= "buffer"
-		or type(nonce) ~= "number"
-		or type(tag) ~= "buffer"
-		or type(instanceArray) ~= "table"
-	then
-		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (some values are invalid)`)
-		return reexchange()
-	end
+				continue
+			end
 
-	local newCheck = decryptWithUnknownVarargs(ciphertext, nonce, tag, instanceArray)
-	if not newCheck then
-		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (decryption failed)`)
-		return reexchange()
-	end
+			if buffer.len(messageSignature) ~= MLDSA87.SigByteLen then
+				Log.warn(
+					`Key exchange failed on remote "{remote:GetFullName()}" (buffer length is not {MLDSA87.SigByteLen}, got {buffer.len(
+						messageSignature
+					)})`
+				)
 
-	if newCheck ~= check then
-		Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (invalid check)`)
+				continue
+			end
+
+			if not MLDSA87.Verify(dsaServerPublicKey, message, Utils.getDsaContext(localPlayer), messageSignature) then
+				Log.warn(`Key exchange failed on remote "{remote:GetFullName()}" (invalid server public key signature)`)
+
+				continue
+			end
+
+			local messageSplit = string.split(buffer.tostring(message), "@")
+			local messageType: "alreadyExchanged" | "exchanged" = messageSplit[1] :: any
+
+			if messageType == "alreadyExchanged" then
+				localPlayer:Kick(
+					"[SB Client] Another local script succeeded a key exchange at on your client; try rejoining. (an impersonation attack was prevented)"
+				)
+
+				return
+			end
+
+			networkData.staticKey = sharedSecret
+		end
+
+		-- staticKey is known to be valid after this point
+		-- we should NOT set staticKey to nil and continue because the server has signed and verified our staticKey
+
+		-- RandomString gives ASCII clamped data; we want as much entropy as possible
+		local check = buffer.tostring(CSPRNG.RandomBytes(32))
+
+		-- Handshake ensures that this remote is controlled by the actual server (OnServerInvoke was actually set)
+		-- If this fails, we know this remote is untrustworthy
+
+		local ciphertext, nonce, tag, instanceArray =
+			remote:InvokeServer(ServerRequestMethod.Handshake, encryptAnything(check))
+
+		if
+			type(ciphertext) ~= "buffer"
+			or type(nonce) ~= "number"
+			or type(tag) ~= "buffer"
+			or type(instanceArray) ~= "table"
+		then
+			Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (some values are invalid)`)
+
+			-- we might aswell try again; legit server should constantly be setting OnServerInvoke
+			continue
+		end
+
+		local newCheck = decryptWithUnknownVarargs(ciphertext, nonce, tag, instanceArray)
+		if not newCheck then
+			Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (decryption failed)`)
+
+			-- we might aswell try again; legit server should constantly be setting OnServerInvoke
+			continue
+		end
+
+		if newCheck ~= check then
+			Log.warn(`Handshake failed on remote "{remote:GetFullName()}" (invalid check; this should never happen)`)
+
+			-- this should never happen & we shouldn't try again because decryption passed but check failed
+			-- if decryption passed and check failed that means server was either hijacked or server code is buggy
+			return
+		end
+
+		remotes[remote] = service
+		remote.OnClientInvoke = onRequest
+
 		return
 	end
-
-	remotes[remote] = service
-	remote.OnClientInvoke = onRequest
 end
 
 function Network:Init(attribute: { any })
