@@ -31,9 +31,9 @@ do
 
 	-- selene: allow(undefined_variable)
 	local modules = __DARKLUA_BUNDLE_MODULES -- Check .darklua.json
-	for name, _ in modules do
-		if name ~= "cache" and name ~= "load" then -- darklua places all modules, the load function, and cache table in the same table (we don't want to call cache and load).
-			modules.load(name)
+	for name, moduleClosure in modules do
+		if name ~= "cache" then -- darklua places all modules, the load function, and cache table in the same table (we don't want to call cache and load).
+			moduleClosure()
 		end
 	end
 end
