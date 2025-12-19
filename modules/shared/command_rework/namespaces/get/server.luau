@@ -1,3 +1,10 @@
+--!strict
+
+-- local impl = require("../../")
+local Result = require("../../result")
+
+type Result<T, E> = Result.Result<T, E>
+
 local World = require("@server/world")
 local ScriptManager = require("@server/scriptManager")
 local Output = require("@server/output")
@@ -54,7 +61,7 @@ dummyHumanoidDescription.TorsoColor = Color3.fromRGB(40, 127, 71)
 local function createDummy(player: Player, rigType: Enum.HumanoidRigType)
 	local dummy = createRig(dummyHumanoidDescription, rigType)
 	dummy.Name = "Dummy"
-	dummy:WaitForChild("Humanoid").DisplayName = `{Functions.formatPlayerName(player)}'s dummy`
+	(dummy:WaitForChild("Humanoid") :: Humanoid).DisplayName = `{Functions.formatPlayerName(player)}'s dummy`
 
 	local animate = serverAnimateScripts[rigType]:Clone()
 	animate.Name = "Animate"
@@ -63,7 +70,7 @@ local function createDummy(player: Player, rigType: Enum.HumanoidRigType)
 	animate.Parent = dummy
 
 	dummy.Parent = workspace
-	dummy.PrimaryPart:SetNetworkOwner(nil)
+	assert(dummy.PrimaryPart, "dummy primary part is nil???"):SetNetworkOwner(nil)
 
 	local character = player.Character
 	if character then
@@ -73,18 +80,7 @@ local function createDummy(player: Player, rigType: Enum.HumanoidRigType)
 	return `Got {rigType.Name} dummy.`
 end
 
-return function(Commands)
-	-- Load shared definitions
-	require("@shared/commands/get")(Commands)
-
-	local _namespace = "get"
-	local function defineValidator(...)
-		Commands:DefineValidator(_namespace, ...)
-	end
-	local function define(...)
-		Commands:Define(_namespace, ...)
-	end
-
+return require("../../serverDefineSimple")(function(define, defineValidator)
 	--:base
 	define("base", function()
 		World:AddBase()
@@ -115,7 +111,7 @@ return function(Commands)
 		local player = context.Player
 
 		-- Check if the client sent a character location.
-		if typeof(context.Data.Location) == "CFrame" then
+		if type(context.Data) == "table" and typeof(context.Data.Location) == "CFrame" then
 			player.CharacterAdded:Once(function(newCharacter)
 				while not newCharacter.Parent do
 					newCharacter.AncestryChanged:Wait()
@@ -144,6 +140,8 @@ return function(Commands)
 
 		Output:appendTo(context.Player, Output.MessageType.Success, "Rejoining...")
 		TeleportService:TeleportAsync(game.PlaceId, { context.Player }, teleportOptions)
+
+		return nil
 	end)
 
 	--:nil
@@ -166,7 +164,7 @@ return function(Commands)
 
 	--:fixLighting
 	do
-		local Terrain: Terrain = workspace:WaitForChild("Terrain")
+		local Terrain: Terrain = workspace:WaitForChild("Terrain") :: Terrain
 		local Lighting = game:GetService("Lighting")
 
 		define("fixLighting", function()
@@ -206,10 +204,12 @@ return function(Commands)
 	define("noGui", function(context)
 		local playerGui = context.Player:FindFirstChildOfClass("PlayerGui")
 		if not playerGui then
-			return
+			return nil
 		end
 
 		playerGui:ClearAllChildren()
+
+		return nil
 	end)
 
 	--:rig6
@@ -233,18 +233,26 @@ return function(Commands)
 	end)
 
 	--:noScripts
-	define("noScripts", function(context, arguments)
-		if not arguments[1] or string.lower(arguments[1]) ~= "all" then
-			ScriptManager:StopScripts(context.Player)
-			return "Got no scripts."
-		end
+	define(
+		"noScripts",
+		function(context, arguments): string?
+			if not arguments[1] or string.lower(arguments[1]) ~= "all" then
+				ScriptManager:StopScripts(context.Player)
+				return "Got no scripts."
+			end
 
-		ScriptManager:StopScripts()
-		Output:appendToAll(Output.MessageType.Success, `{Functions.formatPlayerName(context.Player)} got no scripts.`)
-	end)
+			ScriptManager:StopScripts()
+			Output:appendToAll(
+				Output.MessageType.Success,
+				`{Functions.formatPlayerName(context.Player)} got no scripts.`
+			)
+
+			return nil
+		end :: any
+	)
 
 	--:noServerScripts
-	define("noServerScripts", function(context, arguments)
+	define("noServerScripts", function(context, arguments): string?
 		if not arguments[1] or string.lower(arguments[1]) ~= "all" then
 			ScriptManager:StopServerScripts(context.Player)
 			return "Got no server scripts."
@@ -255,6 +263,8 @@ return function(Commands)
 			Output.MessageType.Success,
 			`{Functions.formatPlayerName(context.Player)} got no server scripts.`
 		)
+
+		return nil
 	end)
 
 	--:noLocalScripts
@@ -262,4 +272,4 @@ return function(Commands)
 		ScriptManager:StopLocalScripts(context.Player)
 		return "Got no local scripts."
 	end)
-end
+end, require("@shared/commands/namespaces/get.toml"))
