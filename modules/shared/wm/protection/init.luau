@@ -14,7 +14,7 @@ local protectedInstances: { [Instance]: number } = {}
 local protectedClasses: { [string]: number } = {}
 
 do
-	local yaml = table.freeze(require("./classes.yaml"))
+	local yaml = table.freeze(require("@self/classes.yaml"))
 	local function registerClassesAtLevel(classes: { string }, level: number)
 		for _, class in ipairs(classes or {}) do
 			protectedClasses[class] = level

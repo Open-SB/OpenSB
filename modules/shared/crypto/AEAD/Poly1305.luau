@@ -150,7 +150,8 @@ local function ProcessMessage(Message: buffer, Key: buffer): buffer
 	Carry0 = Accumulator0 % (2 ^ 16)
 	Carry1 = Accumulator0 - Carry0 + Carry1
 
-	if Carry7 == 0x3ffff * (2 ^ 112)
+	if
+		Carry7 == 0x3ffff * (2 ^ 112)
 		and Carry6 == 0xffff * (2 ^ 96)
 		and Carry5 == 0xffff * (2 ^ 80)
 		and Carry4 == 0xffff * (2 ^ 64)

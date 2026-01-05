@@ -44,13 +44,15 @@ return function(config)
 		bundle = {
 			modules_identifier = "__DARKLUA_BUNDLE_MODULES",
 			require_mode = {
-				name = "path",
-				sources = {
+				name = "luau",
+				aliases = {
 					-- Use ../ to jump out of the "build" folder
 					["@client"] = "../modules/client",
 					["@server"] = "../modules/server",
 					["@shared"] = "../modules/shared",
 				},
+
+				use_luau_configuration = false,
 			},
 		},
 

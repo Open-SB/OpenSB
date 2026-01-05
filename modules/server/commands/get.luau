@@ -115,7 +115,7 @@ return function(Commands)
 		local player = context.Player
 
 		-- Check if the client sent a character location.
-		if type(context.Data.Location) == "CFrame" then
+		if typeof(context.Data.Location) == "CFrame" then
 			player.CharacterAdded:Once(function(newCharacter)
 				while not newCharacter.Parent do
 					newCharacter.AncestryChanged:Wait()

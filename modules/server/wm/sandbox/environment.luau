@@ -24,9 +24,9 @@ local Functions = require("@shared/functions")
 local Protection = require("@shared/wm/protection")
 local Errors = require("@shared/errors")
 
-local Wrapper = require("./wrapper")
+local Wrapper = require("@self/wrapper")
 local Sandbox
-local BlockedInstances = require("./blockedInstances")
+local BlockedInstances = require("@self/blockedInstances")
 
 local getSandbox
 local assertTerminated

@@ -4,13 +4,13 @@ An opensource scriptbuilder for Roblox.
 
 ### Notice
 
-By default this depends on https://luau-compile-5hrt.shuttle.app ([running this](https://github.com/Open-SB/luau-compile)).
+By default, this depends on https://luau-compile.onrender.com ([running this](https://github.com/Open-SB/luau-compile)).
 
-Which is being used to compile Luau sourcecode into bytecode (only for localscripts). As there is no good solution for compiling Luau in Luau at the moment (that is small & lightweight).
+Which is being used to compile Luau source code into bytecode (only for localscripts). As there is no good solution for compiling Luau in Luau at the moment (that is small & lightweight).
 <br>
 As a bonus using an full Luau compiler allows us to generate bytecode with optimizations turned on without much performance overhead.
 
-This is being used in [compile.luau](https://github.com/Open-SB/OpenSB/blob/main/modules/server/compile.luau), and I encourage you to change it (check [Configuration](https://github.com/Open-SB/OpenSB#Configuration)) to using your own hosted version (it's free with shuttle).
+This is being used in [compile.luau](https://github.com/Open-SB/OpenSB/blob/main/modules/server/compile.luau), and I encourage you to change it (check [Configuration](https://github.com/Open-SB/OpenSB#Configuration)) to using your own hosted version.
 
 As a fallback it will by default rely on a [toolbox modulescript](https://roblox.com/library/107945471093637) (owned by [ewd3v](https://github.com/ewd3v), and powered by [LuauCeption](https://github.com/RealEthanPlayzDev/LuauCeption)) to compile Luau instead in cases where HttpService is being ratelimited. The reason this is an external module and not built into OpenSB is because it's an optional feature and it's easier to change it to use another toolbox modulescript instead. It also means it's by default not loaded into the game until it gets used for the first time (LuauCeption is really large).
 

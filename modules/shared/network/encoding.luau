@@ -1,7 +1,133 @@
+--!strict
+
 local MessagePack = require("@shared/msgpack")
 local XXH32 = require("@shared/crypto/XXH32")
 
-local INSTANCE_EXTENSION_TYPE = 12 -- 0x0c
+-- thank you rojo
+local CFRAME_ID_LOOKUP_TABLE = table.freeze({
+	[0x02] = CFrame.fromEulerAnglesYXZ(0, 0, 0),
+	[0x03] = CFrame.fromEulerAnglesYXZ(math.rad(90), 0, 0),
+	[0x05] = CFrame.fromEulerAnglesYXZ(0, math.rad(180), math.rad(180)),
+	[0x06] = CFrame.fromEulerAnglesYXZ(math.rad(-90), 0, 0),
+	[0x07] = CFrame.fromEulerAnglesYXZ(0, math.rad(180), math.rad(90)),
+	[0x09] = CFrame.fromEulerAnglesYXZ(0, math.rad(90), math.rad(90)),
+	[0x0a] = CFrame.fromEulerAnglesYXZ(0, 0, math.rad(90)),
+	[0x0c] = CFrame.fromEulerAnglesYXZ(0, math.rad(-90), math.rad(90)),
+	[0x0d] = CFrame.fromEulerAnglesYXZ(math.rad(-90), math.rad(-90), 0),
+	[0x0e] = CFrame.fromEulerAnglesYXZ(math.rad(0), math.rad(-90), 0),
+	[0x10] = CFrame.fromEulerAnglesYXZ(math.rad(90), math.rad(-90), 0),
+	[0x11] = CFrame.fromEulerAnglesYXZ(math.rad(0), math.rad(90), 180),
+
+	[0x14] = CFrame.fromEulerAnglesYXZ(0, math.rad(180), 0),
+	[0x15] = CFrame.fromEulerAnglesYXZ(math.rad(-90), math.rad(-180), 0),
+	[0x17] = CFrame.fromEulerAnglesYXZ(0, 0, math.rad(180)),
+	[0x18] = CFrame.fromEulerAnglesYXZ(math.rad(90), math.rad(180), 0),
+	[0x19] = CFrame.fromEulerAnglesYXZ(0, 0, math.rad(-90)),
+	[0x1b] = CFrame.fromEulerAnglesYXZ(0, math.rad(-90), math.rad(-90)),
+	[0x1c] = CFrame.fromEulerAnglesYXZ(0, math.rad(-180), math.rad(-90)),
+	[0x1e] = CFrame.fromEulerAnglesYXZ(0, math.rad(90), math.rad(-90)),
+	[0x1f] = CFrame.fromEulerAnglesYXZ(math.rad(90), math.rad(90), 0),
+	[0x20] = CFrame.fromEulerAnglesYXZ(0, math.rad(90), 0),
+	[0x22] = CFrame.fromEulerAnglesYXZ(math.rad(-90), math.rad(90), 0),
+	[0x23] = CFrame.fromEulerAnglesYXZ(0, math.rad(-90), math.rad(180)),
+})
+
+type Pair<T> = {
+	encode: (datatype: T) -> buffer,
+	decode: (buf: buffer) -> T,
+	type: number,
+}
+
+local BASIC_DATATYPE_TO_PAIR: { [string]: Pair<any> } = {
+	CFrame = {
+		encode = function(datatype: CFrame)
+			local position = datatype.Position
+			local rotation = datatype.Rotation
+
+			local id
+			for key, value in CFRAME_ID_LOOKUP_TABLE do
+				if rotation == value then
+					id = key
+					break
+				end
+			end
+
+			local buf = buffer.create(if id then 13 else 49)
+
+			buffer.writeu8(buf, 0, id or 0)
+
+			if id then
+				buffer.writef32(buf, 1, position.X)
+				buffer.writef32(buf, 5, position.Y)
+				buffer.writef32(buf, 9, position.Z)
+			else
+				for index, component in { datatype:GetComponents() } do
+					buffer.writef32(buf, ((index - 1) * 4) + 1, component)
+				end
+			end
+
+			return buf
+		end,
+
+		decode = function(buf: buffer)
+			local id = buffer.readu8(buf, 0)
+
+			if id == 0 then
+				local positionX, positionY, positionZ, xx, xy, xz, yx, yy, yz, zx, zy, zz =
+					buffer.readf32(buf, 1),
+					buffer.readf32(buf, 5),
+					buffer.readf32(buf, 9),
+					buffer.readf32(buf, 13),
+					buffer.readf32(buf, 17),
+					buffer.readf32(buf, 21),
+					buffer.readf32(buf, 25),
+					buffer.readf32(buf, 29),
+					buffer.readf32(buf, 33),
+					buffer.readf32(buf, 37),
+					buffer.readf32(buf, 41),
+					buffer.readf32(buf, 45)
+
+				return CFrame.new(positionX, positionY, positionZ, xx, xy, xz, yx, yy, yz, zx, zy, zz)
+			else
+				local positionX, positionY, positionZ =
+					buffer.readf32(buf, 1), buffer.readf32(buf, 4), buffer.readf32(buf, 8)
+
+				return CFrame.new(positionX, positionY, positionZ) * CFRAME_ID_LOOKUP_TABLE[id]
+			end
+		end,
+
+		type = 13,
+	},
+
+	Vector3 = {
+		encode = function(datatype: Vector3)
+			local buf = buffer.create(12)
+			buffer.writef64(buf, 0, datatype.X)
+			buffer.writef64(buf, 8, datatype.Y)
+			buffer.writef64(buf, 16, datatype.Z)
+			return buf
+		end,
+
+		decode = function(buf: buffer)
+			return Vector3.new(buffer.readf64(buf, 0), buffer.readf64(buf, 8), buffer.readf64(buf, 16))
+		end,
+
+		type = 14,
+	},
+}
+
+-- Instances are specially handled
+local INSTANCE_EXTENSION_TYPE: number = 12 -- 0x0c
+
+local TYPE_EXISTS: { [number]: string } = {
+	[INSTANCE_EXTENSION_TYPE] = "Instance",
+}
+
+for index, pair in BASIC_DATATYPE_TO_PAIR do
+	TYPE_EXISTS[pair.type] = index
+end
+
+table.freeze(TYPE_EXISTS)
 
 local Module = {}
 
@@ -37,10 +163,15 @@ function Module.encode(data: any): (buffer, { Instance })
 
 			local extension = MessagePack.Extension.new(INSTANCE_EXTENSION_TYPE, extensionData)
 
-			table.insert(instanceArray, data)
+			table.insert(instanceArray, data :: Instance)
 			index += 1
 
 			data = extension
+		else
+			local pair = BASIC_DATATYPE_TO_PAIR[datatype]
+			if pair then
+				data = MessagePack.Extension.new(pair.type, pair.encode(data))
+			end
 		end
 
 		return data, instanceArray
@@ -57,30 +188,34 @@ function Module.decode(data: buffer, instanceArray: { Instance }): any
 
 	local function decode(data: any)
 		if typeof(data) == "table" then
-			if data._msgpackType ~= nil and data.type == INSTANCE_EXTENSION_TYPE then
-				local extensionData: buffer = data.data
-				local index = buffer.readu32(extensionData, 4)
-				local instance = instanceArray[index]
+			if data._msgpackType ~= nil and TYPE_EXISTS[data.type :: number] then
+				if data.type == INSTANCE_EXTENSION_TYPE then
+					local extensionData: buffer = data.data
+					local index = buffer.readu32(extensionData, 4)
+					local instance = instanceArray[index]
 
-				if not instance then
-					error("Integrity check failed: instanceArray[index] is nil", 2)
+					if not instance then
+						error("Integrity check failed: instanceArray[index] is nil", 2)
+					end
+
+					if typeof(instance) ~= "Instance" then
+						error("Integrity check failed: instanceArray[index] returned a non-instance value", 2)
+					end
+
+					local checksum = buffer.readu32(extensionData, 0)
+					local expected = computeDecentChecksum(instance)
+
+					if checksum ~= expected then
+						error(
+							`Integrity check failed: hash check failed! expected {expected} but got {checksum} from extension data [0-4]`,
+							2
+						)
+					end
+
+					return instance
+				else
+					return BASIC_DATATYPE_TO_PAIR[TYPE_EXISTS[data.type :: number]].decode(data.data :: buffer)
 				end
-
-				if typeof(instance) ~= "Instance" then
-					error("Integrity check failed: instanceArray[index] returned a non-instance value", 2)
-				end
-
-				local checksum = buffer.readu32(extensionData, 0)
-				local expected = computeDecentChecksum(instance)
-
-				if checksum ~= expected then
-					error(
-						`Integrity check failed: hash check failed! expected {expected} but got {checksum} from extension data [0-4]`,
-						2
-					)
-				end
-
-				return instance
 			end
 
 			for key, value in pairs(data) do

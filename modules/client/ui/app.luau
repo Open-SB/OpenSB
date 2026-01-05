@@ -8,7 +8,7 @@ local CommandInputContext = require("@shared/commands/inputContexts")
 local Maid = require("@shared/maid")
 local MessageType = require("@shared/output/messageTypes")
 
-local create = require("./create")
+local create = require("@self/create")
 
 local APP_ASPECT_RATIO = 9 / 4 -- How many times wider it is than taller (width / height)
 local APP_MAX_SIZE, APP_MIN_SIZE = 325, 200

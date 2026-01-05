@@ -20,7 +20,7 @@ local PlayerList = require("@shared/playerList")
 local Utils = require("@shared/network/utils")
 
 -- add extra entropy
-CSPRNG.Instance:GatherEntropy(Utils.generateEntropy())
+CSPRNG.AddEntropyProvider(Utils.robloxEntropyProvider)
 
 local dsaServerPrivateKey: buffer = Base64.Decode(buffer.fromstring(_G.dsaServerPrivateKey))
 -- local dsaServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.dsaServerPublicKey))
@@ -49,7 +49,7 @@ PlayerList.Removed:Connect(function(player: Player)
 end)
 
 local Network = {}
-Network.attributeName, Network.attributeValue = string.sub(tostring(math.random()), 3), math.random()
+Network.attributeName, Network.attributeValue = CSPRNG.Random(), CSPRNG.Random()
 
 local registeredEvents: { [string]: (...unknown) -> nil } = {}
 function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
@@ -272,7 +272,7 @@ function Network:Init()
 
 		Protection.add(remote, "write")
 
-		remoteParent = services[math.random(1, #services)]
+		remoteParent = if #services > 1 then services[CSPRNG.RandomInt(1, #services)] else services[1]
 		remote.Parent = remoteParent
 	end
 

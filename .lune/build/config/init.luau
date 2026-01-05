@@ -2,7 +2,7 @@ local fs = require("@lune/fs")
 local serde = require("@lune/serde")
 local process = require("@lune/process")
 
-local branch = require("../branch")
+local branch = require("./branch")
 local defaultConfig = serde.decode("toml", fs.readFile(".lune/build/config/default.toml")) -- ./default.toml would've been nice :sob:
 
 local config = { branch = branch }
@@ -30,7 +30,7 @@ if fs.isFile(".config.toml") then
 	writeToConfig(customConfig[branch])
 end
 
-for _, v in ipairs(require("../branches")) do
+for _, v in ipairs(require("./branches")) do
 	config[v] = config.branch == v
 end
 

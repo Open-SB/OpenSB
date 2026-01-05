@@ -13,7 +13,7 @@ local select = select
 local unpack = unpack
 local error = error
 
-local Reflection = require("./reflection")
+local Reflection = require("@self/reflection")
 local Protection = require("@shared/wm/protection")
 local Errors = require("@shared/errors")
 local Sandbox
