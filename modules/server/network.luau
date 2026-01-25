@@ -51,22 +51,22 @@ end)
 local Network = {}
 Network.attributeName, Network.attributeValue = CSPRNG.Random(), CSPRNG.Random()
 
-local registeredEvents: { [string]: (...unknown) -> nil } = {}
-function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
+local registeredEvents: { [string]: <Args...>(Args...) -> () } = {}
+function Network:RegisterEvent<Args...>(name: string, callback: (Args...) -> ())
 	if registeredEvents[name] then
 		Log.warn(`Network event "{name}" was overwritten.`)
 	end
 
-	registeredEvents[name] = callback
+	registeredEvents[name] = callback :: any
 end
 
-local registeredFunctions: { [string]: (...unknown) -> ...unknown } = {}
-function Network:RegisterFunction(name: string, callback: (...unknown) -> ...unknown)
+local registeredFunctions: { [string]: <Args..., Ret...>(Args...) -> Ret... } = {}
+function Network:RegisterFunction<Args..., Ret...>(name: string, callback: (Args...) -> Ret...)
 	if registeredFunctions[name] then
 		Log.warn(`Network function "{name}" was overwritten.`)
 	end
 
-	registeredFunctions[name] = callback
+	registeredFunctions[name] = callback :: any
 end
 
 local function encryptAnythingForPlayer(player: Player, data)

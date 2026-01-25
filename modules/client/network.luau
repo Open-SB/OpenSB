@@ -37,13 +37,13 @@ local networkData = {
 	lastNonce = -1,
 }
 
-local registeredEvents: { [string]: (...unknown) -> nil } = {}
-function Network:RegisterEvent(name: string, callback: (...unknown) -> nil)
+local registeredEvents: { [string]: <Args...>(Args...) -> () } = {}
+function Network:RegisterEvent<Args...>(name: string, callback: (Args...) -> ())
 	if registeredEvents[name] then
 		Log.warn(`Network event "{name}" was overwritten.`)
 	end
 
-	registeredEvents[name] = callback
+	registeredEvents[name] = callback :: any
 end
 
 local function encryptAnything(data)
@@ -125,7 +125,7 @@ function Network:FireServer(eventName: string, ...)
 end
 
 function Network:InvokeServer(functionName: string, ...)
-	local id = nil
+	local id: string
 	repeat
 		id = Functions.randomString(8)
 	until not invokeResults[id]
