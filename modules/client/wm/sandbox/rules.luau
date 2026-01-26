@@ -12,7 +12,7 @@ local StackTrace = require("@client/wm/stackTrace")
 
 local Module = {}
 
-local blockedInstances = require("./blockedInstances")
+local blockedInstances = require("@self/blockedInstances")
 
 function Module.Init(_, Sandbox)
 	local fmap = Sandbox.FunctionMap

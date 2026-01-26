@@ -8,7 +8,7 @@ local coroutine = coroutine
 local debug = debug
 
 local ManagerCommunication = require("@shared/wm/communication")
-local Wrapper = require("./wrapper")
+local Wrapper = require("@self/wrapper")
 local Protection = require("@shared/wm/protection")
 local Functions = require("@shared/functions")
 local Errors = require("@shared/errors")
@@ -18,7 +18,7 @@ local renv = getfenv()
 
 local Module = {}
 
-local blockedInstances = require("./blockedInstances")
+local blockedInstances = require("@self/blockedInstances")
 
 function Module.Init(_, Sandbox)
 	local wmap = Sandbox.WrapMap

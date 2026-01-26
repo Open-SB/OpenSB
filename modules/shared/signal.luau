@@ -61,4 +61,14 @@ function Signal:Wait()
 	end
 end
 
-return Signal
+export type Signal<Args...> = {
+	Destroy: (self: Signal<Args...>) -> (),
+	Fire: (self: Signal<Args...>, Args...) -> (),
+	Connect: (self: Signal<Args...>, callback: (Args...) -> ()) -> RBXScriptConnection,
+	Once: (self: Signal<Args...>, callback: (Args...) -> ()) -> RBXScriptConnection,
+	Wait: (self: Signal<Args...>) -> Args...,
+}
+
+return Signal :: {
+	new: <Args...>() -> Signal<Args...>,
+}

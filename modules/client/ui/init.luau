@@ -6,8 +6,8 @@ local Maid = require("@shared/maid")
 local Signal = require("@shared/signal")
 local Functions = require("@shared/functions")
 
-local App = require("./app")
-local create = require("./create")
+local App = require("@self/app")
+local create = require("@self/create")
 
 local UI = {}
 UI.PlayerGui = nil

@@ -2,9 +2,9 @@ local game = game
 local setmetatable = setmetatable
 
 local Log = require("@shared/log")
-local Environment = require("./environment")
-local VM = require("./vm")
-local Rules = require("./rules")
+local Environment = require("@self/environment")
+local VM = require("@self/vm")
+local Rules = require("@self/rules")
 
 local Players = game:GetService("Players")
 

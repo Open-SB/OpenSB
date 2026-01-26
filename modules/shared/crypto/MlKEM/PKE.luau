@@ -35,8 +35,20 @@ local Utils = require("./Utils")
 local SHA3 = require("./SHA3")
 
 local LOG2N = 8
-local N = 2^LOG2N
-local POLY_SIZE = N * 2 
+local N = 2 ^ LOG2N
+local POLY_SIZE = N * 2
+
+local TEMP_V = buffer.create(N * 2)
+local TEMP_V2 = buffer.create(N * 2)
+local TEMP_SINGLE_POLY = buffer.create(N * 2)
+local TEMP_R_POLY = buffer.create(N * 2)
+local TEMP_T = buffer.create(N * 2)
+local TEMP_T2 = buffer.create(N * 2)
+local TEMP_U_POLY = buffer.create(N * 2)
+
+local KEYGEN_G_INPUT = buffer.create(33)
+local KEYGEN_RHO = buffer.create(32)
+local KEYGEN_SIGMA = buffer.create(32)
 
 local Pke = {}
 
@@ -48,13 +60,13 @@ function Pke.KeyGen(K: number, Eta1: number, Seed: buffer): (buffer, buffer)
 		error("Seed must be 32 bytes")
 	end
 
-	local GInput = buffer.create(33)
+	local GInput = KEYGEN_G_INPUT
 	buffer.copy(GInput, 0, Seed, 0, 32)
 	buffer.writeu8(GInput, 32, K)
 
 	local GOutput = SHA3.SHA3_512(GInput)
-	local Rho = buffer.create(32)
-	local Sigma = buffer.create(32)
+	local Rho = KEYGEN_RHO
+	local Sigma = KEYGEN_SIGMA
 	buffer.copy(Rho, 0, GOutput, 0, 32)
 	buffer.copy(Sigma, 0, GOutput, 32, 32)
 
@@ -83,7 +95,16 @@ function Pke.KeyGen(K: number, Eta1: number, Seed: buffer): (buffer, buffer)
 	return PublicKey, PolyVec.VecEncode(S, K, 12)
 end
 
-function Pke.Encrypt(K: number, Eta1: number, Eta2: number, Du: number, Dv: number, PublicKey: buffer, Message: buffer, Randomness: buffer): buffer
+function Pke.Encrypt(
+	K: number,
+	Eta1: number,
+	Eta2: number,
+	Du: number,
+	Dv: number,
+	PublicKey: buffer,
+	Message: buffer,
+	Randomness: buffer
+): buffer
 	if not Params.CheckEncryptParams(K, Eta1, Eta2, Du, Dv) then
 		error("Invalid encryption parameters")
 	end
@@ -96,7 +117,7 @@ function Pke.Encrypt(K: number, Eta1: number, Eta2: number, Du: number, Dv: numb
 	if buffer.len(Randomness) ~= 32 then
 		error("Randomness must be 32 bytes")
 	end
-	
+
 	local RhoOffset = K * 12 * 32
 	local EncodedTPrime = buffer.create(RhoOffset)
 	local Rho = buffer.create(32)
@@ -109,7 +130,7 @@ function Pke.Encrypt(K: number, Eta1: number, Eta2: number, Du: number, Dv: numb
 	if IsValid ~= 0xFFFFFFFF then
 		error("Key encapsulation verification failed")
 	end
-	
+
 	local APrime = Sampling.GenerateMatrix(K, Rho, true)
 
 	local Nonce = 0
@@ -120,25 +141,24 @@ function Pke.Encrypt(K: number, Eta1: number, Eta2: number, Du: number, Dv: numb
 	local E2 = Sampling.GenerateNoisePoly(Eta2, Randomness, Nonce)
 
 	PolyVec.VecNtt(R, K)
-	
+
 	local U = PolyVec.VecCreate(K)
 	PolyVec.MatVecMultiply(APrime, R, U, K, K, K)
 
 	PolyVec.VecIntt(U, K)
 	PolyVec.VecAddTo(E1, U, K)
 
-	local V = buffer.create(N * 2)
-	local TempV = buffer.create(N * 2)
-	local SinglePoly = buffer.create(N * 2)
+	local V = TEMP_V
+	local TempV = TEMP_V2
+	local SinglePoly = TEMP_SINGLE_POLY
+	local RPoly = TEMP_R_POLY
 	buffer.fill(V, 0, 0, N * 2)
 
 	local PolySize = POLY_SIZE
-
 	for I = 0, K - 1 do
 		local TPolyOffset = I * PolySize
 		local RPolyOffset = I * PolySize
 		buffer.copy(SinglePoly, 0, TPrime, TPolyOffset, PolySize)
-		local RPoly = buffer.create(N * 2)
 		buffer.copy(RPoly, 0, R, RPolyOffset, PolySize)
 		Ntt.PolyMul(SinglePoly, RPoly, TempV)
 		Ntt.PolyAdd(V, TempV, V)
@@ -198,6 +218,11 @@ function Pke.Decrypt(K: number, Du: number, Dv: number, SecretKey: buffer, Ciphe
 	local T = buffer.create(N * 2)
 	local TempT = buffer.create(N * 2)
 	local SinglePoly = buffer.create(N * 2)
+
+	local T = TEMP_T
+	local TempT = TEMP_T2
+	local SinglePoly = TEMP_SINGLE_POLY
+	local UPoly = TEMP_U_POLY
 	buffer.fill(T, 0, 0, N * 2)
 
 	local PolySize = POLY_SIZE
@@ -206,7 +231,6 @@ function Pke.Decrypt(K: number, Du: number, Dv: number, SecretKey: buffer, Ciphe
 		local UPolyOffset = I * PolySize
 
 		buffer.copy(SinglePoly, 0, SPrime, SPolyOffset, PolySize)
-		local UPoly = buffer.create(N * 2)
 		buffer.copy(UPoly, 0, U, UPolyOffset, PolySize)
 
 		Ntt.PolyMul(SinglePoly, UPoly, TempT)
@@ -233,7 +257,7 @@ Pke.MLKEM_512 = {
 
 	Decrypt = function(SecretKey: buffer, Ciphertext: buffer): buffer
 		return Pke.Decrypt(2, 10, 4, SecretKey, Ciphertext)
-	end
+	end,
 }
 
 Pke.MLKEM_768 = {
@@ -247,7 +271,7 @@ Pke.MLKEM_768 = {
 
 	Decrypt = function(SecretKey: buffer, Ciphertext: buffer): buffer
 		return Pke.Decrypt(3, 10, 4, SecretKey, Ciphertext)
-	end
+	end,
 }
 
 Pke.MLKEM_1024 = {
@@ -261,7 +285,7 @@ Pke.MLKEM_1024 = {
 
 	Decrypt = function(SecretKey: buffer, Ciphertext: buffer): buffer
 		return Pke.Decrypt(4, 11, 5, SecretKey, Ciphertext)
-	end
+	end,
 }
 
 return Pke

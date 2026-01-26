@@ -5,6 +5,8 @@ local error = error
 local Signal = require("@shared/signal")
 local Log = require("@shared/log")
 
+type Signal<Args...> = Signal.Signal<Args...>
+
 local ManagerCommunication = {}
 ManagerCommunication.__index = ManagerCommunication
 
@@ -95,11 +97,11 @@ function ManagerCommunication:ready(awaitReceiver: boolean)
 	self.__send:Fire("ready")
 end
 
-function ManagerCommunication:on(topic: string, callback: (any...) -> never)
+function ManagerCommunication:on<Args...>(topic: string, callback: (Args...) -> ())
 	-- This will not destroy the signal once all connections are disconnected, but it's likely this will never happen.
 	-- If we add topics that are temporary and used once then this should be reworked to avoid memory leaks.
 
-	local event = self.__events[topic]
+	local event: Signal<Args...> = self.__events[topic]
 	if not event then
 		event = Signal.new()
 		self.__events[topic] = event
@@ -108,8 +110,8 @@ function ManagerCommunication:on(topic: string, callback: (any...) -> never)
 	return event:Connect(callback)
 end
 
-function ManagerCommunication:once(topic: string, callback: (any...) -> never)
-	local event = self.__events[topic]
+function ManagerCommunication:once<Args...>(topic: string, callback: (Args...) -> ())
+	local event: Signal<Args...> = self.__events[topic]
 	if not event then
 		event = Signal.new()
 		self.__events[topic] = event
@@ -128,7 +130,7 @@ function ManagerCommunication:once(topic: string, callback: (any...) -> never)
 	end)
 end
 
-function ManagerCommunication:onInvoke(topic: string, callback: (any...) -> any...)
+function ManagerCommunication:onInvoke<Args..., Ret...>(topic: string, callback: (Args...) -> Ret...)
 	self.__invokes[topic] = callback
 end
 
@@ -140,9 +142,34 @@ function ManagerCommunication:Send(topic: string, ...)
 	end
 end
 
-function ManagerCommunication:Invoke(topic: string, ...)
+function ManagerCommunication:Invoke<Args..., Ret...>(topic: string, ...: Args...): Ret...
 	self:awaitReceiverReady()
 	return self.__invoke:Invoke(topic, ...)
 end
 
-return ManagerCommunication
+type ManagerCommunication = {
+	isReceiverReady: (self: ManagerCommunication) -> boolean,
+	awaitReceiverReady: (self: ManagerCommunication) -> (),
+	ready: (self: ManagerCommunication, awaitReceiver: boolean) -> (),
+	on: <Args...>(self: ManagerCommunication, topic: string, callback: (Args...) -> ()) -> RBXScriptConnection,
+	once: <Args...>(self: ManagerCommunication, topic: string, callback: (Args...) -> ()) -> RBXScriptConnection,
+	onInvoke: <Args..., Ret...>(self: ManagerCommunication, topic: string, callback: (Args...) -> Ret...) -> (),
+	Send: (self: ManagerCommunication, topic: string, ...any) -> (),
+	Invoke: <Args..., Ret...>(self: ManagerCommunication, topic: string, Args...) -> Ret...,
+}
+
+return ManagerCommunication :: {
+	new: (
+		send: BindableEvent,
+		receive: BindableEvent,
+		invoke: BindableFunction,
+		invoked: BindableFunction
+	) -> ManagerCommunication,
+	init: (
+		self: ManagerCommunication,
+		send: BindableEvent,
+		receive: BindableEvent,
+		invoke: BindableFunction,
+		invoked: BindableFunction
+	) -> (),
+} & ManagerCommunication

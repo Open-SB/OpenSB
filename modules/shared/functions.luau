@@ -1,26 +1,21 @@
 -- Maybe this should be rewritten to have each function in it's own file?
 local string = string
-local math = math
 local game = game
 local coroutine = coroutine
 local debug = debug
 local table = table
 
+local CSPRNG = require("@shared/crypto/CSPRNG")
+
 local Functions = {}
 
 function Functions.empty() end
 
-function Functions.randomString(length: number): string
-	local str = ""
-
-	for _ = 1, length or 32 do
-		str = str .. string.char(math.random(0, 127))
-	end
-
-	return str
+function Functions.randomString(length: number?): string
+	return CSPRNG.RandomString(length or 32, false)
 end
 
-Functions.randomInstanceName = math.random
+Functions.randomInstanceName = CSPRNG.Random
 
 -- This function makes the string "null terminated" (stops before a null character)
 function Functions.nullTerminate(str: string): string

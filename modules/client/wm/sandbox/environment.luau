@@ -28,8 +28,8 @@ local Functions = require("@shared/functions")
 local Errors = require("@shared/errors")
 
 local Sandbox
-local VM = require("./vm")
-local BlockedInstances = require("./blockedInstances")
+local VM = require("@self/vm")
+local BlockedInstances = require("@self/blockedInstances")
 
 local localPlayer = game:GetService("Players").LocalPlayer
 
