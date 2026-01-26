@@ -85,4 +85,10 @@ A list of "branches" is visible when running the build script without providing 
 lune run build
 ```
 
+Tests are available (if you want to contribute, edit [tests/scriptTest.txt](./tests/scriptTest.txt)):
+
+```bash
+lune run test
+```
+
 For more help, check out the [Rojo](https://rojo.space/docs) and [darklua](https://darklua.com/docs) documentation.
