@@ -7,6 +7,14 @@ local VM = require("@self/vm")
 local Rules = require("@self/rules")
 
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local lastSteppedStart = 0
+local SCRIPT_TIMEOUT = 0.1
+
+RunService.Stepped:Connect(function()
+	lastSteppedStart = os.clock()
+end)
 
 local localPlayer = Players.LocalPlayer
 
@@ -90,7 +98,16 @@ function Module.new(owner: Player, bytecode: buffer, script: BaseScript?): sandb
 		scriptLookup[script] = sandbox
 	end
 
-	local main, luau_close = VM.luau_load(bytecode, sandbox)
+	local main, luau_close = VM.luau_load(bytecode, sandbox, @native function()
+		if os.clock() - lastSteppedStart >= SCRIPT_TIMEOUT then
+			error(`Script timeout: exhausted allowed execution time ({SCRIPT_TIMEOUT})`, 2)
+
+			return sandbox.Terminator()
+		end
+
+		return nil
+	end)
+
 	sandbox.Terminator = luau_close
 
 	return sandbox, main
