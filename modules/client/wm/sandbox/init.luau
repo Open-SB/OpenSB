@@ -102,9 +102,9 @@ function Module.new(owner: Player, bytecode: buffer, script: BaseScript?): sandb
 
 	local main, luau_close = VM.luau_load(bytecode, sandbox, @native function()
 		if os.clock() - lastSteppedStart >= SCRIPT_TIMEOUT then
+			-- calls sandbox.Terminator (luau_close), then cleans up sandbox
+			Module.terminate(sandbox, true)
 			error(`Script timeout: exhausted allowed execution time ({SCRIPT_TIMEOUT})`, 2)
-
-			return sandbox.Terminator()
 		end
 
 		return nil
