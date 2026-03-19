@@ -12,6 +12,8 @@ local RunService = game:GetService("RunService")
 local lastSteppedStart = 0
 local SCRIPT_TIMEOUT = 0.1
 
+local os = os
+
 RunService.Stepped:Connect(function()
 	lastSteppedStart = os.clock()
 end)
