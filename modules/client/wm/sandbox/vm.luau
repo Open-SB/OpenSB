@@ -541,7 +541,7 @@ local function luau_deserialize(bytecode)
 end
 
 local vmStart = debug_info(function() end, "l")
-local function luau_load(module, sandbox)
+local function luau_load(module, sandbox, interruptHook: () -> ())
 	if type(module) ~= "table" then
 		module = luau_deserialize(module)
 	end
@@ -561,7 +561,7 @@ local function luau_load(module, sandbox)
 	local function luau_wrapclosure(module, proto, upvals, _env)
 		local info = { proto = proto, sandbox = sandbox }
 
-		-- TODO: @native
+		@native
 		local function luau_execute(...)
 			local runningInfo = { thread = coroutine_running(), pc = 0, closureInfo = info }
 			info.running = runningInfo
@@ -735,6 +735,8 @@ local function luau_load(module, sandbox)
 
 					stack[A] = sb[inst.K]
 				elseif op == 21 then --[[ CALL ]]
+					interruptHook()
+
 					local A, B, C = inst.A, inst.B, inst.C
 
 					local func = stack[A]
@@ -752,6 +754,8 @@ local function luau_load(module, sandbox)
 
 					table_move(ret_list, 1, ret_num, A, stack)
 				elseif op == 22 then --[[ RETURN ]]
+					interruptHook()
+
 					local A = inst.A
 					local B = inst.B
 
@@ -759,6 +763,8 @@ local function luau_load(module, sandbox)
 				elseif op == 23 then --[[ JUMP ]]
 					pc += inst.D
 				elseif op == 24 then --[[ JUMPBACK ]]
+					interruptHook()
+
 					-- selene: allow(if_same_then_else)
 					pc += inst.D
 				elseif op == 25 then --[[ JUMPIF ]]
@@ -919,6 +925,8 @@ local function luau_load(module, sandbox)
 						end
 					end
 				elseif op == 57 then --[[ FORNLOOP ]]
+					interruptHook()
+
 					local A = inst.A
 					local step = stack[A + 1]
 					local index = stack[A + 2] + step
@@ -935,6 +943,8 @@ local function luau_load(module, sandbox)
 						end
 					end
 				elseif op == 58 then --[[ FORGLOOP ]]
+					interruptHook()
+
 					local A = inst.A
 
 					top = A + 6
@@ -1027,6 +1037,8 @@ local function luau_load(module, sandbox)
 
 					pc += 1 --// adjust for aux
 				elseif op == 67 then --[[ JUMPX ]]
+					interruptHook()
+
 					pc += inst.E
 				elseif op == 68 then --[[ FASTCALL ]]
 					--[[ Skipped ]]

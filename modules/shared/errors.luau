@@ -48,4 +48,8 @@ function Errors.connectNonFunction(): string
 	return `Attempt to connect failed: Passed value is not a function`
 end
 
+function Errors.scriptTimeout(allowedExecutionTime: number): string
+	return `Script timeout: exhausted allowed execution time ({allowedExecutionTime})`
+end
+
 return table.freeze(Errors)
