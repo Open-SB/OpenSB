@@ -246,9 +246,9 @@ else
 				if #globalsArray > 0 then
 					local pretext = table.concat(
 						tableext.map(globalsArray, function(global: string)
-							return `local {global} = {global}`
+							return `local {global} = {global}\n`
 						end),
-						"\n"
+						""
 					)
 					-- local pretext = `local {table.concat(globalsArray, ", ")} = {table.concat(globalsArray, ", ")}\n\n`
 
