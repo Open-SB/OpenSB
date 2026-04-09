@@ -57,7 +57,7 @@ local function check(root: types.AstStatBlock, filePath: string): { [string]: tr
 
 		AstVisitor.visit(stat.func, visitor)
 
-		-- skip the AstExprGlobalin this stat function
+		-- skip the AstExprGlobal in this stat function
 		return false
 	end
 
