@@ -229,13 +229,31 @@ if argv[2] == "--graph" then
 	writeArrowCrabGraph(outputPath, buildArrowCrabGraph(ENTRYPOINTS))
 	print(`wrote ArrowCrab (https://hemileia.club/arrowcrab/) graph to {outputPath}`)
 else
+	local TriviaUtils = require("@std/syntax/utils/trivia")
+
 	local patch = argv[2] == "--patch"
-	local allPaths = {}
+
+	local function insertAfterLeadingTrivia(source: string, ast: AstTypes.ParseResult, text: string): string
+		local firstStatement = ast.root.statements[1]
+		if firstStatement == nil then
+			return text .. source
+		end
+
+		local leadingTrivia = TriviaUtils.leftmostTrivia(firstStatement)
+		if #leadingTrivia == 0 then
+			return text .. source
+		end
+
+		local prefixLength = 0
+		for _, trivia in leadingTrivia do
+			prefixLength += #trivia.text
+		end
+
+		return string.sub(source, 1, prefixLength) .. text .. string.sub(source, prefixLength + 1)
+	end
 
 	for _, entrypoint in ENTRYPOINTS do
 		local function visit(path: string)
-			allPaths[path] = true -- mark
-
 			local source = readFile(path)
 			local ast = AstParser.parse(source)
 			local globalsMap = checkWorkerManagerContract(ast.root, path)
@@ -250,10 +268,8 @@ else
 						end),
 						""
 					)
-					-- local pretext = `local {table.concat(globalsArray, ", ")} = {table.concat(globalsArray, ", ")}\n\n`
 
-					source = pretext .. source
-
+					source = insertAfterLeadingTrivia(source, ast, pretext)
 					writeFile(path, source)
 				end
 			end
