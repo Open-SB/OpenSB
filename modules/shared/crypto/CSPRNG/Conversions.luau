@@ -11,6 +11,10 @@
 --!optimize 2
 --!native
 
+local type = type
+local buffer = buffer
+local error = error
+local bit32 = bit32
 local ENCODE_LOOKUP = buffer.create(256 * 2)
 do
 	local HexChars = "0123456789abcdef"

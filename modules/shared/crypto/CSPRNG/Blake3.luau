@@ -26,6 +26,9 @@
 --!optimize 2
 --!native
 
+local math = math
+local buffer = buffer
+local bit32 = bit32
 local BLOCK_SIZE = 64
 local CV_SIZE = 32
 local EXTENDED_CV_SIZE = 64

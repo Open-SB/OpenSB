@@ -1,3 +1,5 @@
+local unpack = unpack
+local tostring = tostring
 local setmetatable = setmetatable
 local error = error
 local table = table

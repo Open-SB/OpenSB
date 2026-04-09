@@ -1,3 +1,6 @@
+local getfenv = getfenv
+local newproxy = newproxy
+local setfenv = setfenv
 local table = table
 local setmetatable = setmetatable
 local typeof = typeof

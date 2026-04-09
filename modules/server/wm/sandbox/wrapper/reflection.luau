@@ -1,3 +1,4 @@
+local tostring = tostring
 local table = table
 local setmetatable = setmetatable
 local error = error

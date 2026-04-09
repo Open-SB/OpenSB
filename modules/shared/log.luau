@@ -1,3 +1,4 @@
+local _G = _G
 local table = table
 local print = print
 local warn = warn

@@ -22,6 +22,11 @@
 --!native
 --!optimize 2
 
+local buffer = buffer
+local typeof = typeof
+local math = math
+local error = error
+local bit32 = bit32
 local DWORD = 4
 local BLOCK_SIZE = 64
 local STATE_SIZE = 16
