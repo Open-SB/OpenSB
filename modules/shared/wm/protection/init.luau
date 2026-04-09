@@ -10,6 +10,9 @@ each further level implies the last
 
 -- local ManagerCommunication = require("@shared/wm/communication")
 
+local require = require
+local error = error
+local ipairs = ipairs
 local protectedInstances: { [Instance]: number } = {}
 local protectedClasses: { [string]: number } = {}
 

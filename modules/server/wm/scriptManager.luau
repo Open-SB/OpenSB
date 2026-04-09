@@ -1,3 +1,7 @@
+local Instance = Instance
+local _G = _G
+local require = require
+local unpack = unpack
 local setmetatable = setmetatable
 local shared = shared
 local typeof = typeof

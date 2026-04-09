@@ -1,3 +1,5 @@
+local require = require
+local setfenv = setfenv
 local table = table
 local task = task
 local pcall = pcall

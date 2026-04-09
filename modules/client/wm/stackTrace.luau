@@ -1,3 +1,4 @@
+local tonumber = tonumber
 local table = table
 local ipairs = ipairs
 

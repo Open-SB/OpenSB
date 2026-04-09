@@ -24,6 +24,24 @@
 --!optimize 2
 --!strict
 
+local string = string
+local warn = warn
+local tostring = tostring
+local DateTime = DateTime
+local tick = tick
+local math = math
+local coroutine = coroutine
+local bit32 = bit32
+local buffer = buffer
+local typeof = typeof
+local error = error
+local type = type
+local table = table
+local pcall = pcall
+local os = os
+local game = game
+local newproxy = newproxy
+local workspace = workspace
 local Conversions = require("@self/Conversions")
 local ChaCha20 = require("@self/ChaCha20")
 local Blake3 = require("@self/Blake3")
