@@ -19,6 +19,7 @@ local AstParser = require("@std/syntax/parser")
 local Query = require("@std/syntax/query")
 local SyntaxUtils = require("@std/syntax/utils")
 local AstTypes = require("@std/syntax/types")
+local tableext = require("@std/tableext")
 local checkWorkerManagerContract = require("./workerManagerContract")
 
 local ENTRYPOINTS = table.freeze({
@@ -240,13 +241,17 @@ else
 			local globalsMap = checkWorkerManagerContract(ast.root, path)
 
 			if patch then
-				local globalsArray = {}
-				for global in globalsMap do
-					table.insert(globalsArray, global)
-				end
+				local globalsArray = tableext.keys(globalsMap)
 
 				if #globalsArray > 0 then
-					local pretext = `local {table.concat(globalsArray, ", ")} = {table.concat(globalsArray, ", ")}\n\n`
+					local pretext = table.concat(
+						tableext.map(globalsArray, function(global: string)
+							return `local {global} = {global}`
+						end),
+						"\n"
+					)
+					-- local pretext = `local {table.concat(globalsArray, ", ")} = {table.concat(globalsArray, ", ")}\n\n`
+
 					source = pretext .. source
 
 					writeFile(path, source)
