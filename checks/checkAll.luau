@@ -19,6 +19,7 @@ local AstParser = require("@std/syntax/parser")
 local Query = require("@std/syntax/query")
 local SyntaxUtils = require("@std/syntax/utils")
 local AstTypes = require("@std/syntax/types")
+local checkWorkerManagerContract = require("./workerManagerContract")
 
 local ENTRYPOINTS = table.freeze({
 	"src/server/workerManager.server.luau",
@@ -77,6 +78,12 @@ local function resolveRequirePath(path: string, callerPath: string): string?
 	return nil -- yaml, toml, etc.
 end
 
+local function writeFile(file: string, contents: string)
+	local handle = fs.open(file, "w")
+	fs.write(handle, contents)
+	fs.close(handle)
+end
+
 local function readFile(file: string): string
 	local handle = fs.open(file)
 	local source = fs.read(handle)
@@ -84,26 +91,25 @@ local function readFile(file: string): string
 	return source
 end
 
-local function collectDependencies(file: string): { string }
+local function collectDependencies(file: string, ast: AstTypes.ParseResult): { string }
 	local dependencies: { string } = {}
 	local seenDependencies: { [string]: boolean } = {}
 
-	Query.findAllFromRoot(AstParser.parse(readFile(file)), SyntaxUtils.isExprCall :: any)
-		:forEach(function(expr: AstTypes.AstExprCall)
-			if
-				SyntaxUtils.isExprGlobal(expr.func :: any)
-				and (expr.func :: AstTypes.AstExprGlobal).name.text == "require"
-				and #expr.arguments == 1
-				and SyntaxUtils.isExprConstantString(expr.arguments[1].node :: any)
-			then
-				local path = (expr.arguments[1].node :: AstTypes.AstExprConstantString).token.text
-				local resolved = resolveRequirePath(path, file)
-				if resolved and not seenDependencies[resolved] then
-					seenDependencies[resolved] = true
-					table.insert(dependencies, resolved)
-				end
+	Query.findAllFromRoot(ast, SyntaxUtils.isExprCall :: any):forEach(function(expr: AstTypes.AstExprCall)
+		if
+			SyntaxUtils.isExprGlobal(expr.func :: any)
+			and (expr.func :: AstTypes.AstExprGlobal).name.text == "require"
+			and #expr.arguments == 1
+			and SyntaxUtils.isExprConstantString(expr.arguments[1].node :: any)
+		then
+			local path = (expr.arguments[1].node :: AstTypes.AstExprConstantString).token.text
+			local resolved = resolveRequirePath(path, file)
+			if resolved and not seenDependencies[resolved] then
+				seenDependencies[resolved] = true
+				table.insert(dependencies, resolved)
 			end
-		end)
+		end
+	end)
 
 	return dependencies
 end
@@ -141,7 +147,7 @@ local function buildArrowCrabGraph(entrypoints: { string }): GraphData
 
 		visitState[file] = "visiting"
 
-		local dependencies = collectDependencies(file)
+		local dependencies = collectDependencies(file, AstParser.parse(readFile(file)))
 		for _, dependency in dependencies do
 			visit(dependency, false)
 		end
@@ -222,24 +228,36 @@ if argv[2] == "--graph" then
 	writeArrowCrabGraph(outputPath, buildArrowCrabGraph(ENTRYPOINTS))
 	print(`wrote ArrowCrab (https://hemileia.club/arrowcrab/) graph to {outputPath}`)
 else
-	local process = require("@lute/process")
+	local patch = argv[2] == "--patch"
 	local allPaths = {}
 
 	for _, entrypoint in ENTRYPOINTS do
 		local function visit(path: string)
 			allPaths[path] = true -- mark
 
-			for _, dependency in collectDependencies(path) do
+			local source = readFile(path)
+			local ast = AstParser.parse(source)
+			local globalsMap = checkWorkerManagerContract(ast.root, path)
+
+			if patch then
+				local globalsArray = {}
+				for global in globalsMap do
+					table.insert(globalsArray, global)
+				end
+
+				if #globalsArray > 0 then
+					local pretext = `local {table.concat(globalsArray, ", ")} = {table.concat(globalsArray, ", ")}\n\n`
+					source = pretext .. source
+
+					writeFile(path, source)
+				end
+			end
+
+			for _, dependency in collectDependencies(path, ast) do
 				visit(dependency)
 			end
 		end
 
 		visit(entrypoint)
-	end
-
-	for path in allPaths do
-		process.run({ "lute", "run", "checks/workerManagerContract.luau", path }, {
-			stdio = "inherit",
-		})
 	end
 end
