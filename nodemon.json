@@ -1,0 +1,6 @@
+{
+	"$schema": "https://json.schemastore.org/nodemon.json",
+	"ext": "luau,lua,yaml,json",
+	"exec": "lune run build dev yes",
+	"ignore": ["build", "out"]
+}
