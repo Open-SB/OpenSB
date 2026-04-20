@@ -1,0 +1,108 @@
+{
+	"name": "OpenSB",
+	"tree": {
+		"$className": "DataModel",
+
+		"testRunnerSource": {
+			"$path": "tests/scriptTest.txt"
+		},
+
+		"ServerScriptService": {
+			"$properties": {
+				"LoadStringEnabled": true
+			},
+
+			"sbActor": {
+				"$className": "Actor",
+
+				"sb": {
+					"$path": "out/server/testRunner.server.luau",
+					"$properties": {
+						"RunContext": "Server"
+					}
+				}
+			},
+
+			"workerManager": {
+				"$path": "out/server/workerManager.server.luau",
+				"$properties": {
+					"RunContext": "Server",
+					"Disabled": true
+				}
+			},
+
+			"assets": {
+				"$path": "assets/server",
+
+				"hosts": {
+					"$className": "Folder",
+
+					"script": {
+						"$path": "out/hosts/script.server.luau",
+						"$properties": {
+							"Disabled": true
+						}
+					},
+					"localScript": {
+						"$path": "out/hosts/localScript.client.luau",
+						"$properties": {
+							"Disabled": true
+						}
+					},
+					"moduleScript": {
+						"$path": "out/hosts/moduleScript.luau"
+					},
+					"worker": {
+						"$path": "out/hosts/worker.luau"
+					}
+				}
+			}
+		},
+		"Workspace": {
+			"$properties": {
+				"FilteringEnabled": true,
+				"SignalBehavior": "Immediate"
+			}
+		},
+		"Players": {
+			"$properties": {
+				"CharacterAutoLoads": false
+			}
+		},
+		"Lighting": {
+			"$properties": {
+				"GlobalShadows": true,
+				"Outlines": false,
+				"Technology": "Future"
+			}
+		},
+		"StarterPlayer": {
+			"StarterPlayerScripts": {
+				"PlayerScriptsLoader": {
+					"$className": "LocalScript"
+				},
+				"RbxCharacterSounds": {
+					"$className": "LocalScript"
+				},
+				"PlayerModule": {
+					"$className": "ModuleScript"
+				}
+			}
+		},
+		"SoundService": {
+			"$properties": {
+				"RespectFilteringEnabled": true
+			}
+		},
+		"TextChatService": {
+			"$properties": {
+				"ChatVersion": "TextChatService"
+			}
+		},
+		"HttpService": {
+			"$properties": {
+				"HttpEnabled": true
+			}
+		}
+	}
+}

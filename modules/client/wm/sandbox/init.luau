@@ -130,7 +130,6 @@ end
 
 function Module.claimEnvironment(environment: table, sandbox: sandbox?)
 	sandbox = sandbox or Module.getSandbox()
-	Module.assertTerminated(sandbox)
 
 	sandbox.Environments[environment] = true
 	envLookup[environment] = sandbox

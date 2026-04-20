@@ -311,6 +311,9 @@ function Module:Init()
 		return error(message, safeLevel or 0)
 	end
 
+	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#gcinfo
+	senv.gcinfo = renv.gcinfo
+
 	-- https://create.roblox.com/docs/reference/engine/globals/LuaGlobals#getfenv
 	senv.getfenv = function(...)
 		local stack = ...
@@ -318,10 +321,10 @@ function Module:Init()
 		local stackType = type(stack)
 		if stackType == "number" then
 			assertArg("getfenv", 1, stack >= 0, "level must be non-negative", 1)
-			stack = seekSafeLevel(stack)
+			stack = if stack ~= 0 then seekSafeLevel(stack) else stack -- Level 0 is the current thread's environment
 		elseif stackType == "function" then
 			if not isStackSafe(stack) then
-				stack = seekSafeLevel()
+				stack = 0
 			end
 		elseif stackType == "nil" then
 			stack = seekSafeLevel()
@@ -400,18 +403,16 @@ function Module:Init()
 
 		local stackType = type(stack)
 		if stackType == "number" then
-			assertArg("setfenv", 1, stack >= 0, "level must be non-negative")
-			if stack == 0 then
-				-- setfenv does nothing when stack is set to 0
-				return
-			end
+			assertArg("setfenv", 1, stack > -1, "level must be non-negative")
 
-			if math.floor(stack) < 1 then
+			if stack == 0 then
+				-- Level 0 is the current thread's environment
+			elseif stack < 1 then
 				-- When stack is under 1 (e.g 0.7) setfenv throws this error
 				return error("'setfenv' cannot change environment of given object", seekSafeLevel())
+			else
+				stack = seekSafeLevel(stack)
 			end
-
-			stack = seekSafeLevel(stack)
 		elseif stackType == "function" then
 			if not isStackSafe(stack) then
 				return error("'setfenv' cannot change environment of given object", seekSafeLevel())
@@ -501,9 +502,6 @@ function Module:Init()
 		return senv.delay(...)
 	end
 
-	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#gcinfo
-	senv.gcinfo = renv.gcinfo
-
 	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#printidentity
 	senv.printidentity = function(...)
 		local length = select("#", ...)
@@ -566,11 +564,11 @@ function Module:Init()
 	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#time
 	senv.time = renv.time
 
-	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#version
-	senv.version = renv.version
-
 	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#typeof
 	senv.typeof = renv.typeof
+
+	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#version
+	senv.version = renv.version
 
 	-- https://create.roblox.com/docs/reference/engine/globals/RobloxGlobals#wait
 	senv.wait = renv.wait
