@@ -21,6 +21,7 @@ local ScriptTypes = require("@shared/scriptManager/scriptTypes")
 local StackTrace = require("@server/wm/stackTrace")
 
 local CollectionService = game:GetService("CollectionService")
+local HttpService = game:GetService("HttpService")
 
 type source = {
 	owner: Player,
@@ -254,7 +255,8 @@ function Module:Init()
 				return error("invalid script", 2)
 			end
 
-			local func, err = loadstring(sourceData.source, "=" .. hostScript:GetFullName()) -- Prefixing with a "=" removes the [string ""] from the chunkname
+			local func, err =
+				loadstring(`--[[${HttpService:GenerateGUID(false)}]]` .. sourceData.source, "=" .. hostScript:GetFullName()) -- Prefixing with a "=" removes the [string ""] from the chunkname
 			if not func then
 				ManagerCommunication:Send("error", sourceData.owner, err)
 				return nil, nil, nil, err
