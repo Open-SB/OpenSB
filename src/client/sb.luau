@@ -15,6 +15,9 @@ end
 local sbActor = script.Parent
 local root = sbActor.Parent
 
+local Assets = require("@shared/assets")
+Assets:Init(root, "assets")
+
 do
 	local thread = coroutine.running()
 	task.defer(
@@ -29,9 +32,6 @@ do
 
 	coroutine.yield() -- Yield thread until script has been destroyed, so events dont get connected in the process (then disconnected by :Destroy())
 end
-
-local Assets = require("@shared/assets")
-Assets:Init(root, "assets")
 
 -- Services and modules
 Log.debug("Loading modules...")
