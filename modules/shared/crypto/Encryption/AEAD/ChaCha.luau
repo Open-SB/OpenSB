@@ -1,0 +1,1108 @@
+--[=[
+	Cryptography library: ChaCha20
+
+	Sizes:
+		Nonce: 12/24 bytes
+		Key: 16/32 bytes
+
+	Return type: buffer
+	Example usage:
+		local Data = buffer.fromstring("Hello World")
+		local Key = buffer.fromstring(string.rep("k", 32))
+		local Nonce = buffer.fromstring(string.rep("n", 12))
+
+		--------Usage Case 1--------
+		local Encrypted = ChaCha.ChaCha20(Data, Key, Nonce)
+
+		--------Usage Case 2--------
+		local LongNonce = buffer.fromstring(string.rep("n", 24))
+		local Encrypted = ChaCha.XChaCha20(Data, Key, LongNonce)
+--]=]
+
+--!strict
+--!optimize 2
+--!native
+
+local ChaCha = {}
+
+local CHACHA20_NONCE_SIZE = 12
+local XCHACHA20_NONCE_SIZE = 24
+
+local CHACHA20_KEY_SIZE_16 = 16
+local CHACHA20_KEY_SIZE_32 = 32
+
+local SIGMA_0, SIGMA_1, SIGMA_2, SIGMA_3 = 0x61707865, 0x3320646e, 0x79622d32, 0x6b206574
+local TAU_0, TAU_1, TAU_2, TAU_3 = 0x61707865, 0x3120646e, 0x79622d36, 0x6b206574
+
+local STATE = buffer.create(64)
+local KEYSTREAM = buffer.create(64)
+local HCHACHA_NONCE = buffer.create(16)
+local AEAD_STATE = buffer.create(64)
+local AEAD_AUTH_KEY = buffer.create(32)
+local AEAD_ZERO = buffer.create(64)
+local AEAD_KEY_BLOCK = buffer.create(64)
+
+local function Block20(State: buffer, Data: buffer, Output: buffer, Offset: number)
+	local A0 = buffer.readu32(State, 0)
+	local A1 = buffer.readu32(State, 4)
+	local A2 = buffer.readu32(State, 8)
+	local A3 = buffer.readu32(State, 12)
+	local A4 = buffer.readu32(State, 16)
+	local A5 = buffer.readu32(State, 20)
+	local A6 = buffer.readu32(State, 24)
+	local A7 = buffer.readu32(State, 28)
+	local A8 = buffer.readu32(State, 32)
+	local A9 = buffer.readu32(State, 36)
+	local A10 = buffer.readu32(State, 40)
+	local A11 = buffer.readu32(State, 44)
+	local A12 = buffer.readu32(State, 48)
+	local A13 = buffer.readu32(State, 52)
+	local A14 = buffer.readu32(State, 56)
+	local A15 = buffer.readu32(State, 60)
+	do
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+	end
+	buffer.writeu32(Output, Offset + 0, bit32.bxor(buffer.readu32(Data, Offset + 0), buffer.readu32(State, 0) + A0))
+	buffer.writeu32(Output, Offset + 4, bit32.bxor(buffer.readu32(Data, Offset + 4), buffer.readu32(State, 4) + A1))
+	buffer.writeu32(Output, Offset + 8, bit32.bxor(buffer.readu32(Data, Offset + 8), buffer.readu32(State, 8) + A2))
+	buffer.writeu32(Output, Offset + 12, bit32.bxor(buffer.readu32(Data, Offset + 12), buffer.readu32(State, 12) + A3))
+	buffer.writeu32(Output, Offset + 16, bit32.bxor(buffer.readu32(Data, Offset + 16), buffer.readu32(State, 16) + A4))
+	buffer.writeu32(Output, Offset + 20, bit32.bxor(buffer.readu32(Data, Offset + 20), buffer.readu32(State, 20) + A5))
+	buffer.writeu32(Output, Offset + 24, bit32.bxor(buffer.readu32(Data, Offset + 24), buffer.readu32(State, 24) + A6))
+	buffer.writeu32(Output, Offset + 28, bit32.bxor(buffer.readu32(Data, Offset + 28), buffer.readu32(State, 28) + A7))
+	buffer.writeu32(Output, Offset + 32, bit32.bxor(buffer.readu32(Data, Offset + 32), buffer.readu32(State, 32) + A8))
+	buffer.writeu32(Output, Offset + 36, bit32.bxor(buffer.readu32(Data, Offset + 36), buffer.readu32(State, 36) + A9))
+	buffer.writeu32(Output, Offset + 40, bit32.bxor(buffer.readu32(Data, Offset + 40), buffer.readu32(State, 40) + A10))
+	buffer.writeu32(Output, Offset + 44, bit32.bxor(buffer.readu32(Data, Offset + 44), buffer.readu32(State, 44) + A11))
+	buffer.writeu32(Output, Offset + 48, bit32.bxor(buffer.readu32(Data, Offset + 48), buffer.readu32(State, 48) + A12))
+	buffer.writeu32(Output, Offset + 52, bit32.bxor(buffer.readu32(Data, Offset + 52), buffer.readu32(State, 52) + A13))
+	buffer.writeu32(Output, Offset + 56, bit32.bxor(buffer.readu32(Data, Offset + 56), buffer.readu32(State, 56) + A14))
+	buffer.writeu32(Output, Offset + 60, bit32.bxor(buffer.readu32(Data, Offset + 60), buffer.readu32(State, 60) + A15))
+end
+
+local function Crypt(Data: buffer, Output: buffer, DataLength: number, State: buffer, Counter: number, DoubleRounds: number)
+	local Offset = 0
+	local Block = Counter
+	if DoubleRounds == 10 then
+		local FullBytes = DataLength - DataLength % 64
+		while Offset < FullBytes do
+			buffer.writeu32(State, 48, Block)
+			Block20(State, Data, Output, Offset)
+			Offset += 64
+			Block += 1
+		end
+	end
+	local I0 = buffer.readu32(State, 0)
+	local I1 = buffer.readu32(State, 4)
+	local I2 = buffer.readu32(State, 8)
+	local I3 = buffer.readu32(State, 12)
+	local I4 = buffer.readu32(State, 16)
+	local I5 = buffer.readu32(State, 20)
+	local I6 = buffer.readu32(State, 24)
+	local I7 = buffer.readu32(State, 28)
+	local I8 = buffer.readu32(State, 32)
+	local I9 = buffer.readu32(State, 36)
+	local I10 = buffer.readu32(State, 40)
+	local I11 = buffer.readu32(State, 44)
+	local I13 = buffer.readu32(State, 52)
+	local I14 = buffer.readu32(State, 56)
+	local I15 = buffer.readu32(State, 60)
+	while Offset < DataLength do
+		do
+			local A0: number, A1: number, A2: number, A3: number, A4: number, A5: number, A6: number, A7: number, A8: number, A9: number, A10: number, A11: number, A12: number, A13: number, A14: number, A15: number = I0, I1, I2, I3, I4, I5, I6, I7, I8, I9, I10, I11, Block, I13, I14, I15
+			for _ = 1, DoubleRounds do
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+			end
+			if Offset + 64 <= DataLength then
+				buffer.writeu32(Output, Offset + 60, bit32.bxor(buffer.readu32(Data, Offset + 60), A15 + I15))
+				buffer.writeu32(Output, Offset + 0, bit32.bxor(buffer.readu32(Data, Offset + 0), A0 + I0))
+				buffer.writeu32(Output, Offset + 4, bit32.bxor(buffer.readu32(Data, Offset + 4), A1 + I1))
+				buffer.writeu32(Output, Offset + 8, bit32.bxor(buffer.readu32(Data, Offset + 8), A2 + I2))
+				buffer.writeu32(Output, Offset + 12, bit32.bxor(buffer.readu32(Data, Offset + 12), A3 + I3))
+				buffer.writeu32(Output, Offset + 16, bit32.bxor(buffer.readu32(Data, Offset + 16), A4 + I4))
+				buffer.writeu32(Output, Offset + 20, bit32.bxor(buffer.readu32(Data, Offset + 20), A5 + I5))
+				buffer.writeu32(Output, Offset + 24, bit32.bxor(buffer.readu32(Data, Offset + 24), A6 + I6))
+				buffer.writeu32(Output, Offset + 28, bit32.bxor(buffer.readu32(Data, Offset + 28), A7 + I7))
+				buffer.writeu32(Output, Offset + 32, bit32.bxor(buffer.readu32(Data, Offset + 32), A8 + I8))
+				buffer.writeu32(Output, Offset + 36, bit32.bxor(buffer.readu32(Data, Offset + 36), A9 + I9))
+				buffer.writeu32(Output, Offset + 40, bit32.bxor(buffer.readu32(Data, Offset + 40), A10 + I10))
+				buffer.writeu32(Output, Offset + 44, bit32.bxor(buffer.readu32(Data, Offset + 44), A11 + I11))
+				buffer.writeu32(Output, Offset + 48, bit32.bxor(buffer.readu32(Data, Offset + 48), A12 + Block))
+				buffer.writeu32(Output, Offset + 52, bit32.bxor(buffer.readu32(Data, Offset + 52), A13 + I13))
+				buffer.writeu32(Output, Offset + 56, bit32.bxor(buffer.readu32(Data, Offset + 56), A14 + I14))
+			else
+				local Keystream = KEYSTREAM
+				buffer.writeu32(Keystream, 0, A0 + I0)
+				buffer.writeu32(Keystream, 4, A1 + I1)
+				buffer.writeu32(Keystream, 8, A2 + I2)
+				buffer.writeu32(Keystream, 12, A3 + I3)
+				buffer.writeu32(Keystream, 16, A4 + I4)
+				buffer.writeu32(Keystream, 20, A5 + I5)
+				buffer.writeu32(Keystream, 24, A6 + I6)
+				buffer.writeu32(Keystream, 28, A7 + I7)
+				buffer.writeu32(Keystream, 32, A8 + I8)
+				buffer.writeu32(Keystream, 36, A9 + I9)
+				buffer.writeu32(Keystream, 40, A10 + I10)
+				buffer.writeu32(Keystream, 44, A11 + I11)
+				buffer.writeu32(Keystream, 48, A12 + Block)
+				buffer.writeu32(Keystream, 52, A13 + I13)
+				buffer.writeu32(Keystream, 56, A14 + I14)
+				buffer.writeu32(Keystream, 60, A15 + I15)
+				local Remaining = DataLength - Offset
+				local Words = Remaining // 4
+				for Index = 0, Words * 4 - 4, 4 do
+					buffer.writeu32(Output, Offset + Index, bit32.bxor(buffer.readu32(Data, Offset + Index), buffer.readu32(Keystream, Index)))
+				end
+				for Index = Words * 4, Remaining - 1 do
+					buffer.writeu8(Output, Offset + Index, bit32.bxor(buffer.readu8(Data, Offset + Index), buffer.readu8(Keystream, Index)))
+				end
+			end
+		end
+		Offset += 64
+		Block += 1
+	end
+end
+
+local function HChaChaCore(Key: buffer, KeyLength: number, Nonce: buffer, DoubleRounds: number, Target: buffer, TargetOffset: number)
+	local SecondHalf = if KeyLength == CHACHA20_KEY_SIZE_32 then 16 else 0
+
+	local A0, A1, A2, A3 = SIGMA_0, SIGMA_1, SIGMA_2, SIGMA_3
+	local A4, A5, A6, A7 = buffer.readu32(Key, 0), buffer.readu32(Key, 4), buffer.readu32(Key, 8), buffer.readu32(Key, 12)
+	local A8, A9, A10, A11 = buffer.readu32(Key, SecondHalf), buffer.readu32(Key, SecondHalf + 4), buffer.readu32(Key, SecondHalf + 8), buffer.readu32(Key, SecondHalf + 12)
+	local A12, A13, A14, A15 = buffer.readu32(Nonce, 0), buffer.readu32(Nonce, 4), buffer.readu32(Nonce, 8), buffer.readu32(Nonce, 12)
+	do
+			if DoubleRounds == 10 then
+			do
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+			end
+			else
+			for _ = 1, DoubleRounds do
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 16)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 12)
+				A0 = bit32.bor(A0 + A4, 0); A12 = bit32.lrotate(bit32.bxor(A12, A0), 8)
+				A8 = bit32.bor(A8 + A12, 0); A4 = bit32.lrotate(bit32.bxor(A4, A8), 7)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 16)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 12)
+				A1 = bit32.bor(A1 + A5, 0); A13 = bit32.lrotate(bit32.bxor(A13, A1), 8)
+				A9 = bit32.bor(A9 + A13, 0); A5 = bit32.lrotate(bit32.bxor(A5, A9), 7)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 16)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 12)
+				A2 = bit32.bor(A2 + A6, 0); A14 = bit32.lrotate(bit32.bxor(A14, A2), 8)
+				A10 = bit32.bor(A10 + A14, 0); A6 = bit32.lrotate(bit32.bxor(A6, A10), 7)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 16)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 12)
+				A3 = bit32.bor(A3 + A7, 0); A15 = bit32.lrotate(bit32.bxor(A15, A3), 8)
+				A11 = bit32.bor(A11 + A15, 0); A7 = bit32.lrotate(bit32.bxor(A7, A11), 7)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 16)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 12)
+				A0 = bit32.bor(A0 + A5, 0); A15 = bit32.lrotate(bit32.bxor(A15, A0), 8)
+				A10 = bit32.bor(A10 + A15, 0); A5 = bit32.lrotate(bit32.bxor(A5, A10), 7)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 16)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 12)
+				A1 = bit32.bor(A1 + A6, 0); A12 = bit32.lrotate(bit32.bxor(A12, A1), 8)
+				A11 = bit32.bor(A11 + A12, 0); A6 = bit32.lrotate(bit32.bxor(A6, A11), 7)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 16)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 12)
+				A2 = bit32.bor(A2 + A7, 0); A13 = bit32.lrotate(bit32.bxor(A13, A2), 8)
+				A8 = bit32.bor(A8 + A13, 0); A7 = bit32.lrotate(bit32.bxor(A7, A8), 7)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 16)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 12)
+				A3 = bit32.bor(A3 + A4, 0); A14 = bit32.lrotate(bit32.bxor(A14, A3), 8)
+				A9 = bit32.bor(A9 + A14, 0); A4 = bit32.lrotate(bit32.bxor(A4, A9), 7)
+			end
+			end
+	end
+
+	buffer.writeu32(Target, TargetOffset, A0)
+	buffer.writeu32(Target, TargetOffset + 4, A1)
+	buffer.writeu32(Target, TargetOffset + 8, A2)
+	buffer.writeu32(Target, TargetOffset + 12, A3)
+	buffer.writeu32(Target, TargetOffset + 16, A12)
+	buffer.writeu32(Target, TargetOffset + 20, A13)
+	buffer.writeu32(Target, TargetOffset + 24, A14)
+	buffer.writeu32(Target, TargetOffset + 28, A15)
+end
+
+local function FillState(State: buffer, Key: buffer, KeyLength: number, Nonce: buffer)
+	if KeyLength == 32 then
+		buffer.writeu32(State, 0, SIGMA_0)
+		buffer.writeu32(State, 4, SIGMA_1)
+		buffer.writeu32(State, 8, SIGMA_2)
+		buffer.writeu32(State, 12, SIGMA_3)
+		buffer.copy(State, 16, Key, 0, 32)
+	else
+		buffer.writeu32(State, 0, TAU_0)
+		buffer.writeu32(State, 4, TAU_1)
+		buffer.writeu32(State, 8, TAU_2)
+		buffer.writeu32(State, 12, TAU_3)
+		buffer.copy(State, 16, Key, 0, 16)
+		buffer.copy(State, 32, Key, 0, 16)
+	end
+
+	buffer.copy(State, 52, Nonce, 0, 12)
+end
+
+function ChaCha.ChaCha20(Data: buffer, Key: buffer, Nonce: buffer, Counter: number?, Rounds: number?): buffer
+	if Data == nil then
+		error("Data cannot be nil", 2)
+	end
+
+	if typeof(Data) ~= "buffer" then
+		error(`Data must be a buffer, got {typeof(Data)}`, 2)
+	end
+
+	if Key == nil then
+		error("Key cannot be nil", 2)
+	end
+
+	if typeof(Key) ~= "buffer" then
+		error(`Key must be a buffer, got {typeof(Key)}`, 2)
+	end
+
+	local KeyLength = buffer.len(Key)
+	if KeyLength ~= CHACHA20_KEY_SIZE_16 and KeyLength ~= CHACHA20_KEY_SIZE_32 then
+		error(`Key must be {CHACHA20_KEY_SIZE_16} or {CHACHA20_KEY_SIZE_32} bytes long, got {KeyLength} bytes`, 2)
+	end
+
+	if Nonce == nil then
+		error("Nonce cannot be nil", 2)
+	end
+
+	if typeof(Nonce) ~= "buffer" then
+		error(`Nonce must be a buffer, got {typeof(Nonce)}`, 2)
+	end
+
+	local NonceLength = buffer.len(Nonce)
+	if NonceLength ~= CHACHA20_NONCE_SIZE then
+		error(`Nonce must be exactly {CHACHA20_NONCE_SIZE} bytes long, got {NonceLength} bytes`, 2)
+	end
+
+	if Counter then
+		if typeof(Counter) ~= "number" then
+			error(`Counter must be a number, got {typeof(Counter)}`, 2)
+		end
+
+		if Counter < 0 then
+			error(`Counter cannot be negative, got {Counter}`, 2)
+		end
+
+		if Counter ~= math.floor(Counter) then
+			error(`Counter must be an integer, got {Counter}`, 2)
+		end
+
+		if Counter >= 2^32 then
+			error(`Counter must be less than 2^32, got {Counter}`, 2)
+		end
+	end
+
+	if Rounds then
+		if typeof(Rounds) ~= "number" then
+			error(`Rounds must be a number, got {typeof(Rounds)}`, 2)
+		end
+
+		if Rounds <= 0 then
+			error(`Rounds must be positive, got {Rounds}`, 2)
+		end
+
+		if Rounds ~= math.floor(Rounds) then
+			error(`Rounds must be an integer, got {Rounds}`, 2)
+		end
+
+		if Rounds % 2 ~= 0 then
+			error(`Rounds must be even, got {Rounds}`, 2)
+		end
+	end
+
+	local DataLength = buffer.len(Data)
+	if DataLength == 0 then
+		return buffer.create(0)
+	end
+
+	local State = STATE
+	FillState(State, Key, KeyLength, Nonce)
+
+	local Output = buffer.create(DataLength)
+	Crypt(Data, Output, DataLength, State, Counter or 1, (Rounds or 20) // 2)
+
+	return Output
+end
+
+function ChaCha.HChaCha20(Key: buffer, Nonce: buffer, Rounds: number?) : buffer
+	if Key == nil then
+		error("Key cannot be nil", 2)
+	end
+
+	if typeof(Key) ~= "buffer" then
+		error(`Key must be a buffer, got {typeof(Key)}`, 2)
+	end
+
+	local KeyLength = buffer.len(Key)
+	if KeyLength ~= CHACHA20_KEY_SIZE_16 and KeyLength ~= CHACHA20_KEY_SIZE_32 then
+		error(`Key must be {CHACHA20_KEY_SIZE_16} or {CHACHA20_KEY_SIZE_32} bytes long, got {KeyLength} bytes`, 2)
+	end
+
+	if Nonce == nil then
+		error("Nonce cannot be nil", 2)
+	end
+
+	if typeof(Nonce) ~= "buffer" then
+		error(`Nonce must be a buffer, got {typeof(Nonce)}`, 2)
+	end
+
+	local NonceLength = buffer.len(Nonce)
+	if NonceLength ~= 16 then
+		error(`HChaCha20 requires a 16-byte nonce, got {NonceLength} bytes`, 2)
+	end
+
+	if Rounds then
+		if typeof(Rounds) ~= "number" then
+			error(`Rounds must be a number, got {typeof(Rounds)}`, 2)
+		end
+
+		if Rounds <= 0 then
+			error(`Rounds must be positive, got {Rounds}`, 2)
+		end
+
+		if Rounds ~= math.floor(Rounds) then
+			error(`Rounds must be an integer, got {Rounds}`, 2)
+		end
+
+		if Rounds % 2 ~= 0 then
+			error(`Rounds must be even, got {Rounds}`, 2)
+		end
+	end
+
+	local Subkey = buffer.create(32)
+	HChaChaCore(Key, KeyLength, Nonce, (Rounds or 20) // 2, Subkey, 0)
+
+	return Subkey
+end
+
+function ChaCha.XChaCha20(Data: buffer, Key: buffer, Nonce: buffer, Counter: number?, Rounds: number?) : buffer
+	if Nonce == nil then
+		error("Nonce cannot be nil", 2)
+	end
+
+	if typeof(Nonce) ~= "buffer" then
+		error(`Nonce must be a buffer, got {typeof(Nonce)}`, 2)
+	end
+
+	local NonceLength = buffer.len(Nonce)
+	if NonceLength ~= XCHACHA20_NONCE_SIZE then
+		error(`XChaCha20 requires a 24-byte nonce, got {NonceLength} bytes`, 2)
+	end
+
+	local SubNonce = HCHACHA_NONCE
+	buffer.copy(SubNonce, 0, Nonce, 0, 16)
+	local Subkey = ChaCha.HChaCha20(Key, SubNonce, Rounds)
+
+	local ChaNonce = buffer.create(12)
+	buffer.copy(ChaNonce, 4, Nonce, 16, 8)
+
+	return ChaCha.ChaCha20(Data, Subkey, ChaNonce, Counter, Rounds)
+end
+
+function ChaCha.AeadKeySetup(Key: buffer, Nonce: buffer, BlockRounds: number, UseXChaCha20: boolean?): (buffer, buffer)
+	local State = AEAD_STATE
+	local DoubleRounds = BlockRounds // 2
+
+	buffer.writeu32(State, 0, SIGMA_0)
+	buffer.writeu32(State, 4, SIGMA_1)
+	buffer.writeu32(State, 8, SIGMA_2)
+	buffer.writeu32(State, 12, SIGMA_3)
+	if UseXChaCha20 then
+		HChaChaCore(Key, 32, Nonce, DoubleRounds, State, 16)
+		buffer.writeu32(State, 52, 0)
+		buffer.copy(State, 56, Nonce, 16, 8)
+	else
+		buffer.copy(State, 16, Key, 0, 32)
+		buffer.copy(State, 52, Nonce, 0, 12)
+	end
+
+	local AuthKey = AEAD_AUTH_KEY
+	Crypt(AEAD_ZERO, AEAD_KEY_BLOCK, 64, State, 0, DoubleRounds)
+	buffer.copy(AuthKey, 0, AEAD_KEY_BLOCK, 0, 32)
+
+	return State, AuthKey
+end
+
+function ChaCha.AeadCrypt(State: buffer, Data: buffer, BlockRounds: number): buffer
+	local DataLength = buffer.len(Data)
+	local Output = buffer.create(DataLength)
+	if DataLength > 0 then
+		Crypt(Data, Output, DataLength, State, 1, BlockRounds // 2)
+	end
+
+	return Output
+end
+
+return ChaCha

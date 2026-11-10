@@ -1,3 +1,5 @@
 All libraries in this folder are derived from the following repository: https://github.com/daily3014/rbx-cryptography
 
-Version: 2f03c96b75e8c87258eb9819c592ef73360714fb (https://github.com/daily3014/rbx-cryptography/commit/2f03c96b75e8c87258eb9819c592ef73360714fb)
+Version: b391bb8dbc4bc63d99430128e60eca700c2e74e9 (https://github.com/daily3014/rbx-cryptography/commit/b391bb8dbc4bc63d99430128e60eca700c2e74e9)
+
+XXH32.luau is from 2f03c96b75e8c87258eb9819c592ef73360714fb (https://github.com/daily3014/rbx-cryptography/commit/2f03c96b75e8c87258eb9819c592ef73360714fb)
