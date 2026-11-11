@@ -10,17 +10,17 @@ local ClientRequestMethod = RequestMethods.Client
 
 local Log = require("@shared/log")
 local Functions = require("@shared/functions")
-local MLDSA87 = require("@shared/crypto/MlDSA").ML_DSA_87
-local MLKEM = require("@shared/crypto/MlKEM").MLKEM_1024
-local CSPRNG = require("@shared/crypto/CSPRNG")
-local Base64 = require("@shared/crypto/base64")
+local MLDSA87 = require("@shared/crypto/Verification/MlDSA").ML_DSA_87
+local MLKEM = require("@shared/crypto/Verification/MlKEM").MLKEM_1024
+local CSPRNG = require("@shared/crypto/Utilities/CSPRNG")
+local Base64 = require("@shared/crypto/Utilities/Base64")
 local Protection = require("@shared/protection")
 local PlayerList = require("@shared/playerList")
 
 local Utils = require("@shared/network/utils")
 
 -- add extra entropy
-CSPRNG.AddEntropyProvider(Utils.robloxEntropyProvider)
+CSPRNG.AddEntropy(Utils.robloxEntropyProvider())
 
 local dsaServerPrivateKey: buffer = Base64.Decode(buffer.fromstring(_G.dsaServerPrivateKey))
 -- local dsaServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.dsaServerPublicKey))
@@ -99,9 +99,9 @@ local function onRequest(player: Player, requestType, ...): ...any
 			local randomness = CSPRNG.RandomBytes(MLDSA87.SigningSeedByteLen)
 
 			local signSuccess = MLDSA87.Sign(
+				messageToSign,
 				randomness,
 				dsaServerPrivateKey,
-				messageToSign,
 				Utils.getDsaContext(player),
 				outputSignature
 			)
@@ -124,7 +124,7 @@ local function onRequest(player: Player, requestType, ...): ...any
 			return
 		end
 
-		local sharedSecret = MLKEM.Decapsulate(kemServerPrivateKey, kemCiphertext)
+		local sharedSecret = MLKEM.Decapsulate(kemCiphertext, kemServerPrivateKey)
 
 		if clientNetworkData[player] == nil then
 			clientNetworkData[player] = {
@@ -140,7 +140,7 @@ local function onRequest(player: Player, requestType, ...): ...any
 		local randomness = CSPRNG.RandomBytes(MLDSA87.SigningSeedByteLen)
 
 		local signSuccess =
-			MLDSA87.Sign(randomness, dsaServerPrivateKey, messageToSign, Utils.getDsaContext(player), outputSignature)
+			MLDSA87.Sign(messageToSign, randomness, dsaServerPrivateKey, Utils.getDsaContext(player), outputSignature)
 
 		if not signSuccess then
 			return

@@ -1,7 +1,9 @@
-local MLDSA87 = require("@shared/crypto/MlDSA").ML_DSA_87
-local MLKEM1024 = require("@shared/crypto/MlKEM").MLKEM_1024
-local CSPRNG = require("@shared/crypto/CSPRNG")
-local Base64 = require("@shared/crypto/base64")
+--!strict
+
+local MLDSA87 = require("@shared/crypto/Verification/MlDSA").ML_DSA_87
+local MLKEM1024 = require("@shared/crypto/Verification/MlKEM").MLKEM_1024
+local CSPRNG = require("@shared/crypto/Utilities/CSPRNG")
+local Base64 = require("@shared/crypto/Utilities/Base64")
 
 return function(config)
 	local rules = table.clone(config.darkluaRules)
@@ -31,7 +33,7 @@ return function(config)
 		end
 	end
 
-	for key, value in inject do
+	for key, value in inject :: any do
 		table.insert(rules, 1, {
 			rule = "inject_global_value",
 			identifier = key,
