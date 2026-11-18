@@ -1,7 +1,7 @@
 --!strict
 
 local MessagePack = require("@shared/msgpack")
-local XXH32 = require("@shared/crypto/XXH32")
+local XXH32 = require("@shared/crypto/Hashing/XXH32")
 
 -- thank you rojo
 local CFRAME_ID_LOOKUP_TABLE = table.freeze({

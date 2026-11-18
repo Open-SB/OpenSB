@@ -8,7 +8,7 @@ local coroutine = coroutine
 local debug = debug
 local table = table
 
-local CSPRNG = require("@shared/crypto/CSPRNG")
+local CSPRNG = require("@shared/crypto/Utilities/CSPRNG")
 
 local Functions = {}
 

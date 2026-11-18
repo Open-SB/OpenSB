@@ -9,8 +9,8 @@ Module.ML_KEM_1024_CIPHERTEXT_SIZE = 1568
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 
-local Blake3 = require("@shared/crypto/blake3")
-local AEAD = require("@shared/crypto/AEAD")
+local Blake3 = require("@shared/crypto/Hashing/Blake3")
+local AEAD = require("@shared/crypto/Encryption/AEAD")
 local Encoding = require("@shared/network/encoding")
 
 local allStaticFactors = (if RunService:IsStudio() then "00000000-0000-0000-0000-000000000000" else game.JobId)
@@ -21,19 +21,21 @@ local allStaticFactors = (if RunService:IsStudio() then "00000000-0000-0000-0000
 	.. tostring(game.PlaceVersion)
 
 -- context size limit is 255
-local sharedStaticFactorsHash = Blake3.Digest(buffer.fromstring(allStaticFactors), 64)
+local sharedStaticFactorsHash = Blake3.DigestBuffer(buffer.fromstring(allStaticFactors), 64)
 local base = `opensb@networking->{buffer.tostring(sharedStaticFactorsHash)}->`
 
 function Module.getDsaContext(player: Player)
 	return buffer.fromstring(`{base}{player.UserId}`)
 end
 
-function Module.robloxEntropyProvider(bytesLeft: number): buffer?
+local BYTES_OF_GUID_ENTROPY = 1024
+
+function Module.robloxEntropyProvider(): buffer?
 	local seed = ""
 	local bytesGenerated = 0
-	while bytesGenerated < bytesLeft do
+	while bytesGenerated < BYTES_OF_GUID_ENTROPY do
 		local guid = string.gsub(HttpService:GenerateGUID(false), "-", "")
-		local bytesToAdd = math.min(#guid, bytesLeft - bytesGenerated)
+		local bytesToAdd = math.min(#guid, BYTES_OF_GUID_ENTROPY - bytesGenerated)
 		seed ..= string.sub(guid, 1, bytesToAdd)
 		bytesGenerated += bytesToAdd
 	end

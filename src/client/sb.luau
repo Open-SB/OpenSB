@@ -21,7 +21,8 @@ do
 		function() -- Defer has a small yield (under a frame) allowing us to delete the script (instances can't change their parent instantly after there were parented / created)
 			sbActor:Destroy()
 			script:Destroy()
-			script = nil
+			-- we cannot set script to nil otherwise our connections will not work
+			-- script = nil
 
 			task.spawn(thread)
 		end

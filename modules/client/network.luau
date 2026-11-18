@@ -11,10 +11,10 @@ local ClientRequestMethod = RequestMethods.Client
 local Log = require("@shared/log")
 local Functions = require("@shared/functions")
 local Signal = require("@shared/signal")
-local MLDSA87 = require("@shared/crypto/MlDSA").ML_DSA_87
-local MLKEM1024 = require("@shared/crypto/MlKEM").MLKEM_1024
-local CSPRNG = require("@shared/crypto/CSPRNG")
-local Base64 = require("@shared/crypto/base64")
+local MLDSA87 = require("@shared/crypto/Verification/MlDSA").ML_DSA_87
+local MLKEM1024 = require("@shared/crypto/Verification/MlKEM").MLKEM_1024
+local CSPRNG = require("@shared/crypto/Utilities/CSPRNG")
+local Base64 = require("@shared/crypto/Utilities/Base64")
 local Utils = require("@shared/network/utils")
 
 local localPlayer = Players.LocalPlayer
@@ -26,7 +26,7 @@ local dsaServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.dsaServerP
 local kemServerPublicKey: buffer = Base64.Decode(buffer.fromstring(_G.kemServerPublicKey))
 
 -- add extra entropy
-CSPRNG.AddEntropyProvider(Utils.robloxEntropyProvider)
+CSPRNG.AddEntropy(Utils.robloxEntropyProvider())
 
 local kemClientPublicKey: buffer, _kemClientPrivateKey: buffer = MLKEM1024.GenerateKeys()
 
@@ -167,7 +167,7 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 		if not networkData.staticKey then
 			-- We must retry if anything fails because we do not have a staticKey yet
 
-			local ciphertext, sharedSecret = MLKEM1024.Encapsulate(kemServerPublicKey, CSPRNG.RandomBytes(32))
+			local ciphertext, sharedSecret = MLKEM1024.Encapsulate(CSPRNG.RandomBytes(32), kemServerPublicKey)
 
 			local messageSignature, message =
 				remote:InvokeServer(ServerRequestMethod.KeyExchange, kemClientPublicKey, ciphertext)
@@ -192,7 +192,7 @@ local function connectRemote(service: Instance, remote: RemoteFunction)
 				continue
 			end
 
-			if not MLDSA87.Verify(dsaServerPublicKey, message, Utils.getDsaContext(localPlayer), messageSignature) then
+			if not MLDSA87.Verify(message, dsaServerPublicKey, Utils.getDsaContext(localPlayer), messageSignature) then
 				Log.warn(`Key exchange failed on remote "{remote:GetFullName()}" (invalid server public key signature)`)
 
 				continue
