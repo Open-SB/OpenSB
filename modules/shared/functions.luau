@@ -1,4 +1,7 @@
 -- Maybe this should be rewritten to have each function in it's own file?
+local tostring = tostring
+local type = type
+local tonumber = tonumber
 local string = string
 local game = game
 local coroutine = coroutine

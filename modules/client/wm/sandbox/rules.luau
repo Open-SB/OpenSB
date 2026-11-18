@@ -1,3 +1,7 @@
+local Instance = Instance
+local game = game
+local table = table
+local ipairs = ipairs
 local tonumber = tonumber
 local error = error
 local typeof = typeof

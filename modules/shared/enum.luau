@@ -1,3 +1,6 @@
+local _G = _G
+local setmetatable = setmetatable
+local error = error
 local ipairs = ipairs
 local table = table
 

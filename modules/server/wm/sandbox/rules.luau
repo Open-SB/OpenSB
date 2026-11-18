@@ -1,3 +1,6 @@
+local game = game
+local warn = warn
+local ipairs = ipairs
 local table = table
 local typeof = typeof
 local error = error

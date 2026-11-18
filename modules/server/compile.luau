@@ -1,3 +1,7 @@
+local table = table
+local _G = _G
+local type = type
+local ipairs = ipairs
 local buffer = buffer
 local string = string
 local pcall = pcall

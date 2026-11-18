@@ -1,3 +1,4 @@
+local type = type
 local Functions = require("@shared/functions")
 
 local getInstanceName = Functions.getInstanceName
